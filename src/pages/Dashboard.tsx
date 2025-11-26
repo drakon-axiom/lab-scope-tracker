@@ -24,7 +24,7 @@ const Dashboard = () => {
         await Promise.all([
           supabase.from("products").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("labs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("testing_types").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("products").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("test_records").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("test_records").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "pending"),
         ]);

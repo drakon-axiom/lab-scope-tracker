@@ -36,7 +36,6 @@ interface TestRecord {
   id: string;
   product_id: string;
   lab_id: string;
-  testing_type_id: string;
   status: string;
   date_submitted: string | null;
   date_completed: string | null;
@@ -48,7 +47,6 @@ interface TestRecord {
   batch: string | null;
   products: { name: string };
   labs: { name: string };
-  testing_types: { name: string };
 }
 
 interface Product {
@@ -61,17 +59,12 @@ interface Lab {
   name: string;
 }
 
-interface TestingType {
-  id: string;
-  name: string;
-}
 
 const TestRecords = () => {
   const { toast } = useToast();
   const [testRecords, setTestRecords] = useState<TestRecord[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
   const [open, setOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<TestRecord | null>(null);
@@ -79,7 +72,6 @@ const TestRecords = () => {
   const [formData, setFormData] = useState({
     product_id: "",
     lab_id: "",
-    testing_type_id: "",
     status: "pending",
     date_submitted: "",
     date_completed: "",
@@ -100,8 +92,7 @@ const TestRecords = () => {
       .select(`
         *,
         products(name),
-        labs(name),
-        testing_types(name)
+        labs(name)
       `)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -121,15 +112,13 @@ const TestRecords = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [productsData, labsData, testingTypesData] = await Promise.all([
+    const [productsData, labsData] = await Promise.all([
       supabase.from("products").select("id, name").eq("user_id", user.id),
       supabase.from("labs").select("id, name").eq("user_id", user.id),
-      supabase.from("testing_types").select("id, name").eq("user_id", user.id),
     ]);
 
     setProducts(productsData.data || []);
     setLabs(labsData.data || []);
-    setTestingTypes(testingTypesData.data || []);
   };
 
   useEffect(() => {
@@ -141,7 +130,6 @@ const TestRecords = () => {
     setFormData({
       product_id: "",
       lab_id: "",
-      testing_type_id: "",
       status: "pending",
       date_submitted: "",
       date_completed: "",
@@ -209,7 +197,6 @@ const TestRecords = () => {
     setFormData({
       product_id: record.product_id,
       lab_id: record.lab_id,
-      testing_type_id: record.testing_type_id,
       status: record.status,
       date_submitted: record.date_submitted || "",
       date_completed: record.date_completed || "",
@@ -301,25 +288,6 @@ const TestRecords = () => {
                       {labs.map((lab) => (
                         <SelectItem key={lab.id} value={lab.id}>
                           {lab.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="testing_type">Testing Type</Label>
-                  <Select
-                    value={formData.testing_type_id}
-                    onValueChange={(value) => setFormData({ ...formData, testing_type_id: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select testing type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {testingTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -426,7 +394,6 @@ const TestRecords = () => {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Lab</TableHead>
-                <TableHead>Testing Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -435,7 +402,7 @@ const TestRecords = () => {
             <TableBody>
               {testRecords.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No test records found. Add your first test record to get started.
                   </TableCell>
                 </TableRow>
@@ -444,7 +411,6 @@ const TestRecords = () => {
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.products.name}</TableCell>
                     <TableCell>{record.labs.name}</TableCell>
-                    <TableCell>{record.testing_types.name}</TableCell>
                     <TableCell>
                       <StatusBadge status={record.status} />
                     </TableCell>
@@ -499,10 +465,6 @@ const TestRecords = () => {
               <div>
                 <Label className="text-muted-foreground">Lab</Label>
                 <p className="font-medium">{viewingRecord.labs.name}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Testing Type</Label>
-                <p className="font-medium">{viewingRecord.testing_types.name}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground">Status</Label>

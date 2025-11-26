@@ -53,7 +53,7 @@ const TestingTypes = () => {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("testing_types")
+      .from("products")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -98,7 +98,7 @@ const TestingTypes = () => {
 
     if (editingType) {
       const { error } = await supabase
-        .from("testing_types")
+        .from("products")
         .update(submitData)
         .eq("id", editingType.id);
 
@@ -116,7 +116,7 @@ const TestingTypes = () => {
       }
     } else {
       const { error } = await supabase
-        .from("testing_types")
+        .from("products")
         .insert([{ ...submitData, user_id: user.id }]);
 
       if (error) {
@@ -150,7 +150,7 @@ const TestingTypes = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this testing type?")) return;
 
-    const { error } = await supabase.from("testing_types").delete().eq("id", id);
+    const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {
       toast({

@@ -51,7 +51,7 @@ const BulkImport = () => {
       };
     });
 
-    const { error } = await supabase.from("testing_types").insert(testingTypes);
+    const { error } = await supabase.from("products").insert(testingTypes);
 
     setIsLoading(false);
 

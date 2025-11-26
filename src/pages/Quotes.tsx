@@ -322,10 +322,10 @@ const Quotes = () => {
       const payload = {
         quote_id: selectedQuote.id,
         product_id: itemFormData.product_id,
-        client: itemFormData.client || null,
-        sample: itemFormData.sample || null,
-        manufacturer: itemFormData.manufacturer || null,
-        batch: itemFormData.batch || null,
+        client: itemFormData.client,
+        sample: itemFormData.sample,
+        manufacturer: itemFormData.manufacturer,
+        batch: itemFormData.batch,
         price: itemFormData.price ? parseFloat(itemFormData.price) : null,
       };
 
@@ -432,10 +432,11 @@ const Quotes = () => {
   const handleProductChange = (productId: string) => {
     setItemFormData((prev) => ({ ...prev, product_id: productId }));
     const product = testingTypes.find((t) => t.id === productId);
-    if (product && product.price) {
+    if (product) {
       setItemFormData((prev) => ({
         ...prev,
         price: product.price?.toString() || "",
+        sample: product.name, // Auto-populate sample with product name
       }));
     }
   };
@@ -813,27 +814,29 @@ const Quotes = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Client</Label>
+                    <Label>Client *</Label>
                     <Input
                       value={itemFormData.client}
                       onChange={(e) =>
                         setItemFormData({ ...itemFormData, client: e.target.value })
                       }
                       placeholder="Client name"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Sample</Label>
+                    <Label>Sample *</Label>
                     <Input
                       value={itemFormData.sample}
                       onChange={(e) =>
                         setItemFormData({ ...itemFormData, sample: e.target.value })
                       }
-                      placeholder="Sample ID"
+                      placeholder="Sample identifier"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Manufacturer</Label>
+                    <Label>Manufacturer *</Label>
                     <Input
                       value={itemFormData.manufacturer}
                       onChange={(e) =>
@@ -843,16 +846,18 @@ const Quotes = () => {
                         })
                       }
                       placeholder="Manufacturer"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Batch</Label>
+                    <Label>Batch *</Label>
                     <Input
                       value={itemFormData.batch}
                       onChange={(e) =>
                         setItemFormData({ ...itemFormData, batch: e.target.value })
                       }
                       placeholder="Batch number"
+                      required
                     />
                   </div>
                   <div className="space-y-2 col-span-2">

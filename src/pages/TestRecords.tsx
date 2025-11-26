@@ -42,6 +42,10 @@ interface TestRecord {
   date_completed: string | null;
   test_results: string | null;
   notes: string | null;
+  client: string | null;
+  sample: string | null;
+  manufacturer: string | null;
+  batch: string | null;
   products: { name: string };
   labs: { name: string };
   testing_types: { name: string };
@@ -81,6 +85,10 @@ const TestRecords = () => {
     date_completed: "",
     test_results: "",
     notes: "",
+    client: "",
+    sample: "",
+    manufacturer: "",
+    batch: "",
   });
 
   const fetchTestRecords = async () => {
@@ -139,6 +147,10 @@ const TestRecords = () => {
       date_completed: "",
       test_results: "",
       notes: "",
+      client: "",
+      sample: "",
+      manufacturer: "",
+      batch: "",
     });
     setEditingRecord(null);
   };
@@ -203,6 +215,10 @@ const TestRecords = () => {
       date_completed: record.date_completed || "",
       test_results: record.test_results || "",
       notes: record.notes || "",
+      client: record.client || "",
+      sample: record.sample || "",
+      manufacturer: record.manufacturer || "",
+      batch: record.batch || "",
     });
     setOpen(true);
   };
@@ -325,6 +341,42 @@ const TestRecords = () => {
                       <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client">Client</Label>
+                  <Input
+                    id="client"
+                    value={formData.client}
+                    onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+                    placeholder="Client name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sample">Sample</Label>
+                  <Input
+                    id="sample"
+                    value={formData.sample}
+                    onChange={(e) => setFormData({ ...formData, sample: e.target.value })}
+                    placeholder="Sample identifier"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manufacturer">Manufacturer</Label>
+                  <Input
+                    id="manufacturer"
+                    value={formData.manufacturer}
+                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                    placeholder="Manufacturer name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="batch">Batch</Label>
+                  <Input
+                    id="batch"
+                    value={formData.batch}
+                    onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                    placeholder="Batch number"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date_submitted">Date Submitted</Label>
@@ -458,6 +510,37 @@ const TestRecords = () => {
                   <StatusBadge status={viewingRecord.status} />
                 </div>
               </div>
+              {(viewingRecord.client || viewingRecord.sample || viewingRecord.manufacturer || viewingRecord.batch) && (
+                <div className="space-y-3 p-3 bg-muted/50 rounded-md">
+                  <Label className="text-sm font-semibold">Submission Details</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {viewingRecord.client && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Client</Label>
+                        <p className="text-sm">{viewingRecord.client}</p>
+                      </div>
+                    )}
+                    {viewingRecord.sample && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Sample</Label>
+                        <p className="text-sm">{viewingRecord.sample}</p>
+                      </div>
+                    )}
+                    {viewingRecord.manufacturer && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Manufacturer</Label>
+                        <p className="text-sm">{viewingRecord.manufacturer}</p>
+                      </div>
+                    )}
+                    {viewingRecord.batch && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Batch</Label>
+                        <p className="text-sm">{viewingRecord.batch}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Date Submitted</Label>

@@ -1041,7 +1041,7 @@ const Quotes = () => {
 
         {/* Manage Items Dialog */}
         <Dialog open={itemsDialogOpen} onOpenChange={setItemsDialogOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Manage Quote Items</DialogTitle>
               <DialogDescription>

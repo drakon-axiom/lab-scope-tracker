@@ -628,6 +628,24 @@ const Quotes = () => {
     }
   };
 
+  // Helper function to calculate item total including additional samples
+  const calculateItemTotal = (item: QuoteItem): number => {
+    const basePrice = item.price || 0;
+    const productName = item.products.name.toLowerCase();
+    
+    // Check if product qualifies for $60 per additional sample
+    const qualifiesForAdditionalSamplePricing = 
+      productName.includes('tirzepatide') || 
+      productName.includes('semaglutide') || 
+      productName.includes('retatrutide');
+    
+    if (qualifiesForAdditionalSamplePricing && (item.additional_samples || 0) > 0) {
+      return basePrice + ((item.additional_samples || 0) * 60);
+    }
+    
+    return basePrice;
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -639,7 +657,7 @@ const Quotes = () => {
   }
 
   const totalQuoteValue = quoteItems.reduce(
-    (sum, item) => sum + (item.price || 0),
+    (sum, item) => sum + calculateItemTotal(item),
     0
   );
 
@@ -938,6 +956,17 @@ const Quotes = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               ${item.price?.toFixed(2) || "0.00"}
+                              {(item.additional_samples || 0) > 0 && 
+                               (item.products.name.toLowerCase().includes('tirzepatide') || 
+                                item.products.name.toLowerCase().includes('semaglutide') || 
+                                item.products.name.toLowerCase().includes('retatrutide')) && (
+                                <div className="text-xs text-muted-foreground">
+                                  +${((item.additional_samples || 0) * 60).toFixed(2)} (additional samples)
+                                </div>
+                              )}
+                              <div className="text-sm font-medium mt-1">
+                                Total: ${calculateItemTotal(item).toFixed(2)}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1251,6 +1280,17 @@ const Quotes = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               ${item.price?.toFixed(2) || "0.00"}
+                              {(item.additional_samples || 0) > 0 && 
+                               (item.products.name.toLowerCase().includes('tirzepatide') || 
+                                item.products.name.toLowerCase().includes('semaglutide') || 
+                                item.products.name.toLowerCase().includes('retatrutide')) && (
+                                <div className="text-xs text-muted-foreground">
+                                  +${((item.additional_samples || 0) * 60).toFixed(2)} (additional)
+                                </div>
+                              )}
+                              <div className="text-sm font-medium mt-1">
+                                Total: ${calculateItemTotal(item).toFixed(2)}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">

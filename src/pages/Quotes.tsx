@@ -121,6 +121,8 @@ const Quotes = () => {
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
   const [manufacturerOpen, setManufacturerOpen] = useState(false);
+  const [additionalHeaderClientOpen, setAdditionalHeaderClientOpen] = useState<{[key: number]: boolean}>({});
+  const [additionalHeaderManufacturerOpen, setAdditionalHeaderManufacturerOpen] = useState<{[key: number]: boolean}>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -1293,15 +1295,62 @@ const Quotes = () => {
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Client</Label>
-                              <Input
-                                value={itemFormData.additional_headers_data[index]?.client || ""}
-                                onChange={(e) => {
-                                  const newData = [...itemFormData.additional_headers_data];
-                                  newData[index] = { ...newData[index], client: e.target.value };
-                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                                }}
-                                placeholder="Client name"
-                              />
+                              <Popover 
+                                open={additionalHeaderClientOpen[index] || false} 
+                                onOpenChange={(open) => setAdditionalHeaderClientOpen({...additionalHeaderClientOpen, [index]: open})}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={additionalHeaderClientOpen[index] || false}
+                                    className="w-full justify-between text-xs h-9"
+                                  >
+                                    {itemFormData.additional_headers_data[index]?.client || "Select or type client..."}
+                                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Search or type new client..." 
+                                      value={itemFormData.additional_headers_data[index]?.client || ""}
+                                      onValueChange={(value) => {
+                                        const newData = [...itemFormData.additional_headers_data];
+                                        newData[index] = { ...newData[index], client: value };
+                                        setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                      }}
+                                    />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        Press Enter to add "{itemFormData.additional_headers_data[index]?.client || ""}"
+                                      </CommandEmpty>
+                                      <CommandGroup>
+                                        {clients.map((client) => (
+                                          <CommandItem
+                                            key={client.id}
+                                            value={client.name}
+                                            onSelect={() => {
+                                              const newData = [...itemFormData.additional_headers_data];
+                                              newData[index] = { ...newData[index], client: client.name };
+                                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                              setAdditionalHeaderClientOpen({...additionalHeaderClientOpen, [index]: false});
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                itemFormData.additional_headers_data[index]?.client === client.name ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {client.name}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Sample</Label>
@@ -1313,19 +1362,67 @@ const Quotes = () => {
                                   setItemFormData({ ...itemFormData, additional_headers_data: newData });
                                 }}
                                 placeholder="Sample identifier"
+                                className="h-9 text-xs"
                               />
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Manufacturer</Label>
-                              <Input
-                                value={itemFormData.additional_headers_data[index]?.manufacturer || ""}
-                                onChange={(e) => {
-                                  const newData = [...itemFormData.additional_headers_data];
-                                  newData[index] = { ...newData[index], manufacturer: e.target.value };
-                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                                }}
-                                placeholder="Manufacturer name"
-                              />
+                              <Popover 
+                                open={additionalHeaderManufacturerOpen[index] || false} 
+                                onOpenChange={(open) => setAdditionalHeaderManufacturerOpen({...additionalHeaderManufacturerOpen, [index]: open})}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={additionalHeaderManufacturerOpen[index] || false}
+                                    className="w-full justify-between text-xs h-9"
+                                  >
+                                    {itemFormData.additional_headers_data[index]?.manufacturer || "Select or type manufacturer..."}
+                                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0" align="start">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Search or type new manufacturer..." 
+                                      value={itemFormData.additional_headers_data[index]?.manufacturer || ""}
+                                      onValueChange={(value) => {
+                                        const newData = [...itemFormData.additional_headers_data];
+                                        newData[index] = { ...newData[index], manufacturer: value };
+                                        setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                      }}
+                                    />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        Press Enter to add "{itemFormData.additional_headers_data[index]?.manufacturer || ""}"
+                                      </CommandEmpty>
+                                      <CommandGroup>
+                                        {manufacturers.map((manufacturer) => (
+                                          <CommandItem
+                                            key={manufacturer.id}
+                                            value={manufacturer.name}
+                                            onSelect={() => {
+                                              const newData = [...itemFormData.additional_headers_data];
+                                              newData[index] = { ...newData[index], manufacturer: manufacturer.name };
+                                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                              setAdditionalHeaderManufacturerOpen({...additionalHeaderManufacturerOpen, [index]: false});
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                itemFormData.additional_headers_data[index]?.manufacturer === manufacturer.name ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {manufacturer.name}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Batch</Label>
@@ -1337,6 +1434,7 @@ const Quotes = () => {
                                   setItemFormData({ ...itemFormData, additional_headers_data: newData });
                                 }}
                                 placeholder="Batch number"
+                                className="h-9 text-xs"
                               />
                             </div>
                           </div>

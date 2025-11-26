@@ -28,7 +28,8 @@ interface TestingType {
   id: string;
   name: string;
   description: string | null;
-  standard: string | null;
+  vendor: string | null;
+  price: number | null;
   duration_days: number | null;
 }
 
@@ -40,7 +41,8 @@ const TestingTypes = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    standard: "",
+    vendor: "",
+    price: "",
     duration_days: "",
   });
 
@@ -73,7 +75,8 @@ const TestingTypes = () => {
     setFormData({
       name: "",
       description: "",
-      standard: "",
+      vendor: "",
+      price: "",
       duration_days: "",
     });
     setEditingType(null);
@@ -86,6 +89,7 @@ const TestingTypes = () => {
 
     const submitData = {
       ...formData,
+      price: formData.price ? parseFloat(formData.price) : null,
       duration_days: formData.duration_days ? parseInt(formData.duration_days) : null,
     };
 
@@ -132,7 +136,8 @@ const TestingTypes = () => {
     setFormData({
       name: type.name,
       description: type.description || "",
-      standard: type.standard || "",
+      vendor: type.vendor || "",
+      price: type.price?.toString() || "",
       duration_days: type.duration_days?.toString() || "",
     });
     setOpen(true);
@@ -188,12 +193,22 @@ const TestingTypes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="standard">Standard / Specification</Label>
+                  <Label htmlFor="vendor">Vendor</Label>
                   <Input
-                    id="standard"
-                    value={formData.standard}
-                    onChange={(e) => setFormData({ ...formData, standard: e.target.value })}
-                    placeholder="e.g., ISO 9001, ASTM D638"
+                    id="vendor"
+                    value={formData.vendor}
+                    onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+                    placeholder="e.g., Janoshik"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price ($)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -226,7 +241,8 @@ const TestingTypes = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Standard</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -235,7 +251,7 @@ const TestingTypes = () => {
             <TableBody>
               {testingTypes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No testing types found. Add your first testing type to get started.
                   </TableCell>
                 </TableRow>
@@ -243,7 +259,10 @@ const TestingTypes = () => {
                 testingTypes.map((type) => (
                   <TableRow key={type.id}>
                     <TableCell className="font-medium">{type.name}</TableCell>
-                    <TableCell>{type.standard || "—"}</TableCell>
+                    <TableCell>{type.vendor || "—"}</TableCell>
+                    <TableCell>
+                      {type.price ? `$${type.price.toFixed(2)}` : "—"}
+                    </TableCell>
                     <TableCell>
                       {type.duration_days ? `${type.duration_days} days` : "—"}
                     </TableCell>

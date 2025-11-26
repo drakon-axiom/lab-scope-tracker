@@ -178,9 +178,10 @@ export type Database = {
           duration_days: number | null
           id: string
           name: string
-          standard: string | null
+          price: number | null
           updated_at: string
           user_id: string
+          vendor: string | null
         }
         Insert: {
           created_at?: string
@@ -188,9 +189,10 @@ export type Database = {
           duration_days?: number | null
           id?: string
           name: string
-          standard?: string | null
+          price?: number | null
           updated_at?: string
           user_id: string
+          vendor?: string | null
         }
         Update: {
           created_at?: string
@@ -198,9 +200,10 @@ export type Database = {
           duration_days?: number | null
           id?: string
           name?: string
-          standard?: string | null
+          price?: number | null
           updated_at?: string
           user_id?: string
+          vendor?: string | null
         }
         Relationships: []
       }

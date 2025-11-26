@@ -610,6 +610,8 @@ const Quotes = () => {
           manufacturer: item.manufacturer,
           batch: item.batch,
           price: item.price,
+          additional_samples: item.additional_samples,
+          additional_report_headers: item.additional_report_headers,
         })),
         notes: selectedQuote.notes,
         totalValue: totalQuoteValue,

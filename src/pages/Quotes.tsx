@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -67,6 +68,8 @@ interface QuoteItem {
   manufacturer: string | null;
   batch: string | null;
   price: number | null;
+  additional_samples: number | null;
+  additional_report_headers: number | null;
   products: { name: string; price: number | null };
 }
 
@@ -134,6 +137,9 @@ const Quotes = () => {
     manufacturer: "",
     batch: "",
     price: "",
+    additional_samples: 0,
+    additional_report_headers: 0,
+    has_additional_samples: false,
   });
 
   useEffect(() => {
@@ -294,6 +300,9 @@ const Quotes = () => {
       manufacturer: "",
       batch: "",
       price: "",
+      additional_samples: 0,
+      additional_report_headers: 0,
+      has_additional_samples: false,
     });
     setEditingItemId(null);
   };
@@ -420,6 +429,8 @@ const Quotes = () => {
         manufacturer: manufacturerName,
         batch: itemFormData.batch,
         price: itemFormData.price ? parseFloat(itemFormData.price) : null,
+        additional_samples: itemFormData.has_additional_samples ? itemFormData.additional_samples : 0,
+        additional_report_headers: itemFormData.additional_report_headers,
       };
 
       if (editingItemId) {
@@ -457,6 +468,9 @@ const Quotes = () => {
       manufacturer: item.manufacturer || "",
       batch: item.batch || "",
       price: item.price?.toString() || "",
+      additional_samples: item.additional_samples || 0,
+      additional_report_headers: item.additional_report_headers || 0,
+      has_additional_samples: (item.additional_samples || 0) > 0,
     });
   };
 
@@ -910,6 +924,16 @@ const Quotes = () => {
                                 <div>Sample: {item.sample || "—"}</div>
                                 <div>Mfg: {item.manufacturer || "—"}</div>
                                 <div>Batch: {item.batch || "—"}</div>
+                                {(item.additional_samples || 0) > 0 && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    +{item.additional_samples} additional samples
+                                  </div>
+                                )}
+                                {(item.additional_report_headers || 0) > 0 && (
+                                  <div className="text-xs text-muted-foreground">
+                                    +{item.additional_report_headers} report headers
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -1127,6 +1151,53 @@ const Quotes = () => {
                       placeholder="0.00"
                     />
                   </div>
+                  <div className="space-y-3 col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="additional-samples"
+                        checked={itemFormData.has_additional_samples}
+                        onCheckedChange={(checked) => 
+                          setItemFormData({ 
+                            ...itemFormData, 
+                            has_additional_samples: checked as boolean,
+                            additional_samples: checked ? itemFormData.additional_samples : 0
+                          })
+                        }
+                      />
+                      <Label htmlFor="additional-samples" className="cursor-pointer">
+                        Additional Samples
+                      </Label>
+                    </div>
+                    {itemFormData.has_additional_samples && (
+                      <Input
+                        type="number"
+                        min="0"
+                        value={itemFormData.additional_samples}
+                        onChange={(e) =>
+                          setItemFormData({ 
+                            ...itemFormData, 
+                            additional_samples: parseInt(e.target.value) || 0 
+                          })
+                        }
+                        placeholder="Number of additional samples"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Additional Report Headers</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={itemFormData.additional_report_headers}
+                      onChange={(e) =>
+                        setItemFormData({ 
+                          ...itemFormData, 
+                          additional_report_headers: parseInt(e.target.value) || 0 
+                        })
+                      }
+                      placeholder="Number of additional report headers"
+                    />
+                  </div>
                 </div>
                 <Button type="submit" className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
@@ -1167,6 +1238,16 @@ const Quotes = () => {
                                 <div>Mfg: {item.manufacturer}</div>
                               )}
                               {item.batch && <div>Batch: {item.batch}</div>}
+                              {(item.additional_samples || 0) > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  +{item.additional_samples} additional samples
+                                </div>
+                              )}
+                              {(item.additional_report_headers || 0) > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{item.additional_report_headers} report headers
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               ${item.price?.toFixed(2) || "0.00"}

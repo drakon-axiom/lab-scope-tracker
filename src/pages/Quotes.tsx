@@ -13,6 +13,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -29,8 +42,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
+import { cn } from "@/lib/utils";
 
 interface Quote {
   id: string;
@@ -66,6 +80,16 @@ interface Lab {
   name: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+}
+
+interface Manufacturer {
+  id: string;
+  name: string;
+}
+
 interface TestingType {
   id: string;
   name: string;
@@ -79,11 +103,15 @@ const Quotes = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
+  const [clientOpen, setClientOpen] = useState(false);
+  const [manufacturerOpen, setManufacturerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -112,6 +140,8 @@ const Quotes = () => {
     fetchQuotes();
     fetchProducts();
     fetchLabs();
+    fetchClients();
+    fetchManufacturers();
     fetchTestingTypes();
   }, []);
 
@@ -187,6 +217,42 @@ const Quotes = () => {
       setTestingTypes(data || []);
     } catch (error: any) {
       console.error("Error fetching testing types:", error);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error: any) {
+      console.error("Error fetching clients:", error);
+    }
+  };
+
+  const fetchManufacturers = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("manufacturers")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+      setManufacturers(data || []);
+    } catch (error: any) {
+      console.error("Error fetching manufacturers:", error);
     }
   };
 
@@ -319,12 +385,39 @@ const Quotes = () => {
     if (!selectedQuote) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Create client if it doesn't exist
+      let clientName = itemFormData.client;
+      const existingClient = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+      if (!existingClient && clientName) {
+        const { error } = await supabase
+          .from("clients")
+          .insert([{ name: clientName, user_id: user.id }]);
+        if (!error) {
+          await fetchClients(); // Refresh clients list
+        }
+      }
+
+      // Create manufacturer if it doesn't exist
+      let manufacturerName = itemFormData.manufacturer;
+      const existingManufacturer = manufacturers.find(m => m.name.toLowerCase() === manufacturerName.toLowerCase());
+      if (!existingManufacturer && manufacturerName) {
+        const { error } = await supabase
+          .from("manufacturers")
+          .insert([{ name: manufacturerName, user_id: user.id }]);
+        if (!error) {
+          await fetchManufacturers(); // Refresh manufacturers list
+        }
+      }
+
       const payload = {
         quote_id: selectedQuote.id,
         product_id: itemFormData.product_id,
-        client: itemFormData.client,
+        client: clientName,
         sample: itemFormData.sample,
-        manufacturer: itemFormData.manufacturer,
+        manufacturer: manufacturerName,
         batch: itemFormData.batch,
         price: itemFormData.price ? parseFloat(itemFormData.price) : null,
       };
@@ -815,14 +908,53 @@ const Quotes = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Client *</Label>
-                    <Input
-                      value={itemFormData.client}
-                      onChange={(e) =>
-                        setItemFormData({ ...itemFormData, client: e.target.value })
-                      }
-                      placeholder="Client name"
-                      required
-                    />
+                    <Popover open={clientOpen} onOpenChange={setClientOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={clientOpen}
+                          className="w-full justify-between"
+                        >
+                          {itemFormData.client || "Select or type client..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search or type new client..." 
+                            value={itemFormData.client}
+                            onValueChange={(value) => setItemFormData({ ...itemFormData, client: value })}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              Press Enter to add "{itemFormData.client}"
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {clients.map((client) => (
+                                <CommandItem
+                                  key={client.id}
+                                  value={client.name}
+                                  onSelect={() => {
+                                    setItemFormData({ ...itemFormData, client: client.name });
+                                    setClientOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      itemFormData.client === client.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {client.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Sample *</Label>
@@ -837,17 +969,53 @@ const Quotes = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Manufacturer *</Label>
-                    <Input
-                      value={itemFormData.manufacturer}
-                      onChange={(e) =>
-                        setItemFormData({
-                          ...itemFormData,
-                          manufacturer: e.target.value,
-                        })
-                      }
-                      placeholder="Manufacturer"
-                      required
-                    />
+                    <Popover open={manufacturerOpen} onOpenChange={setManufacturerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={manufacturerOpen}
+                          className="w-full justify-between"
+                        >
+                          {itemFormData.manufacturer || "Select or type manufacturer..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search or type new manufacturer..." 
+                            value={itemFormData.manufacturer}
+                            onValueChange={(value) => setItemFormData({ ...itemFormData, manufacturer: value })}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              Press Enter to add "{itemFormData.manufacturer}"
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {manufacturers.map((manufacturer) => (
+                                <CommandItem
+                                  key={manufacturer.id}
+                                  value={manufacturer.name}
+                                  onSelect={() => {
+                                    setItemFormData({ ...itemFormData, manufacturer: manufacturer.name });
+                                    setManufacturerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      itemFormData.manufacturer === manufacturer.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {manufacturer.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Batch *</Label>

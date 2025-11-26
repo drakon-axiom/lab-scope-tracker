@@ -15,6 +15,8 @@ interface QuoteEmailRequest {
     manufacturer: string | null;
     batch: string | null;
     price: number | null;
+    additional_samples: number | null;
+    additional_report_headers: number | null;
   }>;
   notes: string | null;
   totalValue: number;
@@ -44,19 +46,59 @@ Deno.serve(async (req) => {
     }
 
     // Build email content
-    const itemsHtml = items.map((item, index) => `
-      <tr style="border-bottom: 1px solid #e5e7eb;">
-        <td style="padding: 12px; border-right: 1px solid #e5e7eb;">${index + 1}</td>
-        <td style="padding: 12px; border-right: 1px solid #e5e7eb;">${item.productName}</td>
-        <td style="padding: 12px; border-right: 1px solid #e5e7eb;">
-          <strong>Client:</strong> ${item.client || '—'}<br/>
-          <strong>Sample:</strong> ${item.sample || '—'}<br/>
-          <strong>Manufacturer:</strong> ${item.manufacturer || '—'}<br/>
-          <strong>Batch:</strong> ${item.batch || '—'}
-        </td>
-        <td style="padding: 12px; text-align: right;">$${(item.price || 0).toFixed(2)}</td>
-      </tr>
-    `).join('');
+    const itemsHtml = items.flatMap((item, index) => {
+      const rows = [];
+      const productName = item.productName.toLowerCase();
+      const qualifiesForAdditionalSamplePricing = 
+        productName.includes('tirzepatide') || 
+        productName.includes('semaglutide') || 
+        productName.includes('retatrutide');
+      
+      // Main item row
+      rows.push(`
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px; border-right: 1px solid #e5e7eb;">${index + 1}</td>
+          <td style="padding: 12px; border-right: 1px solid #e5e7eb;">${item.productName}</td>
+          <td style="padding: 12px; border-right: 1px solid #e5e7eb;">
+            <strong>Client:</strong> ${item.client || '—'}<br/>
+            <strong>Sample:</strong> ${item.sample || '—'}<br/>
+            <strong>Manufacturer:</strong> ${item.manufacturer || '—'}<br/>
+            <strong>Batch:</strong> ${item.batch || '—'}
+          </td>
+          <td style="padding: 12px; text-align: right;">$${(item.price || 0).toFixed(2)}</td>
+        </tr>
+      `);
+      
+      // Additional samples row
+      if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+        rows.push(`
+          <tr style="border-bottom: 1px solid #e5e7eb; background-color: #f9fafb;">
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb; padding-left: 24px; color: #6b7280;">
+              Additional Samples (${item.additional_samples} × $60)
+            </td>
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
+            <td style="padding: 12px; text-align: right; color: #6b7280;">$${((item.additional_samples || 0) * 60).toFixed(2)}</td>
+          </tr>
+        `);
+      }
+      
+      // Additional report headers row
+      if ((item.additional_report_headers || 0) > 0) {
+        rows.push(`
+          <tr style="border-bottom: 1px solid #e5e7eb; background-color: #f9fafb;">
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb; padding-left: 24px; color: #6b7280;">
+              Additional Report Headers (${item.additional_report_headers} × $30)
+            </td>
+            <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
+            <td style="padding: 12px; text-align: right; color: #6b7280;">$${((item.additional_report_headers || 0) * 30).toFixed(2)}</td>
+          </tr>
+        `);
+      }
+      
+      return rows;
+    }).join('');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -131,14 +173,31 @@ Dear ${labName},
 
 Please review the following quote request for testing services:
 
-${items.map((item, index) => `
+${items.map((item, index) => {
+  const productName = item.productName.toLowerCase();
+  const qualifiesForAdditionalSamplePricing = 
+    productName.includes('tirzepatide') || 
+    productName.includes('semaglutide') || 
+    productName.includes('retatrutide');
+  
+  let itemText = `
 ${index + 1}. ${item.productName}
    Client: ${item.client || '—'}
    Sample: ${item.sample || '—'}
    Manufacturer: ${item.manufacturer || '—'}
    Batch: ${item.batch || '—'}
-   Price: $${(item.price || 0).toFixed(2)}
-`).join('\n')}
+   Price: $${(item.price || 0).toFixed(2)}`;
+
+  if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+    itemText += `\n   Additional Samples (${item.additional_samples} × $60): $${((item.additional_samples || 0) * 60).toFixed(2)}`;
+  }
+  
+  if ((item.additional_report_headers || 0) > 0) {
+    itemText += `\n   Additional Report Headers (${item.additional_report_headers} × $30): $${((item.additional_report_headers || 0) * 30).toFixed(2)}`;
+  }
+  
+  return itemText;
+}).join('\n')}
 
 Total Quote Value: $${totalValue.toFixed(2)}
 

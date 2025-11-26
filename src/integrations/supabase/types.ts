@@ -104,6 +104,117 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_items: {
+        Row: {
+          batch: string | null
+          client: string | null
+          created_at: string | null
+          id: string
+          manufacturer: string | null
+          price: number | null
+          product_id: string
+          quote_id: string
+          sample: string | null
+          testing_type_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch?: string | null
+          client?: string | null
+          created_at?: string | null
+          id?: string
+          manufacturer?: string | null
+          price?: number | null
+          product_id: string
+          quote_id: string
+          sample?: string | null
+          testing_type_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch?: string | null
+          client?: string | null
+          created_at?: string | null
+          id?: string
+          manufacturer?: string | null
+          price?: number | null
+          product_id?: string
+          quote_id?: string
+          sample?: string | null
+          testing_type_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_testing_type_id_fkey"
+            columns: ["testing_type_id"]
+            isOneToOne: false
+            referencedRelation: "testing_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          created_at: string | null
+          id: string
+          lab_id: string
+          notes: string | null
+          quote_number: string | null
+          shipped_date: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lab_id: string
+          notes?: string | null
+          quote_number?: string | null
+          shipped_date?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lab_id?: string
+          notes?: string | null
+          quote_number?: string | null
+          shipped_date?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_records: {
         Row: {
           batch: string | null
@@ -116,6 +227,9 @@ export type Database = {
           manufacturer: string | null
           notes: string | null
           product_id: string
+          quote_item_id: string | null
+          report_file: string | null
+          report_url: string | null
           sample: string | null
           status: string
           test_results: string | null
@@ -134,6 +248,9 @@ export type Database = {
           manufacturer?: string | null
           notes?: string | null
           product_id: string
+          quote_item_id?: string | null
+          report_file?: string | null
+          report_url?: string | null
           sample?: string | null
           status?: string
           test_results?: string | null
@@ -152,6 +269,9 @@ export type Database = {
           manufacturer?: string | null
           notes?: string | null
           product_id?: string
+          quote_item_id?: string | null
+          report_file?: string | null
+          report_url?: string | null
           sample?: string | null
           status?: string
           test_results?: string | null
@@ -172,6 +292,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_records_quote_item_id_fkey"
+            columns: ["quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
             referencedColumns: ["id"]
           },
           {

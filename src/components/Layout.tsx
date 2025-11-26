@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { User } from "@supabase/supabase-js";
-import { LogOut, TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube } from "lucide-react";
+import { LogOut, TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ const Layout = ({ children }: LayoutProps) => {
     { to: "/products", label: "Products", icon: Package },
     { to: "/labs", label: "Labs", icon: FlaskConical },
     { to: "/testing-types", label: "Testing Types", icon: FileCheck },
+    { to: "/quotes", label: "Quotes", icon: FileText },
     { to: "/test-records", label: "Test Records", icon: TestTube },
   ];
   

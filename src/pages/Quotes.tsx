@@ -42,7 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -522,6 +522,86 @@ const Quotes = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!selectedQuote) return;
+    
+    // Get lab details
+    const lab = labs.find(l => l.id === selectedQuote.lab_id);
+    if (!lab) {
+      toast({
+        title: "Error",
+        description: "Lab information not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Fetch lab email
+    const { data: labData, error: labError } = await supabase
+      .from("labs")
+      .select("contact_email")
+      .eq("id", selectedQuote.lab_id)
+      .single();
+
+    if (labError || !labData?.contact_email) {
+      toast({
+        title: "Error",
+        description: "Lab email not found. Please add a contact email for this lab.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const emailPayload = {
+        labEmail: labData.contact_email,
+        labName: lab.name,
+        quoteNumber: selectedQuote.quote_number,
+        items: quoteItems.map(item => ({
+          productName: item.products.name,
+          client: item.client,
+          sample: item.sample,
+          manufacturer: item.manufacturer,
+          batch: item.batch,
+          price: item.price,
+        })),
+        notes: selectedQuote.notes,
+        totalValue: totalQuoteValue,
+      };
+
+      toast({
+        title: "Sending email...",
+        description: "Please wait while we send the quote to the vendor.",
+      });
+
+      const { error } = await supabase.functions.invoke('send-quote-email', {
+        body: emailPayload,
+      });
+
+      if (error) throw error;
+
+      // Update quote status to 'sent_to_vendor'
+      await supabase
+        .from("quotes")
+        .update({ status: "sent_to_vendor" })
+        .eq("id", selectedQuote.id);
+
+      toast({
+        title: "Email sent successfully",
+        description: `Quote has been sent to ${lab.name}`,
+      });
+
+      fetchQuotes();
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProductChange = (productId: string) => {
     setItemFormData((prev) => ({ ...prev, product_id: productId }));
     const product = testingTypes.find((t) => t.id === productId);
@@ -848,6 +928,13 @@ const Quotes = () => {
                     onClick={() => setViewDialogOpen(false)}
                   >
                     Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleSendEmail}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send to Vendor
                   </Button>
                   {selectedQuote.status === "approved" && (
                     <Button onClick={handleGenerateTestRecords}>

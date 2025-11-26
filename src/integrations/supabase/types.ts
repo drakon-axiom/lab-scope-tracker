@@ -52,34 +52,40 @@ export type Database = {
       }
       products: {
         Row: {
-          category: string | null
           created_at: string
           description: string | null
+          duration_days: number | null
           id: string
           name: string
-          sku: string | null
+          price: number | null
+          standard: string | null
           updated_at: string
           user_id: string
+          vendor: string | null
         }
         Insert: {
-          category?: string | null
           created_at?: string
           description?: string | null
+          duration_days?: number | null
           id?: string
           name: string
-          sku?: string | null
+          price?: number | null
+          standard?: string | null
           updated_at?: string
           user_id: string
+          vendor?: string | null
         }
         Update: {
-          category?: string | null
           created_at?: string
           description?: string | null
+          duration_days?: number | null
           id?: string
           name?: string
-          sku?: string | null
+          price?: number | null
+          standard?: string | null
           updated_at?: string
           user_id?: string
+          vendor?: string | null
         }
         Relationships: []
       }
@@ -115,7 +121,6 @@ export type Database = {
           product_id: string
           quote_id: string
           sample: string | null
-          testing_type_id: string
           updated_at: string | null
         }
         Insert: {
@@ -128,7 +133,6 @@ export type Database = {
           product_id: string
           quote_id: string
           sample?: string | null
-          testing_type_id: string
           updated_at?: string | null
         }
         Update: {
@@ -141,17 +145,9 @@ export type Database = {
           product_id?: string
           quote_id?: string
           sample?: string | null
-          testing_type_id?: string
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "quote_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "quote_items_quote_id_fkey"
             columns: ["quote_id"]
@@ -161,9 +157,9 @@ export type Database = {
           },
           {
             foreignKeyName: "quote_items_testing_type_id_fkey"
-            columns: ["testing_type_id"]
+            columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "testing_types"
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -233,7 +229,6 @@ export type Database = {
           sample: string | null
           status: string
           test_results: string | null
-          testing_type_id: string
           updated_at: string
           user_id: string
         }
@@ -254,7 +249,6 @@ export type Database = {
           sample?: string | null
           status?: string
           test_results?: string | null
-          testing_type_id: string
           updated_at?: string
           user_id: string
         }
@@ -275,7 +269,6 @@ export type Database = {
           sample?: string | null
           status?: string
           test_results?: string | null
-          testing_type_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -288,13 +281,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "test_records_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "test_records_quote_item_id_fkey"
             columns: ["quote_item_id"]
             isOneToOne: false
@@ -303,51 +289,12 @@ export type Database = {
           },
           {
             foreignKeyName: "test_records_testing_type_id_fkey"
-            columns: ["testing_type_id"]
+            columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "testing_types"
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
-      }
-      testing_types: {
-        Row: {
-          created_at: string
-          description: string | null
-          duration_days: number | null
-          id: string
-          name: string
-          price: number | null
-          standard: string | null
-          updated_at: string
-          user_id: string
-          vendor: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          duration_days?: number | null
-          id?: string
-          name: string
-          price?: number | null
-          standard?: string | null
-          updated_at?: string
-          user_id: string
-          vendor?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          duration_days?: number | null
-          id?: string
-          name?: string
-          price?: number | null
-          standard?: string | null
-          updated_at?: string
-          user_id?: string
-          vendor?: string | null
-        }
-        Relationships: []
       }
     }
     Views: {

@@ -48,14 +48,12 @@ interface QuoteItem {
   id: string;
   quote_id: string;
   product_id: string;
-  testing_type_id: string;
   client: string | null;
   sample: string | null;
   manufacturer: string | null;
   batch: string | null;
   price: number | null;
-  products: { name: string };
-  testing_types: { name: string; price: number | null };
+  products: { name: string; price: number | null };
 }
 
 interface Product {
@@ -72,6 +70,9 @@ interface TestingType {
   id: string;
   name: string;
   price: number | null;
+  vendor: string | null;
+  standard: string | null;
+  duration_days: number | null;
 }
 
 const Quotes = () => {
@@ -99,7 +100,6 @@ const Quotes = () => {
 
   const [itemFormData, setItemFormData] = useState({
     product_id: "",
-    testing_type_id: "",
     client: "",
     sample: "",
     manufacturer: "",
@@ -178,8 +178,8 @@ const Quotes = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from("testing_types")
-        .select("id, name, price")
+        .from("products")
+        .select("id, name, price, vendor, standard, duration_days")
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -193,7 +193,7 @@ const Quotes = () => {
     try {
       const { data, error } = await supabase
         .from("quote_items")
-        .select("*, products(name), testing_types(name, price)")
+        .select("*, products(name, price)")
         .eq("quote_id", quoteId);
 
       if (error) throw error;
@@ -222,7 +222,6 @@ const Quotes = () => {
   const resetItemForm = () => {
     setItemFormData({
       product_id: "",
-      testing_type_id: "",
       client: "",
       sample: "",
       manufacturer: "",
@@ -321,7 +320,6 @@ const Quotes = () => {
       const payload = {
         quote_id: selectedQuote.id,
         product_id: itemFormData.product_id,
-        testing_type_id: itemFormData.testing_type_id,
         client: itemFormData.client || null,
         sample: itemFormData.sample || null,
         manufacturer: itemFormData.manufacturer || null,
@@ -376,7 +374,6 @@ const Quotes = () => {
         user_id: user.id,
         product_id: item.product_id,
         lab_id: selectedQuote.lab_id,
-        testing_type_id: item.testing_type_id,
         quote_item_id: item.id,
         client: item.client,
         sample: item.sample,
@@ -407,13 +404,13 @@ const Quotes = () => {
     }
   };
 
-  const handleTestingTypeChange = (testingTypeId: string) => {
-    setItemFormData((prev) => ({ ...prev, testing_type_id: testingTypeId }));
-    const testingType = testingTypes.find((t) => t.id === testingTypeId);
-    if (testingType && testingType.price) {
+  const handleTestingTypeChange = (productId: string) => {
+    setItemFormData((prev) => ({ ...prev, product_id: productId }));
+    const product = testingTypes.find((t) => t.id === productId);
+    if (product && product.price) {
       setItemFormData((prev) => ({
         ...prev,
-        price: testingType.price?.toString() || "",
+        price: product.price?.toString() || "",
       }));
     }
   };
@@ -698,18 +695,16 @@ const Quotes = () => {
                   <div className="border rounded-lg">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Testing Type</TableHead>
-                          <TableHead>Client/Sample</TableHead>
-                          <TableHead className="text-right">Price</TableHead>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Client/Sample</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {quoteItems.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.products.name}</TableCell>
-                            <TableCell>{item.testing_types.name}</TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <div>Client: {item.client || "—"}</div>
@@ -775,26 +770,6 @@ const Quotes = () => {
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
                             {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Testing Type *</Label>
-                    <Select
-                      value={itemFormData.testing_type_id}
-                      onValueChange={handleTestingTypeChange}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select testing type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {testingTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
-                            {type.price && ` - $${type.price}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -869,7 +844,6 @@ const Quotes = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead>Testing Type</TableHead>
                         <TableHead>Submission Info</TableHead>
                         <TableHead className="text-right">Price</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -879,7 +853,7 @@ const Quotes = () => {
                       {quoteItems.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={5}
+                            colSpan={4}
                             className="text-center text-muted-foreground"
                           >
                             No items added yet
@@ -889,7 +863,6 @@ const Quotes = () => {
                         quoteItems.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.products.name}</TableCell>
-                            <TableCell>{item.testing_types.name}</TableCell>
                             <TableCell className="text-sm">
                               {item.client && <div>Client: {item.client}</div>}
                               {item.sample && <div>Sample: {item.sample}</div>}

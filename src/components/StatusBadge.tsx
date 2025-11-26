@@ -10,10 +10,20 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
     switch (status.toLowerCase()) {
       case "completed":
         return "bg-success text-white";
+      case "testing_in_progress":
       case "in-progress":
+      case "in_transit":
         return "bg-info text-white";
+      case "draft":
       case "pending":
         return "bg-warning text-white";
+      case "sent_to_vendor":
+      case "approved":
+      case "shipped":
+      case "delivered":
+        return "bg-blue-500 text-white";
+      case "test_records_generated":
+        return "bg-purple-500 text-white";
       case "failed":
         return "bg-destructive text-destructive-foreground";
       default:
@@ -23,7 +33,7 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
 
   return (
     <Badge className={cn("capitalize", getStatusColor(status))}>
-      {status}
+      {status.replace(/_/g, ' ')}
     </Badge>
   );
 };

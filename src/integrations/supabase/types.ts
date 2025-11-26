@@ -179,6 +179,7 @@ export type Database = {
           id: string
           name: string
           price: number | null
+          standard: string | null
           updated_at: string
           user_id: string
           vendor: string | null
@@ -190,6 +191,7 @@ export type Database = {
           id?: string
           name: string
           price?: number | null
+          standard?: string | null
           updated_at?: string
           user_id: string
           vendor?: string | null
@@ -201,6 +203,7 @@ export type Database = {
           id?: string
           name?: string
           price?: number | null
+          standard?: string | null
           updated_at?: string
           user_id?: string
           vendor?: string | null

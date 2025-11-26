@@ -43,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -1295,7 +1295,28 @@ const Quotes = () => {
                       <Label className="text-sm font-semibold">Additional Report Header Details</Label>
                       {Array.from({ length: itemFormData.additional_report_headers }).map((_, index) => (
                         <div key={index} className="space-y-3 p-3 border rounded bg-background">
-                          <Label className="text-xs text-muted-foreground">Header #{index + 1}</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">Header #{index + 1}</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                const newData = [...itemFormData.additional_headers_data];
+                                newData[index] = {
+                                  client: itemFormData.client,
+                                  sample: itemFormData.sample,
+                                  manufacturer: itemFormData.manufacturer,
+                                  batch: itemFormData.batch,
+                                };
+                                setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                              }}
+                            >
+                              <Copy className="mr-1 h-3 w-3" />
+                              Copy from main
+                            </Button>
+                          </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Client</Label>

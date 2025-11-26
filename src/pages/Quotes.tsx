@@ -656,6 +656,10 @@ const Quotes = () => {
         ...prev,
         price: product.price?.toString() || "",
         sample: product.name, // Auto-populate sample with product name
+        additional_headers_data: prev.additional_headers_data.map(header => ({
+          ...header,
+          sample: product.name,
+        })),
       }));
     }
   };

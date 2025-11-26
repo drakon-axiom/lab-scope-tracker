@@ -1,4 +1,4 @@
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -155,8 +155,6 @@ Thank you for your service!
     `;
 
     // Connect to SMTP server
-    const client = new SmtpClient();
-    
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
     const smtpUser = Deno.env.get("SMTP_USER");
@@ -166,11 +164,18 @@ Thank you for your service!
       throw new Error("SMTP configuration is incomplete");
     }
 
-    await client.connectTLS({
-      hostname: smtpHost,
-      port: smtpPort,
-      username: smtpUser,
-      password: smtpPassword,
+    console.log(`Attempting to send email to ${labEmail} via ${smtpHost}:${smtpPort}`);
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpHost,
+        port: smtpPort,
+        tls: true,
+        auth: {
+          username: smtpUser,
+          password: smtpPassword,
+        },
+      },
     });
 
     // Send email

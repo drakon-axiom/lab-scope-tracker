@@ -29,6 +29,7 @@ interface TestingType {
   name: string;
   description: string | null;
   vendor: string | null;
+  standard: string | null;
   price: number | null;
   duration_days: number | null;
 }
@@ -42,6 +43,7 @@ const TestingTypes = () => {
     name: "",
     description: "",
     vendor: "",
+    standard: "",
     price: "",
     duration_days: "",
   });
@@ -76,6 +78,7 @@ const TestingTypes = () => {
       name: "",
       description: "",
       vendor: "",
+      standard: "",
       price: "",
       duration_days: "",
     });
@@ -137,6 +140,7 @@ const TestingTypes = () => {
       name: type.name,
       description: type.description || "",
       vendor: type.vendor || "",
+      standard: type.standard || "",
       price: type.price?.toString() || "",
       duration_days: type.duration_days?.toString() || "",
     });
@@ -202,6 +206,15 @@ const TestingTypes = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="standard">Standard / Specification</Label>
+                  <Input
+                    id="standard"
+                    value={formData.standard}
+                    onChange={(e) => setFormData({ ...formData, standard: e.target.value })}
+                    placeholder="e.g., HPLC, LC-MS, GCMS"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="price">Price ($)</Label>
                   <Input
                     id="price"
@@ -242,6 +255,7 @@ const TestingTypes = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Vendor</TableHead>
+                <TableHead>Standard</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Description</TableHead>
@@ -251,7 +265,7 @@ const TestingTypes = () => {
             <TableBody>
               {testingTypes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No testing types found. Add your first testing type to get started.
                   </TableCell>
                 </TableRow>
@@ -260,6 +274,7 @@ const TestingTypes = () => {
                   <TableRow key={type.id}>
                     <TableCell className="font-medium">{type.name}</TableCell>
                     <TableCell>{type.vendor || "—"}</TableCell>
+                    <TableCell>{type.standard || "—"}</TableCell>
                     <TableCell>
                       {type.price ? `$${type.price.toFixed(2)}` : "—"}
                     </TableCell>

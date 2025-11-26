@@ -35,16 +35,18 @@ const BulkImport = () => {
       return;
     }
 
-    // Parse the input - expecting format: "Test Name | Standard | Duration (days) | Description"
+    // Parse the input - expecting format: "Test Name | Vendor | Standard | Price | Duration (days) | Description"
     // or just "Test Name" for simple imports
     const lines = testingTypesText.split("\n").filter(line => line.trim());
     const testingTypes = lines.map(line => {
       const parts = line.split("|").map(p => p.trim());
       return {
         name: parts[0],
-        standard: parts[1] || null,
-        duration_days: parts[2] ? parseInt(parts[2]) : null,
-        description: parts[3] || null,
+        vendor: parts[1] || null,
+        standard: parts[2] || null,
+        price: parts[3] ? parseFloat(parts[3]) : null,
+        duration_days: parts[4] ? parseInt(parts[4]) : null,
+        description: parts[5] || null,
         user_id: user.id,
       };
     });
@@ -69,26 +71,26 @@ const BulkImport = () => {
   };
 
   const handleLoadSample = () => {
-    const sampleData = `Testosterone Analysis | HPLC-UV | 3 | Quantitative analysis of testosterone content
-Anabolic Steroids Panel | HPLC-UV | 5 | Multi-compound steroid identification and quantification
-Peptide Analysis | HPLC-MS | 7 | Peptide identification and purity testing
-Heavy Metals Testing | ICP-MS | 3 | Detection of lead, arsenic, mercury, cadmium
-Microbiological Testing | USP | 5 | Total aerobic microbial count
-Endotoxin Testing | LAL | 2 | Bacterial endotoxin testing
-Sterility Testing | USP | 14 | Sterility assurance testing
-Growth Hormone Analysis | HPLC-MS | 5 | HGH identification and quantification
-IGF-1 Testing | HPLC-MS | 5 | Insulin-like growth factor analysis
-SARMs Panel | HPLC-MS | 5 | Selective androgen receptor modulators testing
-CBD/THC Analysis | HPLC-UV | 3 | Cannabinoid content analysis
-Vitamin Testing | HPLC | 3 | Vitamin content and purity
-Amino Acid Profile | HPLC | 4 | Complete amino acid analysis
-Protein Content | Kjeldahl | 2 | Total protein determination
-Fat Content | Soxhlet | 2 | Total fat determination
-Moisture Content | Karl Fischer | 1 | Moisture determination
-Dissolution Testing | USP | 1 | Drug release profile
-Stability Testing | ICH | 30 | Long-term stability studies
-Residual Solvents | GC-MS | 2 | Organic volatile impurities
-Tablet Hardness | Physical | 1 | Mechanical strength testing`;
+    const sampleData = `Testosterone Analysis | Janoshik | HPLC-UV | 120 | 3 | Quantitative analysis of testosterone content
+Anabolic Steroids Panel | Janoshik | HPLC-UV | 120 | 5 | Multi-compound steroid identification and quantification
+Peptide Analysis | Janoshik | HPLC-MS | 180 | 7 | Peptide identification and purity testing
+Heavy Metals Testing | Janoshik | ICP-MS | 60 | 3 | Detection of lead, arsenic, mercury, cadmium
+Microbiological Testing | Lab Corp | USP | 150 | 5 | Total aerobic microbial count
+Endotoxin Testing | Lab Corp | LAL | 100 | 2 | Bacterial endotoxin testing
+Sterility Testing | Lab Corp | USP | 200 | 14 | Sterility assurance testing
+Growth Hormone Analysis | Janoshik | HPLC-MS | 300 | 5 | HGH identification and quantification
+IGF-1 Testing | Janoshik | HPLC-MS | 380 | 5 | Insulin-like growth factor analysis
+SARMs Panel | Janoshik | HPLC-MS | 170 | 5 | Selective androgen receptor modulators testing
+CBD/THC Analysis | Local Lab | HPLC-UV | 80 | 3 | Cannabinoid content analysis
+Vitamin Testing | Local Lab | HPLC | 90 | 3 | Vitamin content and purity
+Amino Acid Profile | Local Lab | HPLC | 120 | 4 | Complete amino acid analysis
+Protein Content | Local Lab | Kjeldahl | 60 | 2 | Total protein determination
+Fat Content | Local Lab | Soxhlet | 60 | 2 | Total fat determination
+Moisture Content | Local Lab | Karl Fischer | 40 | 1 | Moisture determination
+Dissolution Testing | Lab Corp | USP | 80 | 1 | Drug release profile
+Stability Testing | Lab Corp | ICH | 500 | 30 | Long-term stability studies
+Residual Solvents | Lab Corp | GC-MS | 120 | 2 | Organic volatile impurities
+Tablet Hardness | Local Lab | Physical | 30 | 1 | Mechanical strength testing`;
     setTestingTypesText(sampleData);
   };
 
@@ -118,13 +120,13 @@ Tablet Hardness | Physical | 1 | Mechanical strength testing`;
                 <Label htmlFor="testing-types">Testing Types</Label>
                 <Textarea
                   id="testing-types"
-                  placeholder="Test Name | Standard | Duration | Description&#10;Example: Testosterone Analysis | HPLC-UV | 3 | Quantitative analysis"
+                  placeholder="Test Name | Vendor | Standard | Price | Duration | Description&#10;Example: Testosterone Analysis | Janoshik | HPLC-UV | 120 | 3 | Quantitative analysis"
                   value={testingTypesText}
                   onChange={(e) => setTestingTypesText(e.target.value)}
                   className="min-h-[400px] font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Format: Test Name | Standard | Duration (days) | Description
+                  Format: Test Name | Vendor | Standard | Price ($) | Duration (days) | Description
                   <br />
                   Or simply: Test Name (one per line)
                 </p>
@@ -163,7 +165,7 @@ Tablet Hardness | Physical | 1 | Mechanical strength testing`;
                   <li>
                     <strong>Detailed format:</strong> Pipe-separated values
                     <pre className="mt-1 p-2 bg-muted rounded text-xs">
-                      Test Name | Standard | Days | Description
+                      Test Name | Vendor | Standard | Price | Days | Description
                     </pre>
                   </li>
                 </ol>
@@ -207,16 +209,16 @@ Tablet Hardness | Physical | 1 | Mechanical strength testing`;
               {`-- Replace 'your-user-id' with your actual user ID
 -- Find your user ID by checking your profile after signing in
 
-INSERT INTO testing_types (name, standard, duration_days, description, user_id) VALUES
-('Testosterone Analysis', 'HPLC-UV', 3, 'Quantitative analysis of testosterone content', 'your-user-id'),
-('Anabolic Steroids Panel', 'HPLC-UV', 5, 'Multi-compound steroid identification', 'your-user-id'),
-('Peptide Analysis', 'HPLC-MS', 7, 'Peptide identification and purity testing', 'your-user-id'),
-('Heavy Metals Testing', 'ICP-MS', 3, 'Lead, arsenic, mercury, cadmium detection', 'your-user-id'),
-('Growth Hormone Analysis', 'HPLC-MS', 5, 'HGH identification and quantification', 'your-user-id'),
-('SARMs Panel', 'HPLC-MS', 5, 'Selective androgen receptor modulators testing', 'your-user-id'),
-('Microbiological Testing', 'USP', 5, 'Total aerobic microbial count', 'your-user-id'),
-('Endotoxin Testing', 'LAL', 2, 'Bacterial endotoxin testing', 'your-user-id'),
-('Sterility Testing', 'USP', 14, 'Sterility assurance testing', 'your-user-id');`}
+INSERT INTO testing_types (name, vendor, standard, price, duration_days, description, user_id) VALUES
+('Testosterone Analysis', 'Janoshik', 'HPLC-UV', 120, 3, 'Quantitative analysis of testosterone content', 'your-user-id'),
+('Anabolic Steroids Panel', 'Janoshik', 'HPLC-UV', 120, 5, 'Multi-compound steroid identification', 'your-user-id'),
+('Peptide Analysis', 'Janoshik', 'HPLC-MS', 180, 7, 'Peptide identification and purity testing', 'your-user-id'),
+('Heavy Metals Testing', 'Janoshik', 'ICP-MS', 60, 3, 'Lead, arsenic, mercury, cadmium detection', 'your-user-id'),
+('Growth Hormone Analysis', 'Janoshik', 'HPLC-MS', 300, 5, 'HGH identification and quantification', 'your-user-id'),
+('SARMs Panel', 'Janoshik', 'HPLC-MS', 170, 5, 'Selective androgen receptor modulators testing', 'your-user-id'),
+('Microbiological Testing', 'Lab Corp', 'USP', 150, 5, 'Total aerobic microbial count', 'your-user-id'),
+('Endotoxin Testing', 'Lab Corp', 'LAL', 100, 2, 'Bacterial endotoxin testing', 'your-user-id'),
+('Sterility Testing', 'Lab Corp', 'USP', 200, 14, 'Sterility assurance testing', 'your-user-id');`}
             </pre>
           </CardContent>
         </Card>

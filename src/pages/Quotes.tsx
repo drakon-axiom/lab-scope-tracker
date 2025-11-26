@@ -639,7 +639,14 @@ const Quotes = () => {
         description: `Quote has been sent to ${lab.name}`,
       });
 
-      fetchQuotes();
+      // Refresh quotes list and update selectedQuote
+      await fetchQuotes();
+      
+      // Update selectedQuote state with new status
+      setSelectedQuote({
+        ...selectedQuote,
+        status: "sent_to_vendor"
+      });
     } catch (error: any) {
       console.error("Error sending email:", error);
       toast({

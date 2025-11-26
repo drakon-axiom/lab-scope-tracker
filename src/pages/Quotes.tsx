@@ -795,6 +795,11 @@ const Quotes = () => {
                         </SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="in_transit">In Transit</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="testing_in_progress">
+                          Testing in Progress
+                        </SelectItem>
                         <SelectItem value="test_records_generated">
                           Test Records Generated
                         </SelectItem>

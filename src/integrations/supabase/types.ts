@@ -160,6 +160,7 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          additional_headers_data: Json | null
           additional_report_headers: number | null
           additional_samples: number | null
           batch: string | null
@@ -174,6 +175,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          additional_headers_data?: Json | null
           additional_report_headers?: number | null
           additional_samples?: number | null
           batch?: string | null
@@ -188,6 +190,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          additional_headers_data?: Json | null
           additional_report_headers?: number | null
           additional_samples?: number | null
           batch?: string | null

@@ -85,6 +85,7 @@ const Quotes = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
@@ -228,6 +229,7 @@ const Quotes = () => {
       batch: "",
       price: "",
     });
+    setEditingItemId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -327,10 +329,21 @@ const Quotes = () => {
         price: itemFormData.price ? parseFloat(itemFormData.price) : null,
       };
 
-      const { error } = await supabase.from("quote_items").insert([payload]);
-      if (error) throw error;
+      if (editingItemId) {
+        // Update existing item
+        const { error } = await supabase
+          .from("quote_items")
+          .update(payload)
+          .eq("id", editingItemId);
+        if (error) throw error;
+        toast({ title: "Item updated successfully" });
+      } else {
+        // Add new item
+        const { error } = await supabase.from("quote_items").insert([payload]);
+        if (error) throw error;
+        toast({ title: "Item added successfully" });
+      }
 
-      toast({ title: "Item added successfully" });
       resetItemForm();
       fetchQuoteItems(selectedQuote.id);
     } catch (error: any) {
@@ -340,6 +353,18 @@ const Quotes = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditItem = (item: QuoteItem) => {
+    setEditingItemId(item.id);
+    setItemFormData({
+      product_id: item.product_id,
+      client: item.client || "",
+      sample: item.sample || "",
+      manufacturer: item.manufacturer || "",
+      batch: item.batch || "",
+      price: item.price?.toString() || "",
+    });
   };
 
   const handleDeleteItem = async (itemId: string) => {
@@ -752,7 +777,21 @@ const Quotes = () => {
             </DialogHeader>
             <div className="space-y-6">
               <form onSubmit={handleAddItem} className="space-y-4 p-4 border rounded-lg">
-                <h3 className="font-medium">Add New Item</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium">
+                    {editingItemId ? "Edit Item" : "Add New Item"}
+                  </h3>
+                  {editingItemId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetItemForm}
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Product *</Label>
@@ -831,7 +870,7 @@ const Quotes = () => {
                 </div>
                 <Button type="submit" className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Item
+                  {editingItemId ? "Update Item" : "Add Item"}
                 </Button>
               </form>
 
@@ -873,13 +912,22 @@ const Quotes = () => {
                               ${item.price?.toFixed(2) || "0.00"}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteItem(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditItem(item)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteItem(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))

@@ -404,7 +404,7 @@ const Quotes = () => {
     }
   };
 
-  const handleTestingTypeChange = (productId: string) => {
+  const handleProductChange = (productId: string) => {
     setItemFormData((prev) => ({ ...prev, product_id: productId }));
     const product = testingTypes.find((t) => t.id === productId);
     if (product && product.price) {
@@ -758,9 +758,7 @@ const Quotes = () => {
                     <Label>Product *</Label>
                     <Select
                       value={itemFormData.product_id}
-                      onValueChange={(value) =>
-                        setItemFormData({ ...itemFormData, product_id: value })
-                      }
+                      onValueChange={handleProductChange}
                       required
                     >
                       <SelectTrigger>

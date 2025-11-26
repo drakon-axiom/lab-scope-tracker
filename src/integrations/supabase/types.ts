@@ -106,13 +106,17 @@ export type Database = {
       }
       test_records: {
         Row: {
+          batch: string | null
+          client: string | null
           created_at: string
           date_completed: string | null
           date_submitted: string | null
           id: string
           lab_id: string
+          manufacturer: string | null
           notes: string | null
           product_id: string
+          sample: string | null
           status: string
           test_results: string | null
           testing_type_id: string
@@ -120,13 +124,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch?: string | null
+          client?: string | null
           created_at?: string
           date_completed?: string | null
           date_submitted?: string | null
           id?: string
           lab_id: string
+          manufacturer?: string | null
           notes?: string | null
           product_id: string
+          sample?: string | null
           status?: string
           test_results?: string | null
           testing_type_id: string
@@ -134,13 +142,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch?: string | null
+          client?: string | null
           created_at?: string
           date_completed?: string | null
           date_submitted?: string | null
           id?: string
           lab_id?: string
+          manufacturer?: string | null
           notes?: string | null
           product_id?: string
+          sample?: string | null
           status?: string
           test_results?: string | null
           testing_type_id?: string

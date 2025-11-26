@@ -24,6 +24,10 @@ const Layout = ({ children }: LayoutProps) => {
     { to: "/testing-types", label: "Testing Types", icon: FileCheck },
     { to: "/test-records", label: "Test Records", icon: TestTube },
   ];
+  
+  const utilityItems = [
+    { to: "/bulk-import", label: "Bulk Import" },
+  ];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -75,26 +79,44 @@ const Layout = ({ children }: LayoutProps) => {
       
       <nav className="border-b bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="flex space-x-1 overflow-x-auto py-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.to;
-              return (
-                <Link key={item.to} to={item.to}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    className={cn(
-                      "flex items-center gap-2 whitespace-nowrap",
-                      isActive && "bg-secondary"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                </Link>
-              );
-            })}
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-1 overflow-x-auto py-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.to;
+                return (
+                  <Link key={item.to} to={item.to}>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="sm"
+                      className={cn(
+                        "flex items-center gap-2 whitespace-nowrap",
+                        isActive && "bg-secondary"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="flex space-x-1">
+              {utilityItems.map((item) => {
+                const isActive = location.pathname === item.to;
+                return (
+                  <Link key={item.to} to={item.to}>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="sm"
+                      className="whitespace-nowrap"
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       </nav>

@@ -163,7 +163,7 @@ Thank you for your service!
       throw new Error("SMTP configuration is incomplete");
     }
 
-    console.log(`Connecting to ${smtpHost}:${smtpPort} as ${smtpUser}`);
+    console.log(`Attempting to send email to ${labEmail} via ${smtpHost}:${smtpPort}`);
 
     // Create SMTP connection using native Deno
     const conn = await Deno.connect({
@@ -174,66 +174,76 @@ Thank you for your service!
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
-    // Helper to read SMTP response
-    async function readResponse(): Promise<string> {
-      const buffer = new Uint8Array(1024);
-      const n = await conn.read(buffer);
-      if (!n) throw new Error("Connection closed");
-      return decoder.decode(buffer.subarray(0, n));
+    // Helper to read complete SMTP response (handles multi-line responses)
+    async function readResponse(connection: Deno.Conn): Promise<string> {
+      let fullResponse = "";
+      const buffer = new Uint8Array(4096);
+      
+      while (true) {
+        const n = await connection.read(buffer);
+        if (!n) throw new Error("Connection closed unexpectedly");
+        
+        const chunk = decoder.decode(buffer.subarray(0, n));
+        fullResponse += chunk;
+        
+        // SMTP responses end with code followed by space (not hyphen for multi-line)
+        const lines = fullResponse.split('\r\n');
+        const lastLine = lines[lines.length - 2]; // -2 because last element is empty after \r\n
+        if (lastLine && /^\d{3} /.test(lastLine)) {
+          break;
+        }
+      }
+      
+      return fullResponse.trim();
     }
 
     // Helper to send SMTP command
-    async function sendCommand(command: string): Promise<string> {
-      await conn.write(encoder.encode(command + "\r\n"));
-      return await readResponse();
+    async function sendCommand(connection: Deno.Conn, command: string): Promise<string> {
+      await connection.write(encoder.encode(command + "\r\n"));
+      return await readResponse(connection);
     }
 
     try {
       // Read greeting
-      let response = await readResponse();
+      let response = await readResponse(conn);
       console.log("SMTP greeting:", response);
 
       // Send EHLO
-      response = await sendCommand(`EHLO ${smtpHost}`);
+      response = await sendCommand(conn, `EHLO ${smtpHost}`);
       console.log("EHLO response:", response);
 
       // Start TLS
-      response = await sendCommand("STARTTLS");
+      response = await sendCommand(conn, "STARTTLS");
       console.log("STARTTLS response:", response);
+
+      if (!response.startsWith("220")) {
+        throw new Error(`STARTTLS failed: ${response}`);
+      }
 
       // Upgrade to TLS
       const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
-      
-      // Continue with TLS connection
-      async function tlsReadResponse(): Promise<string> {
-        const buffer = new Uint8Array(1024);
-        const n = await tlsConn.read(buffer);
-        if (!n) throw new Error("Connection closed");
-        return decoder.decode(buffer.subarray(0, n));
-      }
-
-      async function tlsSendCommand(command: string): Promise<string> {
-        await tlsConn.write(encoder.encode(command + "\r\n"));
-        return await tlsReadResponse();
-      }
 
       // Send EHLO again after TLS
-      response = await tlsSendCommand(`EHLO ${smtpHost}`);
+      response = await sendCommand(tlsConn, `EHLO ${smtpHost}`);
       console.log("EHLO (after TLS) response:", response);
 
-      // Authenticate
+      // Authenticate using AUTH PLAIN
       const authString = btoa(`\0${smtpUser}\0${smtpPassword}`);
-      response = await tlsSendCommand(`AUTH PLAIN ${authString}`);
+      response = await sendCommand(tlsConn, `AUTH PLAIN ${authString}`);
       console.log("AUTH response:", response);
 
+      if (!response.startsWith("235")) {
+        throw new Error(`Authentication failed: ${response}`);
+      }
+
       // Send email
-      response = await tlsSendCommand(`MAIL FROM:<${smtpUser}>`);
+      response = await sendCommand(tlsConn, `MAIL FROM:<${smtpUser}>`);
       console.log("MAIL FROM response:", response);
 
-      response = await tlsSendCommand(`RCPT TO:<${labEmail}>`);
+      response = await sendCommand(tlsConn, `RCPT TO:<${labEmail}>`);
       console.log("RCPT TO response:", response);
 
-      response = await tlsSendCommand("DATA");
+      response = await sendCommand(tlsConn, "DATA");
       console.log("DATA response:", response);
 
       // Send email headers and body
@@ -259,11 +269,15 @@ Thank you for your service!
       ].join("\r\n");
 
       await tlsConn.write(encoder.encode(emailData + "\r\n"));
-      response = await tlsReadResponse();
+      response = await readResponse(tlsConn);
       console.log("Email sent response:", response);
 
+      if (!response.startsWith("250")) {
+        throw new Error(`Email sending failed: ${response}`);
+      }
+
       // Quit
-      await tlsSendCommand("QUIT");
+      await sendCommand(tlsConn, "QUIT");
       tlsConn.close();
 
       console.log(`Email sent successfully to ${labEmail}`);

@@ -70,6 +70,12 @@ interface QuoteItem {
   price: number | null;
   additional_samples: number | null;
   additional_report_headers: number | null;
+  additional_headers_data: Array<{
+    client: string;
+    sample: string;
+    manufacturer: string;
+    batch: string;
+  }> | null;
   products: { name: string; price: number | null };
 }
 
@@ -140,6 +146,12 @@ const Quotes = () => {
     additional_samples: 0,
     additional_report_headers: 0,
     has_additional_samples: false,
+    additional_headers_data: [] as Array<{
+      client: string;
+      sample: string;
+      manufacturer: string;
+      batch: string;
+    }>,
   });
 
   useEffect(() => {
@@ -270,7 +282,22 @@ const Quotes = () => {
         .eq("quote_id", quoteId);
 
       if (error) throw error;
-      setQuoteItems(data || []);
+      
+      // Transform the data to handle JSON types
+      const transformedData = (data || []).map(item => {
+        let headersData: Array<{client: string; sample: string; manufacturer: string; batch: string}> = [];
+        
+        if (Array.isArray(item.additional_headers_data)) {
+          headersData = item.additional_headers_data as Array<{client: string; sample: string; manufacturer: string; batch: string}>;
+        }
+        
+        return {
+          ...item,
+          additional_headers_data: headersData,
+        };
+      });
+      
+      setQuoteItems(transformedData as QuoteItem[]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -303,6 +330,7 @@ const Quotes = () => {
       additional_samples: 0,
       additional_report_headers: 0,
       has_additional_samples: false,
+      additional_headers_data: [],
     });
     setEditingItemId(null);
   };
@@ -431,6 +459,7 @@ const Quotes = () => {
         price: itemFormData.price ? parseFloat(itemFormData.price) : null,
         additional_samples: itemFormData.has_additional_samples ? itemFormData.additional_samples : 0,
         additional_report_headers: itemFormData.additional_report_headers,
+        additional_headers_data: itemFormData.additional_headers_data,
       };
 
       if (editingItemId) {
@@ -471,6 +500,7 @@ const Quotes = () => {
       additional_samples: item.additional_samples || 0,
       additional_report_headers: item.additional_report_headers || 0,
       has_additional_samples: (item.additional_samples || 0) > 0,
+      additional_headers_data: item.additional_headers_data || [],
     });
   };
 
@@ -952,6 +982,15 @@ const Quotes = () => {
                                     +{item.additional_report_headers} report headers
                                   </div>
                                 )}
+                                {item.additional_headers_data && item.additional_headers_data.length > 0 && (
+                                  <div className="mt-2 pl-2 border-l-2 border-muted space-y-1">
+                                    {item.additional_headers_data.map((header, idx) => (
+                                      <div key={idx} className="text-xs text-muted-foreground">
+                                        <strong>Header #{idx + 1}:</strong> {header.client} / {header.sample} / {header.manufacturer} / {header.batch}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -1218,15 +1257,93 @@ const Quotes = () => {
                       type="number"
                       min="0"
                       value={itemFormData.additional_report_headers}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const count = parseInt(e.target.value) || 0;
+                        const currentData = itemFormData.additional_headers_data;
+                        
+                        // Resize the array to match the count
+                        let newData = [...currentData];
+                        if (count > currentData.length) {
+                          // Add empty entries
+                          for (let i = currentData.length; i < count; i++) {
+                            newData.push({ client: "", sample: "", manufacturer: "", batch: "" });
+                          }
+                        } else if (count < currentData.length) {
+                          // Remove excess entries
+                          newData = newData.slice(0, count);
+                        }
+                        
                         setItemFormData({ 
                           ...itemFormData, 
-                          additional_report_headers: parseInt(e.target.value) || 0 
-                        })
-                      }
+                          additional_report_headers: count,
+                          additional_headers_data: newData,
+                        });
+                      }}
                       placeholder="Number of additional report headers"
                     />
                   </div>
+                  
+                  {/* Dynamic fields for each additional header */}
+                  {itemFormData.additional_report_headers > 0 && (
+                    <div className="col-span-2 space-y-4 p-4 border rounded-lg bg-muted/50">
+                      <Label className="text-sm font-semibold">Additional Report Header Details</Label>
+                      {Array.from({ length: itemFormData.additional_report_headers }).map((_, index) => (
+                        <div key={index} className="space-y-3 p-3 border rounded bg-background">
+                          <Label className="text-xs text-muted-foreground">Header #{index + 1}</Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Client</Label>
+                              <Input
+                                value={itemFormData.additional_headers_data[index]?.client || ""}
+                                onChange={(e) => {
+                                  const newData = [...itemFormData.additional_headers_data];
+                                  newData[index] = { ...newData[index], client: e.target.value };
+                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                }}
+                                placeholder="Client name"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Sample</Label>
+                              <Input
+                                value={itemFormData.additional_headers_data[index]?.sample || ""}
+                                onChange={(e) => {
+                                  const newData = [...itemFormData.additional_headers_data];
+                                  newData[index] = { ...newData[index], sample: e.target.value };
+                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                }}
+                                placeholder="Sample identifier"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Manufacturer</Label>
+                              <Input
+                                value={itemFormData.additional_headers_data[index]?.manufacturer || ""}
+                                onChange={(e) => {
+                                  const newData = [...itemFormData.additional_headers_data];
+                                  newData[index] = { ...newData[index], manufacturer: e.target.value };
+                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                }}
+                                placeholder="Manufacturer name"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Batch</Label>
+                              <Input
+                                value={itemFormData.additional_headers_data[index]?.batch || ""}
+                                onChange={(e) => {
+                                  const newData = [...itemFormData.additional_headers_data];
+                                  newData[index] = { ...newData[index], batch: e.target.value };
+                                  setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                }}
+                                placeholder="Batch number"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
@@ -1275,6 +1392,15 @@ const Quotes = () => {
                               {(item.additional_report_headers || 0) > 0 && (
                                 <div className="text-xs text-muted-foreground">
                                   +{item.additional_report_headers} report headers
+                                </div>
+                              )}
+                              {item.additional_headers_data && item.additional_headers_data.length > 0 && (
+                                <div className="mt-2 pl-2 border-l-2 border-muted space-y-1">
+                                  {item.additional_headers_data.map((header, idx) => (
+                                    <div key={idx} className="text-xs text-muted-foreground">
+                                      <strong>Header #{idx + 1}:</strong> {header.client} / {header.sample} / {header.manufacturer} / {header.batch}
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </TableCell>

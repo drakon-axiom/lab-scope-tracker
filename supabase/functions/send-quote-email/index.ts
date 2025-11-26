@@ -1,5 +1,3 @@
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -37,6 +35,8 @@ Deno.serve(async (req) => {
       notes, 
       totalValue 
     }: QuoteEmailRequest = await req.json();
+
+    console.log(`Processing email request for ${labEmail}`);
 
     // Validate required fields
     if (!labEmail || !items || items.length === 0) {
@@ -123,7 +123,6 @@ Deno.serve(async (req) => {
       </html>
     `;
 
-    // Plain text version for email clients that don't support HTML
     const textContent = `
 Testing Quote Request
 Quote Number: ${quoteNumber || 'Pending Assignment'}
@@ -154,7 +153,7 @@ Next Steps:
 Thank you for your service!
     `;
 
-    // Connect to SMTP server
+    // Get SMTP configuration
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
     const smtpUser = Deno.env.get("SMTP_USER");
@@ -164,46 +163,128 @@ Thank you for your service!
       throw new Error("SMTP configuration is incomplete");
     }
 
-    console.log(`Attempting to send email to ${labEmail} via ${smtpHost}:${smtpPort}`);
+    console.log(`Connecting to ${smtpHost}:${smtpPort} as ${smtpUser}`);
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPassword,
-        },
-      },
+    // Create SMTP connection using native Deno
+    const conn = await Deno.connect({
+      hostname: smtpHost,
+      port: smtpPort,
     });
 
-    // Send email
-    await client.send({
-      from: smtpUser,
-      to: labEmail,
-      subject: `Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ''}`,
-      content: textContent,
-      html: htmlContent,
-    });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    await client.close();
+    // Helper to read SMTP response
+    async function readResponse(): Promise<string> {
+      const buffer = new Uint8Array(1024);
+      const n = await conn.read(buffer);
+      if (!n) throw new Error("Connection closed");
+      return decoder.decode(buffer.subarray(0, n));
+    }
 
-    console.log(`Email sent successfully to ${labEmail}`);
+    // Helper to send SMTP command
+    async function sendCommand(command: string): Promise<string> {
+      await conn.write(encoder.encode(command + "\r\n"));
+      return await readResponse();
+    }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Email sent successfully" 
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
+    try {
+      // Read greeting
+      let response = await readResponse();
+      console.log("SMTP greeting:", response);
+
+      // Send EHLO
+      response = await sendCommand(`EHLO ${smtpHost}`);
+      console.log("EHLO response:", response);
+
+      // Start TLS
+      response = await sendCommand("STARTTLS");
+      console.log("STARTTLS response:", response);
+
+      // Upgrade to TLS
+      const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
+      
+      // Continue with TLS connection
+      async function tlsReadResponse(): Promise<string> {
+        const buffer = new Uint8Array(1024);
+        const n = await tlsConn.read(buffer);
+        if (!n) throw new Error("Connection closed");
+        return decoder.decode(buffer.subarray(0, n));
       }
-    );
+
+      async function tlsSendCommand(command: string): Promise<string> {
+        await tlsConn.write(encoder.encode(command + "\r\n"));
+        return await tlsReadResponse();
+      }
+
+      // Send EHLO again after TLS
+      response = await tlsSendCommand(`EHLO ${smtpHost}`);
+      console.log("EHLO (after TLS) response:", response);
+
+      // Authenticate
+      const authString = btoa(`\0${smtpUser}\0${smtpPassword}`);
+      response = await tlsSendCommand(`AUTH PLAIN ${authString}`);
+      console.log("AUTH response:", response);
+
+      // Send email
+      response = await tlsSendCommand(`MAIL FROM:<${smtpUser}>`);
+      console.log("MAIL FROM response:", response);
+
+      response = await tlsSendCommand(`RCPT TO:<${labEmail}>`);
+      console.log("RCPT TO response:", response);
+
+      response = await tlsSendCommand("DATA");
+      console.log("DATA response:", response);
+
+      // Send email headers and body
+      const emailData = [
+        `From: ${smtpUser}`,
+        `To: ${labEmail}`,
+        `Subject: Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ''}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: multipart/alternative; boundary="boundary123"`,
+        ``,
+        `--boundary123`,
+        `Content-Type: text/plain; charset=UTF-8`,
+        ``,
+        textContent,
+        ``,
+        `--boundary123`,
+        `Content-Type: text/html; charset=UTF-8`,
+        ``,
+        htmlContent,
+        ``,
+        `--boundary123--`,
+        `.`,
+      ].join("\r\n");
+
+      await tlsConn.write(encoder.encode(emailData + "\r\n"));
+      response = await tlsReadResponse();
+      console.log("Email sent response:", response);
+
+      // Quit
+      await tlsSendCommand("QUIT");
+      tlsConn.close();
+
+      console.log(`Email sent successfully to ${labEmail}`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Email sent successfully" 
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+    } catch (error) {
+      conn.close();
+      throw error;
+    }
   } catch (error: any) {
     console.error("Error sending email:", error);
     return new Response(

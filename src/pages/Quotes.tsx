@@ -664,7 +664,7 @@ const Quotes = () => {
     }
   };
 
-  // Helper function to calculate item total including additional samples
+  // Helper function to calculate item total including additional samples and headers
   const calculateItemTotal = (item: QuoteItem): number => {
     const basePrice = item.price || 0;
     const productName = item.products.name.toLowerCase();
@@ -675,11 +675,19 @@ const Quotes = () => {
       productName.includes('semaglutide') || 
       productName.includes('retatrutide');
     
+    let total = basePrice;
+    
+    // Add additional samples cost
     if (qualifiesForAdditionalSamplePricing && (item.additional_samples || 0) > 0) {
-      return basePrice + ((item.additional_samples || 0) * 60);
+      total += (item.additional_samples || 0) * 60;
     }
     
-    return basePrice;
+    // Add additional report headers cost ($30 each)
+    if ((item.additional_report_headers || 0) > 0) {
+      total += (item.additional_report_headers || 0) * 30;
+    }
+    
+    return total;
   };
 
   if (loading) {

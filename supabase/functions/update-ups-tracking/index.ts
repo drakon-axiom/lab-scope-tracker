@@ -173,7 +173,21 @@ serve(async (req) => {
             error: error.message 
           });
         } else {
+          // Log to tracking history if status changed
           if (newStatus !== quote.status) {
+            await supabase
+              .from('tracking_history')
+              .insert({
+                quote_id: quote.id,
+                status: newStatus,
+                tracking_number: quote.tracking_number,
+                source: 'automatic',
+                details: { 
+                  old_status: quote.status,
+                  tracking_data: trackingData 
+                }
+              });
+
             console.log(`Updated quote ${quote.id} to ${newStatus}`);
             results.push({ 
               quoteId: quote.id, 

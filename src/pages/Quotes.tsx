@@ -109,6 +109,16 @@ interface TestingType {
   duration_days: number | null;
 }
 
+interface TrackingHistory {
+  id: string;
+  quote_id: string;
+  status: string;
+  tracking_number: string;
+  changed_at: string;
+  source: string;
+  details: any;
+}
+
 const Quotes = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -128,6 +138,7 @@ const Quotes = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [trackingHistory, setTrackingHistory] = useState<TrackingHistory[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -165,6 +176,45 @@ const Quotes = () => {
     fetchManufacturers();
     fetchTestingTypes();
   }, []);
+
+  // Auto-refresh stale tracking data (older than 4 hours)
+  useEffect(() => {
+    const checkAndRefreshStaleTracking = async () => {
+      const staleQuotes = quotes.filter(quote => {
+        if (!quote.tracking_number || quote.status === 'delivered') return false;
+        
+        if (!quote.tracking_updated_at) return true; // Never updated
+        
+        const hoursSinceUpdate = (Date.now() - new Date(quote.tracking_updated_at).getTime()) / (1000 * 60 * 60);
+        return hoursSinceUpdate > 4; // Stale if older than 4 hours
+      });
+
+      if (staleQuotes.length > 0) {
+        console.log(`Auto-refreshing ${staleQuotes.length} stale tracking records`);
+        
+        for (const quote of staleQuotes) {
+          try {
+            await supabase.functions.invoke("update-ups-tracking", {
+              body: { trackingNumber: quote.tracking_number }
+            });
+          } catch (error) {
+            console.error(`Failed to auto-refresh tracking for ${quote.tracking_number}:`, error);
+          }
+        }
+        
+        // Refresh quotes after updates
+        setTimeout(() => fetchQuotes(), 2000);
+      }
+    };
+
+    if (quotes.length > 0) {
+      checkAndRefreshStaleTracking();
+    }
+
+    // Check every 5 minutes
+    const interval = setInterval(checkAndRefreshStaleTracking, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [quotes]);
 
   const fetchQuotes = async () => {
     try {
@@ -310,6 +360,21 @@ const Quotes = () => {
     }
   };
 
+  const fetchTrackingHistory = async (quoteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("tracking_history")
+        .select("*")
+        .eq("quote_id", quoteId)
+        .order("changed_at", { ascending: false });
+
+      if (error) throw error;
+      setTrackingHistory(data || []);
+    } catch (error: any) {
+      console.error("Error fetching tracking history:", error);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       lab_id: "",
@@ -431,6 +496,7 @@ const Quotes = () => {
   const handleView = (quote: Quote) => {
     setSelectedQuote(quote);
     fetchQuoteItems(quote.id);
+    fetchTrackingHistory(quote.id);
     setViewDialogOpen(true);
   };
 
@@ -713,6 +779,7 @@ const Quotes = () => {
             .single();
           if (updatedQuote) {
             setSelectedQuote(updatedQuote);
+            fetchTrackingHistory(selectedQuote.id); // Refresh history
           }
         }
       } else {
@@ -1085,6 +1152,34 @@ const Quotes = () => {
                   <div>
                     <Label className="text-muted-foreground">Notes</Label>
                     <p className="mt-1">{selectedQuote.notes}</p>
+                  </div>
+                )}
+
+                {/* Tracking History Section */}
+                {selectedQuote.tracking_number && trackingHistory.length > 0 && (
+                  <div className="border-t pt-4">
+                    <Label className="text-lg font-semibold mb-3 block">Tracking History</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {trackingHistory.map((history) => (
+                        <div key={history.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/50">
+                          <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <StatusBadge status={history.status} />
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(history.changed_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span className="capitalize">{history.source}</span>
+                              {history.details?.old_status && (
+                                <span>• Changed from: <StatusBadge status={history.details.old_status} /></span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

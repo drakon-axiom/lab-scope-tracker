@@ -43,8 +43,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 
 interface Quote {
@@ -153,6 +156,11 @@ const Quotes = () => {
   const [trackingHistory, setTrackingHistory] = useState<TrackingHistory[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [loadTemplateDialogOpen, setLoadTemplateDialogOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [templates, setTemplates] = useState<any[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -201,6 +209,7 @@ const Quotes = () => {
     fetchClients();
     fetchManufacturers();
     fetchTestingTypes();
+    fetchTemplates();
   }, []);
 
   // Auto-refresh stale tracking data (older than 4 hours)
@@ -401,6 +410,23 @@ const Quotes = () => {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("quote_templates")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error: any) {
+      console.error("Error fetching templates:", error);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       lab_id: "",
@@ -584,6 +610,182 @@ const Quotes = () => {
     } finally {
       setUploadingFile(false);
     }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a template name",
+      });
+      return;
+    }
+
+    if (quoteItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Cannot save template with no items",
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("quote_templates")
+        .insert({
+          user_id: user.id,
+          name: templateName,
+          description: templateDescription || null,
+          lab_id: formData.lab_id || null,
+          items: quoteItems as any,
+          notes: formData.notes || null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Template saved successfully",
+      });
+      setTemplateDialogOpen(false);
+      setTemplateName("");
+      setTemplateDescription("");
+      fetchTemplates();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save template",
+      });
+    }
+  };
+
+  const handleLoadTemplate = (template: any) => {
+    setFormData({
+      ...formData,
+      lab_id: template.lab_id || "",
+      notes: template.notes || "",
+    });
+    setQuoteItems(template.items || []);
+    setLoadTemplateDialogOpen(false);
+    toast({
+      title: "Success",
+      description: "Template loaded successfully",
+    });
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm("Are you sure you want to delete this template?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("quote_templates")
+        .delete()
+        .eq("id", templateId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Template deleted successfully",
+      });
+      fetchTemplates();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete template",
+      });
+    }
+  };
+
+  const handleExportPDF = (quote: any) => {
+    const doc = new jsPDF();
+    
+    // Add header
+    doc.setFontSize(18);
+    doc.text("Quote Details", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Quote Number: ${quote.quote_number || 'N/A'}`, 14, 30);
+    doc.text(`Status: ${quote.status}`, 14, 37);
+    doc.text(`Lab: ${quote.labs?.name || 'N/A'}`, 14, 44);
+    
+    if (quote.notes) {
+      doc.text(`Notes: ${quote.notes}`, 14, 51);
+    }
+    
+    // Add items table
+    const tableData = quote.quote_items?.map((item: any) => [
+      item.products?.name || 'N/A',
+      item.client || '-',
+      item.sample || '-',
+      item.manufacturer || '-',
+      item.batch || '-',
+      `$${(item.price || 0).toFixed(2)}`,
+      item.additional_samples || 0,
+      item.additional_report_headers || 0,
+    ]) || [];
+    
+    autoTable(doc, {
+      startY: 60,
+      head: [['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Add. Samples', 'Add. Headers']],
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [66, 139, 202] },
+    });
+    
+    doc.save(`quote-${quote.quote_number || quote.id}.pdf`);
+    
+    toast({
+      title: "Success",
+      description: "Quote exported as PDF",
+    });
+  };
+
+  const handleExportExcel = (quote: any) => {
+    const ws_data = [
+      ['Quote Details'],
+      [],
+      ['Quote Number', quote.quote_number || 'N/A'],
+      ['Status', quote.status],
+      ['Lab', quote.labs?.name || 'N/A'],
+      ['Notes', quote.notes || ''],
+      [],
+      ['Items'],
+      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Additional Samples', 'Additional Report Headers', 'Status'],
+    ];
+    
+    quote.quote_items?.forEach((item: any) => {
+      ws_data.push([
+        item.products?.name || 'N/A',
+        item.client || '-',
+        item.sample || '-',
+        item.manufacturer || '-',
+        item.batch || '-',
+        item.price || 0,
+        item.additional_samples || 0,
+        item.additional_report_headers || 0,
+        item.status || 'pending',
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Quote");
+    
+    XLSX.writeFile(wb, `quote-${quote.quote_number || quote.id}.xlsx`);
+    
+    toast({
+      title: "Success",
+      description: "Quote exported as Excel",
+    });
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -1127,6 +1329,15 @@ const Quotes = () => {
                   <Button
                     type="button"
                     variant="outline"
+                    onClick={() => setTemplateDialogOpen(true)}
+                    disabled={quoteItems.length === 0}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save as Template
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setDialogOpen(false)}
                   >
                     Cancel
@@ -1217,6 +1428,22 @@ const Quotes = () => {
                           onClick={() => handleEdit(quote)}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleExportPDF(quote)}
+                          title="Export as PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleExportExcel(quote)}
+                          title="Export as Excel"
+                        >
+                          <FileText className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -2155,6 +2382,98 @@ const Quotes = () => {
                   Done
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Save Template Dialog */}
+        <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Save as Template</DialogTitle>
+              <DialogDescription>
+                Save this quote configuration as a reusable template
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="template-name">Template Name</Label>
+                <Input
+                  id="template-name"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="e.g., Standard Peptide Testing"
+                />
+              </div>
+              <div>
+                <Label htmlFor="template-description">Description (Optional)</Label>
+                <Textarea
+                  id="template-description"
+                  value={templateDescription}
+                  onChange={(e) => setTemplateDescription(e.target.value)}
+                  placeholder="Describe this template..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveTemplate}>Save Template</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Load Template Dialog */}
+        <Dialog open={loadTemplateDialogOpen} onOpenChange={setLoadTemplateDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Load Template</DialogTitle>
+              <DialogDescription>
+                Select a template to load its configuration
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {templates.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No templates saved yet
+                </p>
+              ) : (
+                templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent"
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-medium">{template.name}</h3>
+                      {template.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {template.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {template.items?.length || 0} items
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleLoadTemplate(template)}
+                      >
+                        Load
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteTemplate(template.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </DialogContent>
         </Dialog>

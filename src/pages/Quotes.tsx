@@ -43,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -677,6 +677,56 @@ const Quotes = () => {
     }
   };
 
+  const handleRefreshTracking = async (trackingNumber: string) => {
+    try {
+      toast({
+        title: "Refreshing tracking...",
+        description: "Fetching latest UPS tracking data",
+      });
+
+      const { data, error } = await supabase.functions.invoke("update-ups-tracking", {
+        body: { trackingNumber }
+      });
+
+      if (error) throw error;
+
+      if (data.results?.[0]?.success) {
+        const result = data.results[0];
+        if (result.newStatus) {
+          toast({
+            title: "Tracking updated",
+            description: `Status changed from ${result.oldStatus} to ${result.newStatus}`,
+          });
+        } else {
+          toast({
+            title: "Tracking refreshed",
+            description: result.message || "Status unchanged",
+          });
+        }
+        fetchQuotes();
+        if (selectedQuote) {
+          const { data: updatedQuote } = await supabase
+            .from("quotes")
+            .select("*, labs(name)")
+            .eq("id", selectedQuote.id)
+            .single();
+          if (updatedQuote) {
+            setSelectedQuote(updatedQuote);
+          }
+        }
+      } else {
+        throw new Error(data.results?.[0]?.error || "Failed to update tracking");
+      }
+    } catch (error: any) {
+      console.error("Error refreshing tracking:", error);
+      toast({
+        title: "Failed to refresh tracking",
+        description: error.message || "Unknown error",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProductChange = (productId: string) => {
     setItemFormData((prev) => ({ ...prev, product_id: productId }));
     const product = testingTypes.find((t) => t.id === productId);
@@ -841,14 +891,28 @@ const Quotes = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tracking_number">Tracking Number</Label>
-                  <Input
-                    id="tracking_number"
-                    value={formData.tracking_number}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tracking_number: e.target.value })
-                    }
-                    placeholder="Enter tracking number"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="tracking_number"
+                      value={formData.tracking_number}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tracking_number: e.target.value })
+                      }
+                      placeholder="Enter tracking number"
+                      className="flex-1"
+                    />
+                    {editingId && formData.tracking_number && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleRefreshTracking(formData.tracking_number)}
+                        title="Refresh UPS tracking"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>

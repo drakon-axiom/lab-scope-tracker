@@ -11,6 +11,7 @@ import Labs from "./pages/Labs";
 import TestRecords from "./pages/TestRecords";
 import Quotes from "./pages/Quotes";
 import BulkImport from "./pages/BulkImport";
+import QuoteConfirm from "./pages/QuoteConfirm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/test-records" element={<TestRecords />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route path="/bulk-import" element={<BulkImport />} />
+          <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

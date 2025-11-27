@@ -26,6 +26,7 @@ interface QuoteEmailRequest {
   }>;
   notes: string | null;
   totalValue: number;
+  confirmationUrl: string;
   emailTemplate?: {
     subject: string;
     body: string;
@@ -46,6 +47,7 @@ Deno.serve(async (req) => {
       items, 
       notes, 
       totalValue,
+      confirmationUrl,
       emailTemplate 
     }: QuoteEmailRequest = await req.json();
 
@@ -174,6 +176,11 @@ Deno.serve(async (req) => {
               .replace(/\{\{total\}\}/g, `$${totalValue.toFixed(2)}`)
             }</div>
             ${notes ? `<div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : ''}
+            <div style="margin-top: 32px; padding: 20px; background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; text-align: center;">
+              <p style="margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #166534;">Confirm Quote</p>
+              <p style="margin: 0 0 16px 0; color: #15803d;">Click the button below to confirm this quote and provide payment information:</p>
+              <a href="${confirmationUrl}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1em;">Confirm Quote</a>
+            </div>
           </div>
         </body>
         </html>
@@ -231,12 +238,18 @@ Deno.serve(async (req) => {
               </div>
             ` : ''}
 
+            <div style="margin: 32px 0; padding: 20px; background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; text-align: center;">
+              <p style="margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #166534;">Confirm Quote</p>
+              <p style="margin: 0 0 16px 0; color: #15803d;">Click the button below to confirm this quote and provide payment information:</p>
+              <a href="${confirmationUrl}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1em;">Confirm Quote</a>
+            </div>
+
             <div class="footer">
               <p><strong>Next Steps:</strong></p>
               <ul style="color: #6b7280;">
-                <li>Please review the quote details above</li>
+                <li>Click the "Confirm Quote" button above to approve and provide payment details</li>
+                <li>Review the quote details</li>
                 <li>Confirm pricing and availability</li>
-                <li>Provide a quote number if needed</li>
                 <li>Respond with any questions or concerns</li>
               </ul>
               <p style="margin-top: 20px;">Thank you for your service!</p>

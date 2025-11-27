@@ -1151,6 +1151,7 @@ const Quotes = () => {
         })),
         notes: selectedQuote.notes,
         totalValue: totalQuoteValue,
+        confirmationUrl: `${window.location.origin}/quote-confirm/${selectedQuote.id}`,
         emailTemplate: emailTemplate ? {
           subject: emailTemplate.subject,
           body: emailTemplate.body,

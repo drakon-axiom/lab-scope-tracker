@@ -6,6 +6,7 @@ import { Package, FlaskConical, FileCheck, TestTube } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { ShipmentsTimeline } from "@/components/ShipmentsTimeline";
+import { QuotePipelineCard } from "@/components/QuotePipelineCard";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -137,6 +138,9 @@ const Dashboard = () => {
 
         {/* Active Shipments Timeline */}
         <ShipmentsTimeline />
+        
+        {/* Quote Pipeline Card */}
+        <QuotePipelineCard />
       </div>
     </Layout>
   );

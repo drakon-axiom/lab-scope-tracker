@@ -231,6 +231,7 @@ export type Database = {
           shipped_date: string | null
           status: string
           tracking_number: string | null
+          tracking_updated_at: string | null
           updated_at: string | null
           user_id: string
         }
@@ -243,6 +244,7 @@ export type Database = {
           shipped_date?: string | null
           status?: string
           tracking_number?: string | null
+          tracking_updated_at?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -255,6 +257,7 @@ export type Database = {
           shipped_date?: string | null
           status?: string
           tracking_number?: string | null
+          tracking_updated_at?: string | null
           updated_at?: string | null
           user_id?: string
         }

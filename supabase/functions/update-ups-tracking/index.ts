@@ -151,22 +151,29 @@ serve(async (req) => {
         const trackingData = await getTrackingInfo(quote.tracking_number, accessToken);
         const newStatus = determineStatus(trackingData);
 
-        // Only update if status changed
+        // Update status and tracking timestamp
+        const updateData: any = { tracking_updated_at: new Date().toISOString() };
+        
+        // Only update status if it changed
         if (newStatus !== quote.status) {
-          const { error } = await supabase
-            .from('quotes')
-            .update({ status: newStatus })
-            .eq('id', quote.id);
+          updateData.status = newStatus;
+        }
 
-          if (error) {
-            console.error(`Failed to update quote ${quote.id}:`, error);
-            results.push({ 
-              quoteId: quote.id, 
-              trackingNumber: quote.tracking_number,
-              success: false, 
-              error: error.message 
-            });
-          } else {
+        const { error } = await supabase
+          .from('quotes')
+          .update(updateData)
+          .eq('id', quote.id);
+
+        if (error) {
+          console.error(`Failed to update quote ${quote.id}:`, error);
+          results.push({ 
+            quoteId: quote.id, 
+            trackingNumber: quote.tracking_number,
+            success: false, 
+            error: error.message 
+          });
+        } else {
+          if (newStatus !== quote.status) {
             console.log(`Updated quote ${quote.id} to ${newStatus}`);
             results.push({ 
               quoteId: quote.id, 
@@ -175,15 +182,15 @@ serve(async (req) => {
               oldStatus: quote.status,
               newStatus 
             });
+          } else {
+            results.push({ 
+              quoteId: quote.id, 
+              trackingNumber: quote.tracking_number,
+              success: true, 
+              message: 'Status unchanged, timestamp updated',
+              status: newStatus
+            });
           }
-        } else {
-          results.push({ 
-            quoteId: quote.id, 
-            trackingNumber: quote.tracking_number,
-            success: true, 
-            message: 'Status unchanged',
-            status: newStatus
-          });
         }
       } catch (error) {
         console.error(`Error processing quote ${quote.id}:`, error);

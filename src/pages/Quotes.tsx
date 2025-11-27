@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailTemplatesManager } from "@/components/EmailTemplatesManager";
+import { EmailPreviewDialog } from "@/components/EmailPreviewDialog";
+import { EmailHistoryDialog } from "@/components/EmailHistoryDialog";
 import {
   Select,
   SelectContent,
@@ -45,7 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -165,6 +167,10 @@ const Quotes = () => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [selectedEmailTemplate, setSelectedEmailTemplate] = useState("");
+  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
+  const [emailPreviewData, setEmailPreviewData] = useState({ subject: "", html: "", recipient: "" });
+  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -975,7 +981,148 @@ const Quotes = () => {
       return;
     }
 
+    // Get selected email template if any
+    let emailTemplate = null;
+    if (selectedEmailTemplate) {
+      const { data: templateData } = await supabase
+        .from("email_templates")
+        .select("*")
+        .eq("id", selectedEmailTemplate)
+        .single();
+      emailTemplate = templateData;
+    }
+
+    // Generate preview HTML
+    const { subject, html } = generateEmailPreview(
+      lab.name,
+      selectedQuote.quote_number || "Pending",
+      quoteItems,
+      selectedQuote.notes,
+      emailTemplate
+    );
+
+    // Show preview dialog
+    setEmailPreviewData({
+      subject,
+      html,
+      recipient: labData.contact_email,
+    });
+    setEmailPreviewOpen(true);
+  };
+
+  const generateEmailPreview = (
+    labName: string,
+    quoteNumber: string,
+    items: QuoteItem[],
+    notes: string | null,
+    emailTemplate: any
+  ) => {
+    const itemsHtml = items.map((item, index) => {
+      const productName = item.products.name.toLowerCase();
+      const qualifiesForAdditionalSamplePricing = 
+        productName.includes("tirzepatide") || 
+        productName.includes("semaglutide") || 
+        productName.includes("retatrutide");
+
+      let itemHtml = 
+        `<div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">` +
+        `<strong>${index + 1}. ${item.products.name}</strong> - $${(item.price || 0).toFixed(2)}<br/>` +
+        `<div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">` +
+        `Client: ${item.client || "—"}<br/>` +
+        `Sample: ${item.sample || "—"}<br/>` +
+        `Manufacturer: ${item.manufacturer || "—"}<br/>` +
+        `Batch: ${item.batch || "—"}` +
+        `</div>`;
+
+      if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+        itemHtml += 
+          `<div style="margin-top: 8px; padding: 8px; background-color: #f9fafb; border-radius: 4px;">` +
+          `Additional Samples: ${item.additional_samples} × $60 = $${((item.additional_samples || 0) * 60).toFixed(2)}` +
+          `</div>`;
+      }
+
+      if ((item.additional_report_headers || 0) > 0) {
+        itemHtml += 
+          `<div style="margin-top: 8px; padding: 8px; background-color: #fefce8; border-radius: 4px;">` +
+          `<strong>Additional Report Headers:</strong> ${item.additional_report_headers} × $30 = $${((item.additional_report_headers || 0) * 30).toFixed(2)}<br/>`;
+        
+        if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+          item.additional_headers_data.forEach((header, idx) => {
+            itemHtml += 
+              `<div style="margin-left: 16px; margin-top: 4px; font-size: 0.85em;">` +
+              `Header #${idx + 1}: ${header.client} / ${header.sample} / ${header.manufacturer} / ${header.batch}` +
+              `</div>`;
+          });
+        }
+        itemHtml += `</div>`;
+      }
+
+      itemHtml += `</div>`;
+      return itemHtml;
+    }).join("");
+
+    let subject: string;
+    let html: string;
+
+    if (emailTemplate) {
+      subject = emailTemplate.subject
+        .replace(/\{\{quote_number\}\}/g, quoteNumber)
+        .replace(/\{\{lab_name\}\}/g, labName);
+
+      html = 
+        `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>` +
+        `<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">` +
+        `<div>${emailTemplate.body
+          .replace(/\{\{lab_name\}\}/g, labName)
+          .replace(/\{\{quote_number\}\}/g, quoteNumber)
+          .replace(/\{\{quote_items\}\}/g, itemsHtml)
+          .replace(/\{\{total\}\}/g, `$${totalQuoteValue.toFixed(2)}`)
+        }</div>` +
+        (notes ? `<div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : "") +
+        `</body></html>`;
+    } else {
+      subject = `Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ""}`;
+      html = 
+        `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>` +
+        `<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">` +
+        `<h1 style="color: #111827;">Testing Quote Request</h1>` +
+        `<p style="color: #6b7280;">Quote Number: ${quoteNumber}</p>` +
+        `<p>Dear ${labName},</p>` +
+        `<p>Please review the following quote request for testing services:</p>` +
+        itemsHtml +
+        `<div style="margin: 20px 0; padding: 15px; background-color: #f3f4f6; border-radius: 8px; font-size: 1.25em; font-weight: bold; text-align: right;">` +
+        `Total Quote Value: $${totalQuoteValue.toFixed(2)}</div>` +
+        (notes ? `<div style="margin: 24px 0; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : "") +
+        `<div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e5e7eb;">` +
+        `<p><strong>Next Steps:</strong></p>` +
+        `<ul style="color: #6b7280;">` +
+        `<li>Please review the quote details above</li>` +
+        `<li>Confirm pricing and availability</li>` +
+        `<li>Provide a quote number if needed</li>` +
+        `<li>Respond with any questions or concerns</li>` +
+        `</ul>` +
+        `<p style="margin-top: 20px;">Thank you for your service!</p>` +
+        `</div></body></html>`;
+    }
+
+    return { subject, html };
+  };
+
+  const confirmSendEmail = async () => {
+    if (!selectedQuote) return;
+    
+    setIsSendingEmail(true);
+
     try {
+      const lab = labs.find(l => l.id === selectedQuote.lab_id);
+      const { data: labData } = await supabase
+        .from("labs")
+        .select("contact_email")
+        .eq("id", selectedQuote.lab_id)
+        .single();
+
+      if (!lab || !labData) return;
+
       // Get selected email template if any
       let emailTemplate = null;
       if (selectedEmailTemplate) {
@@ -1010,18 +1157,28 @@ const Quotes = () => {
         } : null,
       };
 
-      toast({
-        title: "Sending email...",
-        description: "Please wait while we send the quote to the vendor.",
-      });
-
-      const { error } = await supabase.functions.invoke('send-quote-email', {
+      const { error } = await supabase.functions.invoke("send-quote-email", {
         body: emailPayload,
       });
 
       if (error) throw error;
 
-      // Update quote status to 'sent_to_vendor'
+      // Log to email history
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("email_history").insert({
+          user_id: user.id,
+          quote_id: selectedQuote.id,
+          lab_id: selectedQuote.lab_id,
+          recipient_email: labData.contact_email,
+          subject: emailPreviewData.subject,
+          body: emailPreviewData.html,
+          template_id: selectedEmailTemplate || null,
+          status: "sent",
+        });
+      }
+
+      // Update quote status to "sent_to_vendor"
       await supabase
         .from("quotes")
         .update({ status: "sent_to_vendor" })
@@ -1031,6 +1188,8 @@ const Quotes = () => {
         title: "Email sent successfully",
         description: `Quote has been sent to ${lab.name}`,
       });
+
+      setEmailPreviewOpen(false);
 
       // Refresh quotes list and update selectedQuote
       await fetchQuotes();
@@ -1047,6 +1206,8 @@ const Quotes = () => {
         description: error.message || "Failed to send email. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -1749,6 +1910,13 @@ const Quotes = () => {
                 </div>
 
                 <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEmailHistoryOpen(true)}
+                  >
+                    <History className="mr-2 h-4 w-4" />
+                    Email History
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setViewDialogOpen(false)}
@@ -2556,6 +2724,24 @@ const Quotes = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Email Preview Dialog */}
+        <EmailPreviewDialog
+          open={emailPreviewOpen}
+          onOpenChange={setEmailPreviewOpen}
+          subject={emailPreviewData.subject}
+          htmlContent={emailPreviewData.html}
+          recipientEmail={emailPreviewData.recipient}
+          onConfirmSend={confirmSendEmail}
+          isSending={isSendingEmail}
+        />
+
+        {/* Email History Dialog */}
+        <EmailHistoryDialog
+          open={emailHistoryOpen}
+          onOpenChange={setEmailHistoryOpen}
+          quoteId={selectedQuote?.id}
+        />
       </div>
     </Layout>
   );

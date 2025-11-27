@@ -391,6 +391,7 @@ export type Database = {
           created_at: string | null
           id: string
           lab_id: string
+          lab_response: string | null
           notes: string | null
           payment_amount_crypto: string | null
           payment_amount_usd: number | null
@@ -409,6 +410,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lab_id: string
+          lab_response?: string | null
           notes?: string | null
           payment_amount_crypto?: string | null
           payment_amount_usd?: number | null
@@ -427,6 +429,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lab_id?: string
+          lab_response?: string | null
           notes?: string | null
           payment_amount_crypto?: string | null
           payment_amount_usd?: number | null

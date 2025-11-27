@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     }: QuoteEmailRequest = await req.json();
 
     console.log(`Processing email request for ${labEmail}`);
+    console.log('Items data:', JSON.stringify(items, null, 2));
 
     // Validate required fields
     if (!labEmail || !items || items.length === 0) {

@@ -17,6 +17,12 @@ interface QuoteEmailRequest {
     price: number | null;
     additional_samples: number | null;
     additional_report_headers: number | null;
+    additional_headers_data?: Array<{
+      client: string;
+      sample: string;
+      manufacturer: string;
+      batch: string;
+    }>;
   }>;
   notes: string | null;
   totalValue: number;
@@ -88,18 +94,39 @@ Deno.serve(async (req) => {
         `);
       }
       
-      // Additional report headers row
+      // Additional report headers rows with detailed data
       if ((item.additional_report_headers || 0) > 0) {
         rows.push(`
           <tr style="border-bottom: 1px solid #e5e7eb; background-color: #f9fafb;">
             <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
             <td style="padding: 12px; border-right: 1px solid #e5e7eb; padding-left: 24px; color: #6b7280;">
-              Additional Report Headers (${item.additional_report_headers} × $30)
+              <strong>Additional Report Headers (${item.additional_report_headers} × $30)</strong>
             </td>
             <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
             <td style="padding: 12px; text-align: right; color: #6b7280;">$${((item.additional_report_headers || 0) * 30).toFixed(2)}</td>
           </tr>
         `);
+        
+        // List each additional header with its details
+        if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+          item.additional_headers_data.forEach((header, headerIndex) => {
+            rows.push(`
+              <tr style="border-bottom: 1px solid #e5e7eb; background-color: #fefce8;">
+                <td style="padding: 12px; border-right: 1px solid #e5e7eb;"></td>
+                <td style="padding: 12px; border-right: 1px solid #e5e7eb; padding-left: 48px; color: #854d0e; font-size: 0.9em;">
+                  Header #${headerIndex + 1}
+                </td>
+                <td style="padding: 12px; border-right: 1px solid #e5e7eb; font-size: 0.9em;">
+                  <strong>Client:</strong> ${header.client || '—'}<br/>
+                  <strong>Sample:</strong> ${header.sample || '—'}<br/>
+                  <strong>Manufacturer:</strong> ${header.manufacturer || '—'}<br/>
+                  <strong>Batch:</strong> ${header.batch || '—'}
+                </td>
+                <td style="padding: 12px; text-align: right; color: #854d0e;">$30.00</td>
+              </tr>
+            `);
+          });
+        }
       }
       
       return rows;
@@ -248,6 +275,17 @@ ${index + 1}. ${item.productName}
   
   if ((item.additional_report_headers || 0) > 0) {
     itemText += `\n   Additional Report Headers (${item.additional_report_headers} × $30): $${((item.additional_report_headers || 0) * 30).toFixed(2)}`;
+    
+    // List each additional header with its details
+    if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+      item.additional_headers_data.forEach((header, headerIndex) => {
+        itemText += `\n      Header #${headerIndex + 1}:`;
+        itemText += `\n        Client: ${header.client || '—'}`;
+        itemText += `\n        Sample: ${header.sample || '—'}`;
+        itemText += `\n        Manufacturer: ${header.manufacturer || '—'}`;
+        itemText += `\n        Batch: ${header.batch || '—'}`;
+      });
+    }
   }
   
   return itemText;

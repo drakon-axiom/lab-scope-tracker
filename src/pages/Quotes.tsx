@@ -1000,6 +1000,7 @@ const Quotes = () => {
           price: item.price,
           additional_samples: item.additional_samples,
           additional_report_headers: item.additional_report_headers,
+          additional_headers_data: item.additional_headers_data,
         })),
         notes: selectedQuote.notes,
         totalValue: totalQuoteValue,

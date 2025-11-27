@@ -356,6 +356,47 @@ export type Database = {
           },
         ]
       }
+      tracking_history: {
+        Row: {
+          changed_at: string
+          created_at: string
+          details: Json | null
+          id: string
+          quote_id: string
+          source: string
+          status: string
+          tracking_number: string
+        }
+        Insert: {
+          changed_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          quote_id: string
+          source?: string
+          status: string
+          tracking_number: string
+        }
+        Update: {
+          changed_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          quote_id?: string
+          source?: string
+          status?: string
+          tracking_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_history_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

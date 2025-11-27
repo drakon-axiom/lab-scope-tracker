@@ -43,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -151,6 +151,8 @@ const Quotes = () => {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [trackingHistory, setTrackingHistory] = useState<TrackingHistory[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -437,6 +439,7 @@ const Quotes = () => {
       testing_notes: "",
     });
     setEditingItemId(null);
+    setSelectedFile(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -552,6 +555,37 @@ const Quotes = () => {
     setItemsDialogOpen(true);
   };
 
+  const handleFileUpload = async (quoteId: string) => {
+    if (!selectedFile) return null;
+
+    try {
+      setUploadingFile(true);
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${quoteId}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('lab-reports')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('lab-reports')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "File Upload Error",
+        description: error.message,
+      });
+      return null;
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedQuote) return;
@@ -584,6 +618,13 @@ const Quotes = () => {
         }
       }
 
+      // Handle file upload if a file is selected
+      let reportFileUrl = itemFormData.report_file;
+      if (selectedFile) {
+        const uploadedUrl = await handleFileUpload(selectedQuote.id);
+        if (uploadedUrl) reportFileUrl = uploadedUrl;
+      }
+
       const payload = {
         quote_id: selectedQuote.id,
         product_id: itemFormData.product_id,
@@ -600,7 +641,7 @@ const Quotes = () => {
         date_completed: itemFormData.date_completed || null,
         test_results: itemFormData.test_results || null,
         report_url: itemFormData.report_url || null,
-        report_file: itemFormData.report_file || null,
+        report_file: reportFileUrl || null,
         testing_notes: itemFormData.testing_notes || null,
       };
 
@@ -1921,14 +1962,52 @@ const Quotes = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Report File</Label>
-                      <Input
-                        value={itemFormData.report_file}
-                        onChange={(e) =>
-                          setItemFormData({ ...itemFormData, report_file: e.target.value })
-                        }
-                        placeholder="Uploaded report filename or path"
-                      />
+                      <Label>Report File Upload</Label>
+                      <div className="space-y-2">
+                        {selectedFile && (
+                          <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{selectedFile.name}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedFile(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                        {itemFormData.report_file && !selectedFile && (
+                          <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <a 
+                                href={itemFormData.report_file} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline"
+                              >
+                                View current file
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                            disabled={uploadingFile}
+                            className="cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Upload PDF or image files (JPG, PNG)
+                        </p>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Test Results</Label>
@@ -1954,9 +2033,18 @@ const Quotes = () => {
                     </div>
                   </div>
                 </div>
-                <Button type="submit" className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {editingItemId ? "Update Item" : "Add Item"}
+                <Button type="submit" className="w-full" disabled={uploadingFile}>
+                  {uploadingFile ? (
+                    <>
+                      <Upload className="mr-2 h-4 w-4 animate-pulse" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      {editingItemId ? "Update Item" : "Add Item"}
+                    </>
+                  )}
                 </Button>
               </form>
 

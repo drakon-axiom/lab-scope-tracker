@@ -343,8 +343,20 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Auto-progress status to "in_transit" when tracking number is added
+      let updatedStatus = formData.status;
+      if (editingId && formData.tracking_number) {
+        // Find the existing quote to check if tracking number is new
+        const existingQuote = quotes.find(q => q.id === editingId);
+        if (existingQuote && !existingQuote.tracking_number) {
+          // Tracking number is being added for the first time
+          updatedStatus = "in_transit";
+        }
+      }
+
       const payload = {
         ...formData,
+        status: updatedStatus,
         user_id: user.id,
         quote_number: formData.quote_number || null,
         notes: formData.notes || null,
@@ -358,7 +370,15 @@ const Quotes = () => {
           .update(payload)
           .eq("id", editingId);
         if (error) throw error;
-        toast({ title: "Quote updated successfully" });
+        
+        if (updatedStatus === "in_transit" && updatedStatus !== formData.status) {
+          toast({ 
+            title: "Quote updated successfully",
+            description: "Status automatically changed to 'In Transit'"
+          });
+        } else {
+          toast({ title: "Quote updated successfully" });
+        }
       } else {
         const { error } = await supabase.from("quotes").insert([payload]);
         if (error) throw error;

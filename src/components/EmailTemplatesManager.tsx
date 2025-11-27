@@ -241,14 +241,13 @@ Best regards`,
             <div>
               <Label htmlFor="template-lab">Lab (Optional)</Label>
               <Select
-                value={formData.lab_id}
+                value={formData.lab_id || undefined}
                 onValueChange={(value) => setFormData({ ...formData, lab_id: value })}
               >
                 <SelectTrigger id="template-lab">
                   <SelectValue placeholder="All labs" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All labs</SelectItem>
                   {labs.map((lab) => (
                     <SelectItem key={lab.id} value={lab.id}>
                       {lab.name}
@@ -256,6 +255,17 @@ Best regards`,
                   ))}
                 </SelectContent>
               </Select>
+              {formData.lab_id && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, lab_id: "" })}
+                  className="mt-1"
+                >
+                  Clear selection
+                </Button>
+              )}
             </div>
             <div>
               <Label htmlFor="template-subject">Subject *</Label>

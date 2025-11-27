@@ -56,6 +56,7 @@ interface Quote {
   tracking_number: string | null;
   shipped_date: string | null;
   created_at: string;
+  tracking_updated_at: string | null;
   labs: { name: string };
 }
 
@@ -974,7 +975,14 @@ const Quotes = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span>{quote.tracking_number || "—"}</span>
+                        <div className="flex flex-col">
+                          <span>{quote.tracking_number || "—"}</span>
+                          {quote.tracking_number && quote.tracking_updated_at && (
+                            <span className="text-xs text-muted-foreground">
+                              Updated: {new Date(quote.tracking_updated_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
                         {quote.tracking_number && (
                           <Button
                             variant="ghost"
@@ -1060,9 +1068,16 @@ const Quotes = () => {
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Tracking Number</Label>
-                    <p className="font-medium">
-                      {selectedQuote.tracking_number || "—"}
-                    </p>
+                    <div className="flex flex-col gap-1">
+                      <p className="font-medium">
+                        {selectedQuote.tracking_number || "—"}
+                      </p>
+                      {selectedQuote.tracking_number && selectedQuote.tracking_updated_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Last updated: {new Date(selectedQuote.tracking_updated_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

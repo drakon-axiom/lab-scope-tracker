@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmailTemplatesManager } from "@/components/EmailTemplatesManager";
 import {
   Select,
   SelectContent,
@@ -161,6 +163,8 @@ const Quotes = () => {
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -210,6 +214,7 @@ const Quotes = () => {
     fetchManufacturers();
     fetchTestingTypes();
     fetchTemplates();
+    fetchEmailTemplates();
   }, []);
 
   // Auto-refresh stale tracking data (older than 4 hours)
@@ -424,6 +429,29 @@ const Quotes = () => {
       setTemplates(data || []);
     } catch (error: any) {
       console.error("Error fetching templates:", error);
+    }
+  };
+
+  const fetchEmailTemplates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("*")
+        .order("is_default", { ascending: false });
+
+      if (error) throw error;
+      setEmailTemplates(data || []);
+      
+      // Auto-select default template if exists
+      const defaultTemplate = data?.find(t => t.is_default);
+      if (defaultTemplate) {
+        setSelectedEmailTemplate(defaultTemplate.id);
+      }
+    } catch (error: any) {
+      console.error("Error fetching email templates:", error);
     }
   };
 
@@ -948,6 +976,17 @@ const Quotes = () => {
     }
 
     try {
+      // Get selected email template if any
+      let emailTemplate = null;
+      if (selectedEmailTemplate) {
+        const { data: templateData } = await supabase
+          .from("email_templates")
+          .select("*")
+          .eq("id", selectedEmailTemplate)
+          .single();
+        emailTemplate = templateData;
+      }
+
       const emailPayload = {
         labEmail: labData.contact_email,
         labName: lab.name,
@@ -964,6 +1003,10 @@ const Quotes = () => {
         })),
         notes: selectedQuote.notes,
         totalValue: totalQuoteValue,
+        emailTemplate: emailTemplate ? {
+          subject: emailTemplate.subject,
+          body: emailTemplate.body,
+        } : null,
       };
 
       toast({
@@ -1351,8 +1394,15 @@ const Quotes = () => {
           </Dialog>
         </div>
 
-        <div className="border rounded-lg">
-          <Table>
+        <Tabs defaultValue="quotes" className="w-full">
+          <TabsList>
+            <TabsTrigger value="quotes">Quotes</TabsTrigger>
+            <TabsTrigger value="email-templates">Email Templates</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="quotes" className="mt-6">
+            <div className="border rounded-lg">
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Quote #</TableHead>
@@ -1460,6 +1510,14 @@ const Quotes = () => {
             </TableBody>
           </Table>
         </div>
+          </TabsContent>
+
+          <TabsContent value="email-templates">
+            <div className="border rounded-lg p-6">
+              <EmailTemplatesManager />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -1696,6 +1754,26 @@ const Quotes = () => {
                   >
                     Close
                   </Button>
+                  {emailTemplates.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Email Template:</Label>
+                      <Select
+                        value={selectedEmailTemplate}
+                        onValueChange={setSelectedEmailTemplate}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Select template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {emailTemplates.map((template: any) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     variant="outline"
                     onClick={handleSendEmail}

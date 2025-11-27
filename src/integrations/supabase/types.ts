@@ -38,6 +38,70 @@ export type Database = {
         }
         Relationships: []
       }
+      email_history: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          lab_id: string
+          quote_id: string
+          recipient_email: string
+          sent_at: string
+          status: string
+          subject: string
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          lab_id: string
+          quote_id: string
+          recipient_email: string
+          sent_at?: string
+          status?: string
+          subject: string
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          lab_id?: string
+          quote_id?: string
+          recipient_email?: string
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_history_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_history_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string

@@ -59,6 +59,31 @@ Deno.serve(async (req) => {
       throw new Error('Missing required fields: labEmail or items');
     }
 
+    // Calculate total with automatic discount
+    const subtotal = items.reduce((sum, item) => {
+      let itemTotal = item.price || 0;
+      
+      // Add additional samples cost
+      if ((item.additional_samples || 0) > 0) {
+        const productName = item.productName.toLowerCase();
+        if (productName.includes('tirzepatide') || productName.includes('semaglutide') || productName.includes('retatrutide')) {
+          itemTotal += (item.additional_samples || 0) * 60;
+        }
+      }
+      
+      // Add additional headers cost
+      if ((item.additional_report_headers || 0) > 0) {
+        itemTotal += (item.additional_report_headers || 0) * 30;
+      }
+      
+      return sum + itemTotal;
+    }, 0);
+    
+    // Apply automatic discount: 5% under $1200, 10% over $1200
+    const discountPercent = subtotal < 1200 ? 5 : 10;
+    const discount = (subtotal * discountPercent) / 100;
+    const total = (subtotal - discount).toFixed(2);
+
     // Build email content
     const itemsHtml = items.flatMap((item, index) => {
       const rows = [];
@@ -227,8 +252,10 @@ Deno.serve(async (req) => {
               </tbody>
             </table>
 
-            <div class="total">
-              Total Quote Value: $${totalValue.toFixed(2)}
+            <div style="text-align: right; margin: 20px 0; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+              <div style="font-size: 1em; margin-bottom: 8px;">Subtotal: $${subtotal.toFixed(2)}</div>
+              <div style="font-size: 1em; margin-bottom: 8px; color: #16a34a;">Discount (${discountPercent}%): -$${discount.toFixed(2)}</div>
+              <div style="font-size: 1.25em; font-weight: bold;">Total: $${total}</div>
             </div>
 
             ${notes ? `
@@ -305,7 +332,9 @@ ${index + 1}. ${item.productName}
   return itemText;
 }).join('\n')}
 
-Total Quote Value: $${totalValue.toFixed(2)}
+Subtotal: $${subtotal.toFixed(2)}
+Discount (${discountPercent}%): -$${discount.toFixed(2)}
+Total Quote Value: $${total}
 
 ${notes ? `Additional Notes:\n${notes}\n` : ''}
 

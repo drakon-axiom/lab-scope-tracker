@@ -67,6 +67,53 @@ const QuoteConfirm = () => {
 
       setQuote(data);
       setQuoteItems(items || []);
+      
+      // Calculate automatic discount based on subtotal
+      if (items && items.length > 0) {
+        const subtotal = items.reduce((sum, item) => {
+          const basePrice = parseFloat(String(item.price || "0"));
+          const additionalSamples = item.additional_samples || 0;
+          const additionalHeaders = item.additional_report_headers || 0;
+          
+          let itemTotal = basePrice;
+          
+          if (additionalSamples > 0) {
+            const productName = item.products?.name || "";
+            if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
+              itemTotal += additionalSamples * 60;
+            }
+          }
+          
+          if (additionalHeaders > 0) {
+            itemTotal += additionalHeaders * 30;
+          }
+          
+          return sum + itemTotal;
+        }, 0);
+
+        // Apply automatic discount if not already set
+        if (!data.discount_amount) {
+          if (subtotal < 1200) {
+            setDiscountType("percentage");
+            setDiscountAmount("5");
+          } else {
+            setDiscountType("percentage");
+            setDiscountAmount("10");
+          }
+        } else {
+          const dbDiscountType = data.discount_type;
+          if (dbDiscountType === "percentage" || dbDiscountType === "fixed") {
+            setDiscountType(dbDiscountType);
+          }
+          const discountValue = data.discount_amount;
+          if (typeof discountValue === 'number') {
+            setDiscountAmount(String(discountValue));
+          } else {
+            setDiscountAmount("");
+          }
+        }
+      }
+      
       if (data.status === "approved") {
         setConfirmed(true);
       }

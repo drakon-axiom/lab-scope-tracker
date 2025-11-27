@@ -57,6 +57,11 @@ interface Quote {
   shipped_date: string | null;
   created_at: string;
   tracking_updated_at: string | null;
+  payment_status: string | null;
+  payment_amount_usd: number | null;
+  payment_amount_crypto: string | null;
+  payment_date: string | null;
+  transaction_id: string | null;
   labs: { name: string };
 }
 
@@ -77,6 +82,13 @@ interface QuoteItem {
     manufacturer: string;
     batch: string;
   }> | null;
+  status: string | null;
+  date_submitted: string | null;
+  date_completed: string | null;
+  test_results: string | null;
+  report_url: string | null;
+  report_file: string | null;
+  testing_notes: string | null;
   products: { name: string; price: number | null };
 }
 
@@ -148,6 +160,11 @@ const Quotes = () => {
     notes: "",
     tracking_number: "",
     shipped_date: "",
+    payment_status: "pending",
+    payment_amount_usd: "",
+    payment_amount_crypto: "",
+    payment_date: "",
+    transaction_id: "",
   });
 
   const [itemFormData, setItemFormData] = useState({
@@ -166,6 +183,13 @@ const Quotes = () => {
       manufacturer: string;
       batch: string;
     }>,
+    status: "pending",
+    date_submitted: "",
+    date_completed: "",
+    test_results: "",
+    report_url: "",
+    report_file: "",
+    testing_notes: "",
   });
 
   useEffect(() => {
@@ -383,6 +407,11 @@ const Quotes = () => {
       notes: "",
       tracking_number: "",
       shipped_date: "",
+      payment_status: "pending",
+      payment_amount_usd: "",
+      payment_amount_crypto: "",
+      payment_date: "",
+      transaction_id: "",
     });
     setEditingId(null);
   };
@@ -399,6 +428,13 @@ const Quotes = () => {
       additional_report_headers: 0,
       has_additional_samples: false,
       additional_headers_data: [],
+      status: "pending",
+      date_submitted: "",
+      date_completed: "",
+      test_results: "",
+      report_url: "",
+      report_file: "",
+      testing_notes: "",
     });
     setEditingItemId(null);
   };
@@ -428,6 +464,11 @@ const Quotes = () => {
         notes: formData.notes || null,
         tracking_number: formData.tracking_number || null,
         shipped_date: formData.shipped_date || null,
+        payment_status: formData.payment_status || "pending",
+        payment_amount_usd: formData.payment_amount_usd ? parseFloat(formData.payment_amount_usd) : null,
+        payment_amount_crypto: formData.payment_amount_crypto || null,
+        payment_date: formData.payment_date || null,
+        transaction_id: formData.transaction_id || null,
       };
 
       if (editingId) {
@@ -471,6 +512,11 @@ const Quotes = () => {
       notes: quote.notes || "",
       tracking_number: quote.tracking_number || "",
       shipped_date: quote.shipped_date || "",
+      payment_status: quote.payment_status || "pending",
+      payment_amount_usd: quote.payment_amount_usd?.toString() || "",
+      payment_amount_crypto: quote.payment_amount_crypto || "",
+      payment_date: quote.payment_date || "",
+      transaction_id: quote.transaction_id || "",
     });
     setEditingId(quote.id);
     setDialogOpen(true);
@@ -549,6 +595,13 @@ const Quotes = () => {
         additional_samples: itemFormData.has_additional_samples ? itemFormData.additional_samples : 0,
         additional_report_headers: itemFormData.additional_report_headers,
         additional_headers_data: itemFormData.additional_headers_data,
+        status: itemFormData.status || "pending",
+        date_submitted: itemFormData.date_submitted || null,
+        date_completed: itemFormData.date_completed || null,
+        test_results: itemFormData.test_results || null,
+        report_url: itemFormData.report_url || null,
+        report_file: itemFormData.report_file || null,
+        testing_notes: itemFormData.testing_notes || null,
       };
 
       if (editingItemId) {
@@ -590,6 +643,13 @@ const Quotes = () => {
       additional_report_headers: item.additional_report_headers || 0,
       has_additional_samples: (item.additional_samples || 0) > 0,
       additional_headers_data: item.additional_headers_data || [],
+      status: item.status || "pending",
+      date_submitted: item.date_submitted || "",
+      date_completed: item.date_completed || "",
+      test_results: item.test_results || "",
+      report_url: item.report_url || "",
+      report_file: item.report_file || "",
+      testing_notes: item.testing_notes || "",
     });
   };
 
@@ -613,47 +673,6 @@ const Quotes = () => {
     }
   };
 
-  const handleGenerateTestRecords = async () => {
-    if (!selectedQuote) return;
-    if (!confirm("Generate test records from all quote items?")) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const testRecords = quoteItems.map((item) => ({
-        user_id: user.id,
-        product_id: item.product_id,
-        lab_id: selectedQuote.lab_id,
-        quote_item_id: item.id,
-        client: item.client,
-        sample: item.sample,
-        manufacturer: item.manufacturer,
-        batch: item.batch,
-        status: "pending",
-        date_submitted: new Date().toISOString().split("T")[0],
-      }));
-
-      const { error } = await supabase.from("test_records").insert(testRecords);
-      if (error) throw error;
-
-      // Update quote status
-      await supabase
-        .from("quotes")
-        .update({ status: "test_records_generated" })
-        .eq("id", selectedQuote.id);
-
-      toast({ title: "Test records generated successfully" });
-      setViewDialogOpen(false);
-      fetchQuotes();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleSendEmail = async () => {
     if (!selectedQuote) return;
@@ -928,19 +947,14 @@ const Quotes = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="sent_to_vendor">
-                          Sent to Vendor
-                        </SelectItem>
+                        <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
                         <SelectItem value="in_transit">In Transit</SelectItem>
                         <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="testing_in_progress">
-                          Testing in Progress
-                        </SelectItem>
-                        <SelectItem value="test_records_generated">
-                          Test Records Generated
-                        </SelectItem>
+                        <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                       </SelectContent>
                     </Select>
@@ -982,6 +996,80 @@ const Quotes = () => {
                     )}
                   </div>
                 </div>
+                
+                {/* Payment Information */}
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="font-medium text-sm">Payment Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_status">Payment Status</Label>
+                      <Select
+                        value={formData.payment_status}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, payment_status: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="paid_usd">Paid (USD)</SelectItem>
+                          <SelectItem value="paid_crypto">Paid (Crypto)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_date">Payment Date</Label>
+                      <Input
+                        id="payment_date"
+                        type="date"
+                        value={formData.payment_date}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_date: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_amount_usd">Amount (USD)</Label>
+                      <Input
+                        id="payment_amount_usd"
+                        type="number"
+                        step="0.01"
+                        value={formData.payment_amount_usd}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_amount_usd: e.target.value })
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_amount_crypto">Amount (Crypto)</Label>
+                      <Input
+                        id="payment_amount_crypto"
+                        value={formData.payment_amount_crypto}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_amount_crypto: e.target.value })
+                        }
+                        placeholder="e.g., 0.5 BTC"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transaction_id">Transaction ID (for crypto)</Label>
+                    <Input
+                      id="transaction_id"
+                      value={formData.transaction_id}
+                      onChange={(e) =>
+                        setFormData({ ...formData, transaction_id: e.target.value })
+                      }
+                      placeholder="Blockchain transaction ID"
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
@@ -1154,6 +1242,51 @@ const Quotes = () => {
                     <p className="mt-1">{selectedQuote.notes}</p>
                   </div>
                 )}
+                
+                {/* Payment Information Section */}
+                <div className="border-t pt-4">
+                  <Label className="text-lg font-semibold mb-3 block">Payment Information</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Payment Status</Label>
+                      <div className="mt-1">
+                        <StatusBadge status={selectedQuote.payment_status || "pending"} />
+                      </div>
+                    </div>
+                    {selectedQuote.payment_date && (
+                      <div>
+                        <Label className="text-muted-foreground">Payment Date</Label>
+                        <p className="font-medium mt-1">
+                          {new Date(selectedQuote.payment_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedQuote.payment_amount_usd && (
+                      <div>
+                        <Label className="text-muted-foreground">Amount (USD)</Label>
+                        <p className="font-medium mt-1">
+                          ${selectedQuote.payment_amount_usd.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                    {selectedQuote.payment_amount_crypto && (
+                      <div>
+                        <Label className="text-muted-foreground">Amount (Crypto)</Label>
+                        <p className="font-medium mt-1">
+                          {selectedQuote.payment_amount_crypto}
+                        </p>
+                      </div>
+                    )}
+                    {selectedQuote.transaction_id && (
+                      <div className="col-span-2">
+                        <Label className="text-muted-foreground">Transaction ID</Label>
+                        <p className="font-mono text-sm mt-1 break-all">
+                          {selectedQuote.transaction_id}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Tracking History Section */}
                 {selectedQuote.tracking_number && trackingHistory.length > 0 && (
@@ -1193,9 +1326,11 @@ const Quotes = () => {
                   <div className="border rounded-lg">
                     <Table>
                       <TableHeader>
-                      <TableRow>
+                       <TableRow>
                         <TableHead>Product</TableHead>
                         <TableHead>Client/Sample</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Report</TableHead>
                         <TableHead className="text-right">Price</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1229,6 +1364,41 @@ const Quotes = () => {
                                   </div>
                                 )}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge status={item.status || "pending"} />
+                              {item.date_submitted && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Submitted: {new Date(item.date_submitted).toLocaleDateString()}
+                                </div>
+                              )}
+                              {item.date_completed && (
+                                <div className="text-xs text-muted-foreground">
+                                  Completed: {new Date(item.date_completed).toLocaleDateString()}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.report_url && (
+                                <a 
+                                  href={item.report_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline text-sm"
+                                >
+                                  View Report
+                                </a>
+                              )}
+                              {item.report_file && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  File: {item.report_file}
+                                </div>
+                              )}
+                              {item.test_results && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {item.test_results}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               ${item.price?.toFixed(2) || "0.00"}
@@ -1265,11 +1435,6 @@ const Quotes = () => {
                     <Mail className="mr-2 h-4 w-4" />
                     Send to Vendor
                   </Button>
-                  {selectedQuote.status === "approved" && (
-                    <Button onClick={handleGenerateTestRecords}>
-                      Generate Test Records
-                    </Button>
-                  )}
                 </div>
               </div>
             )}
@@ -1698,6 +1863,96 @@ const Quotes = () => {
                       ))}
                     </div>
                   )}
+                  
+                  {/* Testing & Report Information */}
+                  <div className="col-span-2 border-t pt-4 space-y-4">
+                    <h4 className="font-medium text-sm">Testing & Report Information</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select
+                          value={itemFormData.status}
+                          onValueChange={(value) =>
+                            setItemFormData({ ...itemFormData, status: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date Submitted</Label>
+                        <Input
+                          type="date"
+                          value={itemFormData.date_submitted}
+                          onChange={(e) =>
+                            setItemFormData({ ...itemFormData, date_submitted: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Date Completed</Label>
+                        <Input
+                          type="date"
+                          value={itemFormData.date_completed}
+                          onChange={(e) =>
+                            setItemFormData({ ...itemFormData, date_completed: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Report URL</Label>
+                        <Input
+                          value={itemFormData.report_url}
+                          onChange={(e) =>
+                            setItemFormData({ ...itemFormData, report_url: e.target.value })
+                          }
+                          placeholder="Lab report URL"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Report File</Label>
+                      <Input
+                        value={itemFormData.report_file}
+                        onChange={(e) =>
+                          setItemFormData({ ...itemFormData, report_file: e.target.value })
+                        }
+                        placeholder="Uploaded report filename or path"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Test Results</Label>
+                      <Textarea
+                        value={itemFormData.test_results}
+                        onChange={(e) =>
+                          setItemFormData({ ...itemFormData, test_results: e.target.value })
+                        }
+                        placeholder="Test results summary"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Testing Notes</Label>
+                      <Textarea
+                        value={itemFormData.testing_notes}
+                        onChange={(e) =>
+                          setItemFormData({ ...itemFormData, testing_notes: e.target.value })
+                        }
+                        placeholder="Additional notes about testing"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full">
                   <Plus className="mr-2 h-4 w-4" />

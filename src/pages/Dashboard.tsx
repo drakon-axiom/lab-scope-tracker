@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, FlaskConical, FileCheck, TestTube } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { ShipmentsTimeline } from "@/components/ShipmentsTimeline";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -133,6 +134,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Active Shipments Timeline */}
+        <ShipmentsTimeline />
       </div>
     </Layout>
   );

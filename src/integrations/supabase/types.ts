@@ -389,6 +389,8 @@ export type Database = {
       quotes: {
         Row: {
           created_at: string | null
+          discount_amount: number | null
+          discount_type: string | null
           id: string
           lab_id: string
           lab_response: string | null
@@ -408,6 +410,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           id?: string
           lab_id: string
           lab_response?: string | null
@@ -427,6 +431,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           id?: string
           lab_id?: string
           lab_response?: string | null

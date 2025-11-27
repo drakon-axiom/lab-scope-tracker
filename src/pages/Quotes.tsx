@@ -972,7 +972,22 @@ const Quotes = () => {
                     <TableCell>
                       <StatusBadge status={quote.status} />
                     </TableCell>
-                    <TableCell>{quote.tracking_number || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{quote.tracking_number || "—"}</span>
+                        {quote.tracking_number && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                            title="Refresh UPS tracking"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {new Date(quote.created_at).toLocaleDateString()}
                     </TableCell>

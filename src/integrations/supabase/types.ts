@@ -166,12 +166,19 @@ export type Database = {
           batch: string | null
           client: string | null
           created_at: string | null
+          date_completed: string | null
+          date_submitted: string | null
           id: string
           manufacturer: string | null
           price: number | null
           product_id: string
           quote_id: string
+          report_file: string | null
+          report_url: string | null
           sample: string | null
+          status: string | null
+          test_results: string | null
+          testing_notes: string | null
           updated_at: string | null
         }
         Insert: {
@@ -181,12 +188,19 @@ export type Database = {
           batch?: string | null
           client?: string | null
           created_at?: string | null
+          date_completed?: string | null
+          date_submitted?: string | null
           id?: string
           manufacturer?: string | null
           price?: number | null
           product_id: string
           quote_id: string
+          report_file?: string | null
+          report_url?: string | null
           sample?: string | null
+          status?: string | null
+          test_results?: string | null
+          testing_notes?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -196,12 +210,19 @@ export type Database = {
           batch?: string | null
           client?: string | null
           created_at?: string | null
+          date_completed?: string | null
+          date_submitted?: string | null
           id?: string
           manufacturer?: string | null
           price?: number | null
           product_id?: string
           quote_id?: string
+          report_file?: string | null
+          report_url?: string | null
           sample?: string | null
+          status?: string | null
+          test_results?: string | null
+          testing_notes?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -227,11 +248,16 @@ export type Database = {
           id: string
           lab_id: string
           notes: string | null
+          payment_amount_crypto: string | null
+          payment_amount_usd: number | null
+          payment_date: string | null
+          payment_status: string | null
           quote_number: string | null
           shipped_date: string | null
           status: string
           tracking_number: string | null
           tracking_updated_at: string | null
+          transaction_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -240,11 +266,16 @@ export type Database = {
           id?: string
           lab_id: string
           notes?: string | null
+          payment_amount_crypto?: string | null
+          payment_amount_usd?: number | null
+          payment_date?: string | null
+          payment_status?: string | null
           quote_number?: string | null
           shipped_date?: string | null
           status?: string
           tracking_number?: string | null
           tracking_updated_at?: string | null
+          transaction_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -253,11 +284,16 @@ export type Database = {
           id?: string
           lab_id?: string
           notes?: string | null
+          payment_amount_crypto?: string | null
+          payment_amount_usd?: number | null
+          payment_date?: string | null
+          payment_status?: string | null
           quote_number?: string | null
           shipped_date?: string | null
           status?: string
           tracking_number?: string | null
           tracking_updated_at?: string | null
+          transaction_id?: string | null
           updated_at?: string | null
           user_id?: string
         }

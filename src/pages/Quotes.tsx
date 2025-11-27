@@ -929,7 +929,7 @@ const Quotes = () => {
                 New Quote
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Quote" : "New Quote"}
@@ -1236,7 +1236,7 @@ const Quotes = () => {
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Quote Details</DialogTitle>
               <DialogDescription>

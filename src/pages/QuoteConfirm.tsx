@@ -17,8 +17,11 @@ const QuoteConfirm = () => {
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [quote, setQuote] = useState<any>(null);
+  const [quoteItems, setQuoteItems] = useState<any[]>([]);
   const [quoteNumber, setQuoteNumber] = useState("");
   const [labResponse, setLabResponse] = useState("");
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [discountAmount, setDiscountAmount] = useState("");
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -43,7 +46,27 @@ const QuoteConfirm = () => {
         return;
       }
 
+      // Fetch quote items
+      const { data: items, error: itemsError } = await supabase
+        .from("quote_items")
+        .select(`
+          *,
+          products (name)
+        `)
+        .eq("quote_id", quoteId);
+
+      if (itemsError) {
+        toast({
+          title: "Error",
+          description: "Failed to load quote items.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       setQuote(data);
+      setQuoteItems(items || []);
       if (data.status === "approved") {
         setConfirmed(true);
       }
@@ -53,17 +76,87 @@ const QuoteConfirm = () => {
     fetchQuote();
   }, [quoteId, toast]);
 
+  const handleItemPriceChange = (itemId: string, newPrice: string) => {
+    setQuoteItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, price: newPrice } : item
+      )
+    );
+  };
+
+  const calculateTotal = () => {
+    const subtotal = quoteItems.reduce((sum, item) => {
+      const basePrice = parseFloat(item.price || "0");
+      const additionalSamples = item.additional_samples || 0;
+      const additionalHeaders = item.additional_report_headers || 0;
+      
+      let itemTotal = basePrice;
+      
+      // Add additional samples cost
+      if (additionalSamples > 0) {
+        const productName = item.products?.name || "";
+        if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
+          itemTotal += additionalSamples * 60;
+        }
+      }
+      
+      // Add additional headers cost
+      if (additionalHeaders > 0) {
+        itemTotal += additionalHeaders * 30;
+      }
+      
+      return sum + itemTotal;
+    }, 0);
+
+    let discount = 0;
+    if (discountAmount) {
+      const discountValue = parseFloat(discountAmount);
+      if (discountType === "percentage") {
+        discount = (subtotal * discountValue) / 100;
+      } else {
+        discount = discountValue;
+      }
+    }
+
+    return {
+      subtotal,
+      discount,
+      total: subtotal - discount
+    };
+  };
+
   const handleConfirm = async () => {
     if (!quoteId) return;
 
     setConfirming(true);
 
+    // Update quote items with new prices
+    for (const item of quoteItems) {
+      const { error: itemError } = await supabase
+        .from("quote_items")
+        .update({ price: parseFloat(item.price || "0") })
+        .eq("id", item.id);
+
+      if (itemError) {
+        toast({
+          title: "Error",
+          description: "Failed to update quote items.",
+          variant: "destructive",
+        });
+        setConfirming(false);
+        return;
+      }
+    }
+
+    // Update quote
     const { error } = await supabase
       .from("quotes")
       .update({
         status: "approved",
         quote_number: quoteNumber || null,
         lab_response: labResponse,
+        discount_amount: discountAmount ? parseFloat(discountAmount) : null,
+        discount_type: discountAmount ? discountType : null,
       })
       .eq("id", quoteId);
 
@@ -160,6 +253,86 @@ const QuoteConfirm = () => {
             />
           </div>
 
+          <div className="space-y-4">
+            <Label className="text-sm font-medium">Quote Items</Label>
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-3 font-medium">Product</th>
+                    <th className="text-left p-3 font-medium">Details</th>
+                    <th className="text-right p-3 font-medium">Price ($)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quoteItems.map((item) => (
+                    <tr key={item.id} className="border-t">
+                      <td className="p-3">{item.products?.name}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {item.client && <div>Client: {item.client}</div>}
+                        {item.sample && <div>Sample: {item.sample}</div>}
+                        {item.additional_samples > 0 && (
+                          <div>+{item.additional_samples} samples (${item.additional_samples * 60})</div>
+                        )}
+                        {item.additional_report_headers > 0 && (
+                          <div>+{item.additional_report_headers} headers (${item.additional_report_headers * 30})</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={item.price || ""}
+                          onChange={(e) => handleItemPriceChange(item.id, e.target.value)}
+                          className="w-24 ml-auto text-right"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-4 border-t pt-4">
+            <Label className="text-sm font-medium">Discount (Optional)</Label>
+            <div className="flex gap-2">
+              <select
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}
+                className="h-10 rounded-md border border-input bg-background px-3 py-2"
+              >
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed Amount ($)</option>
+              </select>
+              <Input
+                type="number"
+                step="0.01"
+                value={discountAmount}
+                onChange={(e) => setDiscountAmount(e.target.value)}
+                placeholder={discountType === "percentage" ? "0" : "0.00"}
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          <div className="border-t pt-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal:</span>
+              <span>${calculateTotal().subtotal.toFixed(2)}</span>
+            </div>
+            {calculateTotal().discount > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Discount:</span>
+                <span>-${calculateTotal().discount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-semibold">
+              <span>Total:</span>
+              <span>${calculateTotal().total.toFixed(2)}</span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="lab-response" className="text-sm font-medium">
               Message to Customer (Optional)
@@ -182,7 +355,7 @@ const QuoteConfirm = () => {
             className="w-full"
           >
             {confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm Quote
+            Confirm Quote with Updates
           </Button>
         </CardContent>
       </Card>

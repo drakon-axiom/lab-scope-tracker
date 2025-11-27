@@ -20,6 +20,10 @@ interface QuoteEmailRequest {
   }>;
   notes: string | null;
   totalValue: number;
+  emailTemplate?: {
+    subject: string;
+    body: string;
+  };
 }
 
 Deno.serve(async (req) => {
@@ -35,7 +39,8 @@ Deno.serve(async (req) => {
       quoteNumber, 
       items, 
       notes, 
-      totalValue 
+      totalValue,
+      emailTemplate 
     }: QuoteEmailRequest = await req.json();
 
     console.log(`Processing email request for ${labEmail}`);
@@ -100,7 +105,55 @@ Deno.serve(async (req) => {
       return rows;
     }).join('');
 
-    const htmlContent = `
+    // Use custom template or default
+    let htmlContent: string;
+    let emailSubject: string;
+
+    if (emailTemplate) {
+      // Replace template variables
+      emailSubject = emailTemplate.subject
+        .replace(/\{\{quote_number\}\}/g, quoteNumber || 'Pending')
+        .replace(/\{\{lab_name\}\}/g, labName);
+
+      const itemsForTemplate = items.map((item, index) => `
+        <div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <strong>${index + 1}. ${item.productName}</strong> - $${(item.price || 0).toFixed(2)}<br/>
+          <div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">
+            Client: ${item.client || '—'}<br/>
+            Sample: ${item.sample || '—'}<br/>
+            Manufacturer: ${item.manufacturer || '—'}<br/>
+            Batch: ${item.batch || '—'}
+          </div>
+        </div>
+      `).join('');
+
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div style="white-space: pre-wrap;">${emailTemplate.body
+              .replace(/\{\{lab_name\}\}/g, labName)
+              .replace(/\{\{quote_number\}\}/g, quoteNumber || 'Pending')
+              .replace(/\{\{quote_items\}\}/g, itemsForTemplate)
+              .replace(/\{\{total\}\}/g, `$${totalValue.toFixed(2)}`)
+            }</div>
+            ${notes ? `<div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      // Default template
+      emailSubject = `Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ''}`;
+      htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -163,7 +216,8 @@ Deno.serve(async (req) => {
           </div>
         </body>
       </html>
-    `;
+      `;
+    }
 
     const textContent = `
 Testing Quote Request
@@ -309,7 +363,7 @@ Thank you for your service!
       const emailData = [
         `From: ${smtpUser}`,
         `To: ${labEmail}`,
-        `Subject: Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ''}`,
+        `Subject: ${emailSubject}`,
         `MIME-Version: 1.0`,
         `Content-Type: multipart/alternative; boundary="boundary123"`,
         ``,

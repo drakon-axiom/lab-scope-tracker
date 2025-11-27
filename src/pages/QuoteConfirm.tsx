@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +17,7 @@ const QuoteConfirm = () => {
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [quote, setQuote] = useState<any>(null);
+  const [quoteNumber, setQuoteNumber] = useState("");
   const [labResponse, setLabResponse] = useState("");
 
   useEffect(() => {
@@ -59,6 +62,7 @@ const QuoteConfirm = () => {
       .from("quotes")
       .update({
         status: "approved",
+        quote_number: quoteNumber || null,
         lab_response: labResponse,
       })
       .eq("id", quoteId);
@@ -140,19 +144,31 @@ const QuoteConfirm = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2 text-sm">
-            <p><strong>Quote Number:</strong> {quote.quote_number || "Not assigned"}</p>
             <p><strong>Lab:</strong> {quote.labs.name}</p>
             <p><strong>Current Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <Label htmlFor="quote-number" className="text-sm font-medium">
+              Quote Number
+            </Label>
+            <Input
+              id="quote-number"
+              value={quoteNumber}
+              onChange={(e) => setQuoteNumber(e.target.value)}
+              placeholder="Enter your quote number"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lab-response" className="text-sm font-medium">
               Message to Customer (Optional)
-            </label>
+            </Label>
             <p className="text-sm text-muted-foreground">
               Provide payment information, updated pricing, or any other details the customer needs to know.
             </p>
             <Textarea
+              id="lab-response"
               value={labResponse}
               onChange={(e) => setLabResponse(e.target.value)}
               placeholder="e.g., Payment information: Wire transfer to account #123456. Updated quote total: $500. Expected turnaround: 5-7 business days."

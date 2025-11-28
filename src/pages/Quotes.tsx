@@ -47,8 +47,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, LayoutGrid, Table as TableIcon } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
+import { QuoteKanbanBoard } from "@/components/QuoteKanbanBoard";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -176,6 +177,7 @@ const Quotes = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const { toast } = useToast();
 
   // Input validation schema
@@ -1587,8 +1589,29 @@ const Quotes = () => {
           </TabsList>
 
           <TabsContent value="quotes" className="mt-6">
-            {/* Search and Filter Controls */}
+            {/* View Mode Toggle and Search/Filter Controls */}
             <div className="mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                  >
+                    <TableIcon className="h-4 w-4 mr-2" />
+                    Table View
+                  </Button>
+                  <Button
+                    variant={viewMode === "kanban" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("kanban")}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    Kanban View
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex flex-col gap-4 md:flex-row md:items-end">
                 <div className="flex-1">
                   <Label htmlFor="search">Search Quotes</Label>
@@ -1676,8 +1699,9 @@ const Quotes = () => {
               </div>
             </div>
 
-            <div className="border rounded-lg">
-              <Table>
+            {viewMode === "table" ? (
+              <div className="border rounded-lg">
+                <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Quote #</TableHead>
@@ -1822,6 +1846,90 @@ const Quotes = () => {
             </TableBody>
           </Table>
         </div>
+            ) : (
+              <QuoteKanbanBoard
+                quotes={(() => {
+                  let filteredQuotes = quotes;
+
+                  if (searchQuery.trim()) {
+                    const query = searchQuery.toLowerCase();
+                    filteredQuotes = filteredQuotes.filter(
+                      (quote) =>
+                        quote.quote_number?.toLowerCase().includes(query) ||
+                        quote.notes?.toLowerCase().includes(query) ||
+                        quote.tracking_number?.toLowerCase().includes(query) ||
+                        quote.labs.name.toLowerCase().includes(query)
+                    );
+                  }
+
+                  if (filterStatus !== "all") {
+                    filteredQuotes = filteredQuotes.filter(
+                      (quote) => quote.status === filterStatus
+                    );
+                  }
+
+                  if (filterLab !== "all") {
+                    filteredQuotes = filteredQuotes.filter(
+                      (quote) => quote.lab_id === filterLab
+                    );
+                  }
+
+                  return filteredQuotes;
+                })()}
+                onStatusUpdate={async (quoteId, newStatus) => {
+                  try {
+                    const { error } = await supabase
+                      .from("quotes")
+                      .update({ status: newStatus })
+                      .eq("id", quoteId);
+
+                    if (error) throw error;
+
+                    toast({
+                      title: "Success",
+                      description: "Quote status updated",
+                    });
+
+                    fetchQuotes();
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                onViewQuote={(quote) => {
+                  setSelectedQuote(quote);
+                  fetchQuoteItems(quote.id);
+                  fetchTrackingHistory(quote.id);
+                  setViewDialogOpen(true);
+                }}
+                onEditQuote={(quote) => {
+                  setEditingId(quote.id);
+                  setFormData({
+                    lab_id: quote.lab_id,
+                    quote_number: quote.quote_number || "",
+                    status: quote.status,
+                    notes: quote.notes || "",
+                    tracking_number: quote.tracking_number || "",
+                    shipped_date: quote.shipped_date || "",
+                    payment_status: quote.payment_status || "pending",
+                    payment_amount_usd: quote.payment_amount_usd?.toString() || "",
+                    payment_amount_crypto: quote.payment_amount_crypto || "",
+                    payment_date: quote.payment_date || "",
+                    transaction_id: quote.transaction_id || "",
+                  });
+                  fetchQuoteItems(quote.id);
+                  setDialogOpen(true);
+                }}
+                onManageItems={(quote) => {
+                  setSelectedQuote(quote);
+                  fetchQuoteItems(quote.id);
+                  setItemsDialogOpen(true);
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="email-templates">

@@ -16,6 +16,10 @@ const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebar-state');
+    return saved !== 'collapsed';
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -50,8 +54,9 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <SidebarProvider 
-      defaultOpen={localStorage.getItem('sidebar-state') !== 'collapsed'}
+      open={sidebarOpen}
       onOpenChange={(open) => {
+        setSidebarOpen(open);
         localStorage.setItem('sidebar-state', open ? 'expanded' : 'collapsed');
       }}
     >

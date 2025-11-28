@@ -22,7 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign } from "lucide-react";
+import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 
 interface TestingType {
   id: string;
@@ -39,6 +40,8 @@ const TestingTypes = () => {
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
   const [open, setOpen] = useState(false);
   const [editingType, setEditingType] = useState<TestingType | null>(null);
+  const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -259,13 +262,14 @@ const TestingTypes = () => {
                 <TableHead>Price</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Vendor Pricing</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {testingTypes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No testing types found. Add your first testing type to get started.
                   </TableCell>
                 </TableRow>
@@ -283,6 +287,19 @@ const TestingTypes = () => {
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
                       {type.description || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProduct({ id: type.id, name: type.name });
+                          setPricingDialogOpen(true);
+                        }}
+                      >
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Manage
+                      </Button>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -307,6 +324,15 @@ const TestingTypes = () => {
           </Table>
         </div>
       </div>
+
+      {selectedProduct && (
+        <VendorPricingDialog
+          open={pricingDialogOpen}
+          onOpenChange={setPricingDialogOpen}
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+        />
+      )}
     </Layout>
   );
 };

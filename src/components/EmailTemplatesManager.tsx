@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Plus, Pencil, Trash2, Eye } from "lucide-react";
+import { Mail, Plus, Pencil, Trash2, Eye, History, Download, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface EmailTemplate {
   id: string;
@@ -17,6 +18,19 @@ interface EmailTemplate {
   body: string;
   lab_id: string | null;
   is_default: boolean;
+}
+
+interface TemplateVersion {
+  id: string;
+  template_id: string;
+  version_number: number;
+  name: string;
+  subject: string;
+  body: string;
+  lab_id: string | null;
+  is_default: boolean;
+  created_at: string;
+  change_description: string | null;
 }
 
 interface Lab {
@@ -29,6 +43,8 @@ export function EmailTemplatesManager() {
   const [labs, setLabs] = useState<Lab[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [selectedTemplateVersions, setSelectedTemplateVersions] = useState<TemplateVersion[]>([]);
   const [previewContent, setPreviewContent] = useState({ subject: "", body: "" });
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
@@ -123,6 +139,38 @@ Best regards`,
     };
 
     if (editingTemplate) {
+      // Save current version to history before updating
+      const { data: existingTemplate } = await supabase
+        .from("email_templates")
+        .select("*")
+        .eq("id", editingTemplate.id)
+        .single();
+
+      if (existingTemplate) {
+        // Get the current max version number
+        const { data: versions } = await supabase
+          .from("email_template_versions")
+          .select("version_number")
+          .eq("template_id", editingTemplate.id)
+          .order("version_number", { ascending: false })
+          .limit(1);
+
+        const nextVersion = versions && versions.length > 0 ? versions[0].version_number + 1 : 1;
+
+        // Save the old version
+        await supabase.from("email_template_versions").insert({
+          template_id: editingTemplate.id,
+          version_number: nextVersion,
+          name: existingTemplate.name,
+          subject: existingTemplate.subject,
+          body: existingTemplate.body,
+          lab_id: existingTemplate.lab_id,
+          is_default: existingTemplate.is_default,
+          created_by: user.id,
+          change_description: "Updated template"
+        });
+      }
+
       const { error } = await supabase
         .from("email_templates")
         .update(templateData)
@@ -209,14 +257,157 @@ Batch: BATCH-002
     setPreviewOpen(true);
   };
 
+  const handleViewVersionHistory = async (templateId: string) => {
+    const { data, error } = await supabase
+      .from("email_template_versions")
+      .select("*")
+      .eq("template_id", templateId)
+      .order("version_number", { ascending: false });
+
+    if (error) {
+      toast({ title: "Error fetching version history", description: error.message, variant: "destructive" });
+    } else {
+      setSelectedTemplateVersions(data || []);
+      setVersionHistoryOpen(true);
+    }
+  };
+
+  const handleRevertToVersion = async (version: TemplateVersion) => {
+    if (!confirm(`Revert to version ${version.version_number}? This will create a new version with this content.`)) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get current template to save as a version
+    const { data: currentTemplate } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("id", version.template_id)
+      .single();
+
+    if (currentTemplate) {
+      // Get the current max version number
+      const { data: versions } = await supabase
+        .from("email_template_versions")
+        .select("version_number")
+        .eq("template_id", version.template_id)
+        .order("version_number", { ascending: false })
+        .limit(1);
+
+      const nextVersion = versions && versions.length > 0 ? versions[0].version_number + 1 : 1;
+
+      // Save current as a version
+      await supabase.from("email_template_versions").insert({
+        template_id: version.template_id,
+        version_number: nextVersion,
+        name: currentTemplate.name,
+        subject: currentTemplate.subject,
+        body: currentTemplate.body,
+        lab_id: currentTemplate.lab_id,
+        is_default: currentTemplate.is_default,
+        created_by: user.id,
+        change_description: `Reverted to version ${version.version_number}`
+      });
+
+      // Update template with version data
+      const { error } = await supabase
+        .from("email_templates")
+        .update({
+          name: version.name,
+          subject: version.subject,
+          body: version.body,
+          lab_id: version.lab_id,
+          is_default: version.is_default,
+        })
+        .eq("id", version.template_id);
+
+      if (error) {
+        toast({ title: "Error reverting version", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Reverted to previous version successfully" });
+        fetchTemplates();
+        setVersionHistoryOpen(false);
+      }
+    }
+  };
+
+  const handleExportTemplate = (template: EmailTemplate) => {
+    const exportData = {
+      name: template.name,
+      subject: template.subject,
+      body: template.body,
+      is_default: template.is_default,
+      exported_at: new Date().toISOString(),
+      version: "1.0"
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `template-${template.name.toLowerCase().replace(/\s+/g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({ title: "Template exported successfully" });
+  };
+
+  const handleImportTemplate = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const importData = JSON.parse(event.target?.result as string);
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { error } = await supabase.from("email_templates").insert({
+            name: `${importData.name} (Imported)`,
+            subject: importData.subject,
+            body: importData.body,
+            is_default: false, // Don't import as default
+            lab_id: null,
+            user_id: user.id,
+          });
+
+          if (error) {
+            toast({ title: "Error importing template", description: error.message, variant: "destructive" });
+          } else {
+            toast({ title: "Template imported successfully" });
+            fetchTemplates();
+          }
+        } catch (error) {
+          toast({ title: "Error parsing file", description: "Invalid template file format", variant: "destructive" });
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Email Templates</h3>
-        <Button onClick={() => handleOpenDialog()} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          New Template
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleImportTemplate} variant="outline" size="sm">
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button onClick={() => handleOpenDialog()} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -232,6 +423,22 @@ Batch: BATCH-002
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleViewVersionHistory(template.id)}
+                    title="View version history"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleExportTemplate(template)}
+                    title="Export template"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -412,6 +619,67 @@ Batch: BATCH-002
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version History Dialog */}
+      <Dialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Version History</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {selectedTemplateVersions.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No version history available</p>
+            ) : (
+              selectedTemplateVersions.map((version) => (
+                <Card key={version.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          Version {version.version_number}
+                          <Badge variant="secondary" className="text-xs">
+                            {new Date(version.created_at).toLocaleString()}
+                          </Badge>
+                        </CardTitle>
+                        {version.change_description && (
+                          <CardDescription>{version.change_description}</CardDescription>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevertToVersion(version)}
+                      >
+                        <History className="h-4 w-4 mr-2" />
+                        Revert
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div>
+                      <p className="text-sm font-semibold">Name:</p>
+                      <p className="text-sm text-muted-foreground">{version.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Subject:</p>
+                      <p className="text-sm text-muted-foreground">{version.subject}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Body Preview:</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3">{version.body}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionHistoryOpen(false)}>
               Close
             </Button>
           </DialogFooter>

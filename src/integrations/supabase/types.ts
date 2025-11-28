@@ -311,6 +311,57 @@ export type Database = {
         }
         Relationships: []
       }
+      product_vendor_pricing: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          lab_id: string
+          notes: string | null
+          price: number
+          product_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lab_id: string
+          notes?: string | null
+          price: number
+          product_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lab_id?: string
+          notes?: string | null
+          price?: number
+          product_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_vendor_pricing_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_vendor_pricing_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string

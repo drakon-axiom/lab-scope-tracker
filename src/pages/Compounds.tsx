@@ -51,6 +51,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 
 interface Compound {
   id: string;
@@ -1038,9 +1039,13 @@ const Compounds = () => {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="cursor-help border-b border-dotted border-muted-foreground">
-                                {compound.name}
-                              </span>
+                              <div className="flex items-center gap-2 cursor-help border-b border-dotted border-muted-foreground w-fit">
+                                {(() => {
+                                  const CategoryIcon = getCategoryIcon(compound.category);
+                                  return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                                })()}
+                                <span>{compound.name}</span>
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                               <p className="font-semibold mb-1">Aliases:</p>
@@ -1053,12 +1058,24 @@ const Compounds = () => {
                           </Tooltip>
                         </TooltipProvider>
                       ) : (
-                        compound.name
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const CategoryIcon = getCategoryIcon(compound.category);
+                            return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                          })()}
+                          <span>{compound.name}</span>
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
                       {compound.category ? (
-                        <Badge variant="secondary">{compound.category}</Badge>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const CategoryIcon = getCategoryIcon(compound.category);
+                            return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                          })()}
+                          <Badge variant="secondary">{compound.category}</Badge>
+                        </div>
                       ) : "—"}
                     </TableCell>
                     <TableCell>{compound.standard || "—"}</TableCell>

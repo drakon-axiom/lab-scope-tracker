@@ -6,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EmailTemplatesManager } from "@/components/EmailTemplatesManager";
 import { EmailPreviewDialog } from "@/components/EmailPreviewDialog";
 import { EmailHistoryDialog } from "@/components/EmailHistoryDialog";
 import {
@@ -1599,15 +1597,8 @@ const Quotes = () => {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="quotes" className="w-full">
-          <TabsList>
-            <TabsTrigger value="quotes">Quotes</TabsTrigger>
-            <TabsTrigger value="email-templates">Email Templates</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="quotes" className="mt-6">
-            {/* View Mode Toggle and Search/Filter Controls */}
-            <div className="mb-6 space-y-4">
+        {/* View Mode Toggle and Search/Filter Controls */}
+        <div className="mb-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex gap-2">
                   <Button
@@ -2005,14 +1996,6 @@ const Quotes = () => {
                 }}
               />
             )}
-          </TabsContent>
-
-          <TabsContent value="email-templates">
-            <div className="border rounded-lg p-6">
-              <EmailTemplatesManager />
-            </div>
-          </TabsContent>
-        </Tabs>
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>

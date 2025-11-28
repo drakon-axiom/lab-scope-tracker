@@ -1,4 +1,4 @@
-import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut } from "lucide-react";
+import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut, Bell } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
@@ -35,6 +35,7 @@ const mainNavItems = [
 
 const utilityNavItems = [
   { title: "Bulk Import", url: "/bulk-import", icon: Upload },
+  { title: "Notifications", url: "/notifications", icon: Bell },
 ];
 
 interface AppSidebarProps {

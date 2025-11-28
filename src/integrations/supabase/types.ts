@@ -102,6 +102,63 @@ export type Database = {
           },
         ]
       }
+      email_template_versions: {
+        Row: {
+          body: string
+          change_description: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_default: boolean
+          lab_id: string | null
+          name: string
+          subject: string
+          template_id: string
+          version_number: number
+        }
+        Insert: {
+          body: string
+          change_description?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_default?: boolean
+          lab_id?: string | null
+          name: string
+          subject: string
+          template_id: string
+          version_number: number
+        }
+        Update: {
+          body?: string
+          change_description?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_default?: boolean
+          lab_id?: string | null
+          name?: string
+          subject?: string
+          template_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_template_versions_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string

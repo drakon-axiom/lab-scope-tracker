@@ -41,49 +41,10 @@ const Layout = ({ children }: LayoutProps) => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Check MFA status and enforce it
+  // Set mfaChecked to true immediately - MFA is optional
   useEffect(() => {
-    const checkAndEnforceMFA = async () => {
-      if (!user) return;
-      
-      // Skip MFA check for MFA setup and settings pages
-      const currentPath = window.location.pathname;
-      if (currentPath === "/mfa-setup" || currentPath === "/settings") {
-        setMfaChecked(true);
-        return;
-      }
-
-      try {
-        const { data: factors, error } = await supabase.auth.mfa.listFactors();
-        
-        if (error) {
-          console.error("Error checking MFA status:", error);
-          setMfaChecked(true);
-          return;
-        }
-
-        const hasVerifiedMFA = factors?.totp?.some(
-          (factor) => factor.status === "verified"
-        );
-
-        if (!hasVerifiedMFA) {
-          toast({
-            title: "2FA Required",
-            description: "Please set up two-factor authentication to continue.",
-            variant: "destructive",
-          });
-          navigate("/mfa-setup");
-        } else {
-          setMfaChecked(true);
-        }
-      } catch (error) {
-        console.error("Error enforcing MFA:", error);
-        setMfaChecked(true);
-      }
-    };
-
-    checkAndEnforceMFA();
-  }, [user, navigate, toast]);
+    setMfaChecked(true);
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

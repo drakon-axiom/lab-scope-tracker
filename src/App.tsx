@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Compounds from "./pages/Compounds";
+import CompoundDetails from "./pages/CompoundDetails";
 import Labs from "./pages/Labs";
 import Quotes from "./pages/Quotes";
 import BulkImport from "./pages/BulkImport";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/compounds" element={<Compounds />} />
+          <Route path="/compounds/:id" element={<CompoundDetails />} />
           <Route path="/products" element={<Compounds />} />
           <Route path="/testing-types" element={<Compounds />} />
           <Route path="/labs" element={<Labs />} />

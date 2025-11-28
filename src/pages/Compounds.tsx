@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 interface Compound {
   id: string;
@@ -71,6 +80,8 @@ const Compounds = () => {
   const [durationFilter, setDurationFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"name" | "standard" | "duration">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const fetchCompounds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -265,7 +276,7 @@ const Compounds = () => {
   const uniqueStandards = Array.from(new Set(compounds.map(c => c.standard).filter(Boolean)));
 
   // Filter and sort compounds
-  const filteredAndSortedCompounds = compounds
+  const filteredAndSortedCompounds = useMemo(() => compounds
     .filter(compound => {
       // Search filter
       if (searchQuery && !compound.name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -311,7 +322,48 @@ const Compounds = () => {
       }
       
       return sortOrder === "asc" ? compareValue : -compareValue;
-    });
+    }), [compounds, searchQuery, standardFilter, durationFilter, sortBy, sortOrder]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, standardFilter, durationFilter, sortBy, sortOrder]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedCompounds.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCompounds = filteredAndSortedCompounds.slice(startIndex, endIndex);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   const handleSort = (column: "name" | "standard" | "duration") => {
     if (sortBy === column) {
@@ -494,14 +546,35 @@ const Compounds = () => {
           )}
         </div>
 
-        {/* Results count */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>
-            Showing {filteredAndSortedCompounds.length} of {compounds.length} compounds
+        {/* Results count and pagination controls */}
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <div>
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedCompounds.length)} of {filteredAndSortedCompounds.length} compound{filteredAndSortedCompounds.length !== 1 ? "s" : ""}
+            </div>
+            {hasActiveFilters && (
+              <Badge variant="secondary">Filters Active</Badge>
+            )}
           </div>
-          {hasActiveFilters && (
-            <Badge variant="secondary">Filters Active</Badge>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Per page:</span>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[80px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="rounded-md border">
@@ -556,7 +629,7 @@ const Compounds = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedCompounds.length === 0 ? (
+              {paginatedCompounds.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     {compounds.length === 0 ? (
@@ -572,7 +645,7 @@ const Compounds = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAndSortedCompounds.map((compound) => (
+                paginatedCompounds.map((compound) => (
                   <TableRow key={compound.id}>
                     <TableCell>
                       <Checkbox
@@ -623,6 +696,45 @@ const Compounds = () => {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center pt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+
+                {getPageNumbers().map((page, index) => (
+                  <PaginationItem key={index}>
+                    {page === "ellipsis" ? (
+                      <PaginationEllipsis />
+                    ) : (
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    )}
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
 
       {selectedCompound && (

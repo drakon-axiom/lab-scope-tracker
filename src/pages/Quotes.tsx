@@ -183,9 +183,6 @@ const Quotes = () => {
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterLockStatus, setFilterLockStatus] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
-  const [selectedVendorForItem, setSelectedVendorForItem] = useState("");
-  const [availableVendorPrices, setAvailableVendorPrices] = useState<Array<{lab_id: string, lab_name: string, price: number}>>([]);
-  const [showPricingWarning, setShowPricingWarning] = useState(false);
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const { toast } = useToast();
 
@@ -324,12 +321,19 @@ const Quotes = () => {
   const fetchProducts = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !selectedQuote) return;
 
+      // Only fetch products that have pricing for the selected quote's lab
       const { data, error } = await supabase
         .from("products")
-        .select("id, name")
+        .select(`
+          id, 
+          name,
+          product_vendor_pricing!inner(lab_id, price, is_active)
+        `)
         .eq("user_id", user.id)
+        .eq("product_vendor_pricing.lab_id", selectedQuote.lab_id)
+        .eq("product_vendor_pricing.is_active", true)
         .order("name");
 
       if (error) throw error;
@@ -390,47 +394,9 @@ const Quotes = () => {
           ...prev,
           price: data.price.toString(),
         }));
-        setShowPricingWarning(false);
-      } else {
-        // No pricing found for this vendor
-        setShowPricingWarning(true);
       }
     } catch (error: any) {
       console.error("Error fetching vendor price:", error);
-    }
-  };
-
-  const fetchAvailableVendorPrices = async (productId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("product_vendor_pricing")
-        .select("lab_id, price, labs(name)")
-        .eq("product_id", productId)
-        .eq("is_active", true);
-
-      if (error) throw error;
-      
-      const prices = (data || []).map(d => ({
-        lab_id: d.lab_id,
-        lab_name: (d.labs as any)?.name || "",
-        price: d.price
-      }));
-      
-      setAvailableVendorPrices(prices);
-      
-      // If there's only one vendor with pricing, auto-select it
-      if (prices.length === 1) {
-        setSelectedVendorForItem(prices[0].lab_id);
-        setItemFormData((prev) => ({
-          ...prev,
-          price: prices[0].price.toString(),
-        }));
-        setShowPricingWarning(false);
-      } else if (prices.length === 0) {
-        setShowPricingWarning(true);
-      }
-    } catch (error: any) {
-      console.error("Error fetching available vendor prices:", error);
     }
   };
 
@@ -598,9 +564,6 @@ const Quotes = () => {
     });
     setEditingItemId(null);
     setSelectedFile(null);
-    setSelectedVendorForItem("");
-    setAvailableVendorPrices([]);
-    setShowPricingWarning(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -714,6 +677,7 @@ const Quotes = () => {
   const handleManageItems = (quote: Quote) => {
     setSelectedQuote(quote);
     fetchQuoteItems(quote.id);
+    fetchProducts(); // Fetch products for the selected quote's lab
     setItemsDialogOpen(true);
   };
 
@@ -1388,10 +1352,7 @@ const Quotes = () => {
         })),
       }));
       
-      // Fetch available vendor prices for this product
-      fetchAvailableVendorPrices(productId);
-      
-      // Auto-fetch price if there's a selected lab
+      // Auto-fetch price for the quote's lab
       if (selectedQuote?.lab_id) {
         fetchVendorPrice(productId, selectedQuote.lab_id);
       }
@@ -2102,6 +2063,7 @@ const Quotes = () => {
                   }
                   setSelectedQuote(quote as Quote);
                   fetchQuoteItems(quote.id);
+                  fetchProducts(); // Fetch products for the selected quote's lab
                   setItemsDialogOpen(true);
                 }}
               />
@@ -2553,65 +2515,6 @@ const Quotes = () => {
                     />
                   </div>
                   
-                  {/* Vendor Selection for Item */}
-                  {availableVendorPrices.length > 0 && (
-                    <div className="space-y-2 col-span-2">
-                      <Label>Vendor for this Item</Label>
-                      <Select
-                        value={selectedVendorForItem}
-                        onValueChange={(vendorId) => {
-                          setSelectedVendorForItem(vendorId);
-                          const vendor = availableVendorPrices.find(v => v.lab_id === vendorId);
-                          if (vendor) {
-                            setItemFormData((prev) => ({
-                              ...prev,
-                              price: vendor.price.toString(),
-                            }));
-                            setShowPricingWarning(false);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className={cn(
-                          showPricingWarning && "border-destructive"
-                        )}>
-                          <SelectValue placeholder="Select vendor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableVendorPrices.map((vendor) => (
-                            <SelectItem key={vendor.lab_id} value={vendor.lab_id}>
-                              {vendor.lab_name} - ${vendor.price.toFixed(2)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {availableVendorPrices.length > 1 && (
-                        <p className="text-xs text-muted-foreground">
-                          Multiple vendors available. Select one to apply their pricing.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Pricing Warning */}
-                  {showPricingWarning && itemFormData.product_id && selectedQuote && (
-                    <div className="col-span-2 p-3 border border-destructive/50 rounded-lg bg-destructive/10">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs font-bold">
-                          !
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-destructive">
-                            No pricing configured
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            This product doesn't have pricing set for {selectedQuote.labs?.name || "the selected lab"}. 
-                            You can either enter a custom price or configure vendor pricing.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
                   <div className="space-y-2 col-span-2">
                     <Label>Price</Label>
                     <Input
@@ -2622,9 +2525,6 @@ const Quotes = () => {
                         setItemFormData({ ...itemFormData, price: e.target.value })
                       }
                       placeholder="0.00"
-                      className={cn(
-                        showPricingWarning && !itemFormData.price && "border-destructive"
-                      )}
                     />
                   </div>
                   <div className="space-y-3 col-span-2">

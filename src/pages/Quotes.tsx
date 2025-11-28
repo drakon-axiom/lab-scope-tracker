@@ -141,6 +141,7 @@ interface TrackingHistory {
 const Quotes = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
@@ -326,7 +327,16 @@ const Quotes = () => {
       const targetLabId = labId || selectedQuote?.lab_id;
       if (!targetLabId) return;
 
-      // First, get all product IDs that have active pricing for this lab
+      // Fetch all products for the user
+      const { data: allProductsData, error: allProductsError } = await supabase
+        .from("products")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (allProductsError) throw allProductsError;
+
+      // Get product IDs that have active pricing for this lab
       const { data: pricingData, error: pricingError } = await supabase
         .from("product_vendor_pricing")
         .select("product_id")
@@ -335,23 +345,20 @@ const Quotes = () => {
 
       if (pricingError) throw pricingError;
 
-      const productIds = pricingData?.map(p => p.product_id) || [];
+      const productIdsWithPricing = pricingData?.map(p => p.product_id) || [];
 
-      if (productIds.length === 0) {
-        setProducts([]);
-        return;
-      }
+      // Filter products that have pricing
+      const productsWithPricing = allProductsData?.filter(p => 
+        productIdsWithPricing.includes(p.id)
+      ) || [];
 
-      // Then fetch only those products
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .in("id", productIds)
-        .order("name");
+      // Filter products that don't have pricing
+      const productsWithoutPricing = allProductsData?.filter(p => 
+        !productIdsWithPricing.includes(p.id)
+      ) || [];
 
-      if (error) throw error;
-      setProducts(data || []);
+      setProducts(productsWithPricing);
+      setProductsMissingPricing(productsWithoutPricing);
     } catch (error: any) {
       console.error("Error fetching products:", error);
     }
@@ -2370,6 +2377,28 @@ const Quotes = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
+              {productsMissingPricing.length > 0 && selectedQuote && (
+                <div className="p-4 bg-muted rounded-lg border border-border">
+                  <div className="flex gap-2 items-start">
+                    <div className="text-muted-foreground mt-0.5">ℹ️</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-1">
+                        Missing Vendor Pricing for {labs.find(l => l.id === selectedQuote.lab_id)?.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        The following compounds don't have pricing configured for this vendor and won't appear in the dropdown:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {productsMissingPricing.map((product, idx) => (
+                          <span key={product.id} className="text-xs bg-background px-2 py-1 rounded border">
+                            {product.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleAddItem} className="space-y-4 p-4 border rounded-lg">
                 <div className="flex justify-between items-center">
                   <h3 className="font-medium">

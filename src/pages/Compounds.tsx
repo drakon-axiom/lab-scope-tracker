@@ -403,7 +403,7 @@ const Compounds = () => {
     if (bulkUpdateData.standard) updateData.standard = bulkUpdateData.standard;
     if (bulkUpdateData.duration_days) updateData.duration_days = parseInt(bulkUpdateData.duration_days);
     if (bulkUpdateData.description) updateData.description = bulkUpdateData.description;
-    if (bulkUpdateData.category) updateData.category = bulkUpdateData.category;
+    if (bulkUpdateData.category && bulkUpdateData.category !== "__keep_existing__") updateData.category = bulkUpdateData.category;
 
     if (Object.keys(updateData).length === 0) {
       toast({
@@ -1336,7 +1336,7 @@ const Compounds = () => {
                   <SelectValue placeholder="Leave empty to keep existing values" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Keep existing values</SelectItem>
+                  <SelectItem value="__keep_existing__">Keep existing values</SelectItem>
                   {uniqueCategories.map((category) => (
                     <SelectItem key={category} value={category!}>
                       {category}

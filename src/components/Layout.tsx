@@ -49,7 +49,12 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider 
+      defaultOpen={localStorage.getItem('sidebar-state') !== 'collapsed'}
+      onOpenChange={(open) => {
+        localStorage.setItem('sidebar-state', open ? 'expanded' : 'collapsed');
+      }}
+    >
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         

@@ -65,6 +65,12 @@ interface QuoteKanbanBoardProps {
   onManageItems: (quote: Quote) => void;
 }
 
+// Helper function to check if quote is locked (paid or later status)
+const isQuoteLocked = (status: string) => {
+  const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+  return lockedStatuses.includes(status);
+};
+
 export function QuoteKanbanBoard({
   quotes,
   onStatusUpdate,
@@ -97,6 +103,14 @@ export function QuoteKanbanBoard({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
+      // Check if the quote is locked before allowing status change
+      const quote = quotes.find((q) => q.id === active.id);
+      if (quote && isQuoteLocked(quote.status)) {
+        setActiveQuote(null);
+        setOverId(null);
+        return; // Prevent status update for locked quotes
+      }
+
       // Check if dropping on a column
       const column = KANBAN_COLUMNS.find(col => col.id === over.id);
       if (column) {
@@ -202,6 +216,7 @@ function KanbanColumn({
             onViewQuote={onViewQuote}
             onEditQuote={onEditQuote}
             onManageItems={onManageItems}
+            isLocked={isQuoteLocked(quote.status)}
           />
         ))}
 
@@ -218,6 +233,7 @@ function KanbanColumn({
 interface QuoteCardProps {
   quote: Quote;
   isDragging?: boolean;
+  isLocked?: boolean;
   onViewQuote: (quote: Quote) => void;
   onEditQuote: (quote: Quote) => void;
   onManageItems: (quote: Quote) => void;
@@ -226,12 +242,14 @@ interface QuoteCardProps {
 function QuoteCard({
   quote,
   isDragging = false,
+  isLocked = false,
   onViewQuote,
   onEditQuote,
   onManageItems,
 }: QuoteCardProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: quote.id,
+    disabled: isLocked,
   });
 
   const style = transform
@@ -244,10 +262,12 @@ function QuoteCard({
     <Card
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...(isLocked ? {} : listeners)}
       {...attributes}
       className={cn(
-        "cursor-grab active:cursor-grabbing transition-all hover:shadow-md animate-fade-in",
+        "transition-all hover:shadow-md animate-fade-in",
+        !isLocked && "cursor-grab active:cursor-grabbing",
+        isLocked && "opacity-75",
         isDragging && "opacity-50 rotate-2 shadow-xl scale-105"
       )}
     >
@@ -302,6 +322,8 @@ function QuoteCard({
             size="sm"
             className="h-8 flex-1 text-xs"
             onClick={() => onEditQuote(quote)}
+            disabled={isLocked}
+            title={isLocked ? "Cannot edit paid quotes" : "Edit quote"}
           >
             <Pencil className="h-3 w-3 mr-1" />
             Edit

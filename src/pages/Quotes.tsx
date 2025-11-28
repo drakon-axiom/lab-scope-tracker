@@ -149,6 +149,12 @@ const Quotes = () => {
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Helper function to check if quote is locked (paid or later status)
+  const isQuoteLocked = (status: string) => {
+    const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+    return lockedStatuses.includes(status);
+  };
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
@@ -1811,6 +1817,8 @@ const Quotes = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(quote)}
+                          disabled={isQuoteLocked(quote.status)}
+                          title={isQuoteLocked(quote.status) ? "Cannot edit paid quotes" : "Edit quote"}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -1906,6 +1914,14 @@ const Quotes = () => {
                   setViewDialogOpen(true);
                 }}
                 onEditQuote={(quote) => {
+                  if (isQuoteLocked(quote.status)) {
+                    toast({
+                      title: "Cannot Edit",
+                      description: "Quotes cannot be edited after payment",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setEditingId(quote.id);
                   setFormData({
                     lab_id: quote.lab_id,

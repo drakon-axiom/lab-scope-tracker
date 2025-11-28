@@ -183,6 +183,7 @@ const Quotes = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
+  const [filterLockStatus, setFilterLockStatus] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const { toast } = useToast();
 
@@ -985,6 +986,16 @@ const Quotes = () => {
   const handleSendEmail = async () => {
     if (!selectedQuote) return;
     
+    // Prevent sending locked quotes
+    if (isQuoteLocked(selectedQuote.status)) {
+      toast({
+        title: "Cannot Send Quote",
+        description: "Quotes cannot be sent to vendor after payment",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Get lab details
     const lab = labs.find(l => l.id === selectedQuote.lab_id);
     if (!lab) {
@@ -1633,7 +1644,7 @@ const Quotes = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:w-auto">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 md:w-auto">
                   <div className="space-y-2">
                     <Label>Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -1687,8 +1698,21 @@ const Quotes = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Lock Status</Label>
+                    <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Quotes</SelectItem>
+                        <SelectItem value="locked">Locked (Paid+)</SelectItem>
+                        <SelectItem value="unlocked">Unlocked (Pre-Payment)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all") && (
+                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
                   <Button
                     variant="ghost"
                     onClick={() => {
@@ -1696,6 +1720,7 @@ const Quotes = () => {
                       setFilterStatus("all");
                       setFilterLab("all");
                       setFilterProduct("all");
+                      setFilterLockStatus("all");
                     }}
                   >
                     <X className="mr-2 h-4 w-4" />
@@ -1746,6 +1771,16 @@ const Quotes = () => {
                 if (filterLab !== "all") {
                   filteredQuotes = filteredQuotes.filter(
                     (quote) => quote.lab_id === filterLab
+                  );
+                }
+
+                // Lock status filter
+                if (filterLockStatus !== "all") {
+                  filteredQuotes = filteredQuotes.filter(
+                    (quote) => {
+                      const locked = isQuoteLocked(quote.status);
+                      return filterLockStatus === "locked" ? locked : !locked;
+                    }
                   );
                 }
 
@@ -1886,6 +1921,15 @@ const Quotes = () => {
                   if (filterLab !== "all") {
                     filteredQuotes = filteredQuotes.filter(
                       (quote) => quote.lab_id === filterLab
+                    );
+                  }
+
+                  if (filterLockStatus !== "all") {
+                    filteredQuotes = filteredQuotes.filter(
+                      (quote) => {
+                        const locked = isQuoteLocked(quote.status);
+                        return filterLockStatus === "locked" ? locked : !locked;
+                      }
                     );
                   }
 
@@ -2235,6 +2279,8 @@ const Quotes = () => {
                   <Button
                     variant="outline"
                     onClick={handleSendEmail}
+                    disabled={selectedQuote && isQuoteLocked(selectedQuote.status)}
+                    title={selectedQuote && isQuoteLocked(selectedQuote.status) ? "Cannot send paid quotes to vendor" : "Send quote to vendor"}
                   >
                     <Mail className="mr-2 h-4 w-4" />
                     Send to Vendor

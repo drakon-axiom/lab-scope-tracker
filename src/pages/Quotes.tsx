@@ -29,6 +29,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -2371,34 +2376,34 @@ const Quotes = () => {
         <Dialog open={itemsDialogOpen} onOpenChange={setItemsDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Manage Quote Items</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                Manage Quote Items
+                {productsMissingPricing.length > 0 && selectedQuote && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <span className="text-muted-foreground">ℹ️</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <p className="font-medium mb-1">Missing Vendor Pricing</p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {productsMissingPricing.length} compound{productsMissingPricing.length !== 1 ? 's' : ''} don't have pricing for {labs.find(l => l.id === selectedQuote.lab_id)?.name}:
+                      </p>
+                      <div className="text-xs space-y-0.5">
+                        {productsMissingPricing.map((product) => (
+                          <div key={product.id}>• {product.name}</div>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </DialogTitle>
               <DialogDescription>
                 Add or remove items from this quote
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
-              {productsMissingPricing.length > 0 && selectedQuote && (
-                <div className="p-4 bg-muted rounded-lg border border-border">
-                  <div className="flex gap-2 items-start">
-                    <div className="text-muted-foreground mt-0.5">ℹ️</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium mb-1">
-                        Missing Vendor Pricing for {labs.find(l => l.id === selectedQuote.lab_id)?.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        The following compounds don't have pricing configured for this vendor and won't appear in the dropdown:
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {productsMissingPricing.map((product, idx) => (
-                          <span key={product.id} className="text-xs bg-background px-2 py-1 rounded border">
-                            {product.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
               <form onSubmit={handleAddItem} className="space-y-4 p-4 border rounded-lg">
                 <div className="flex justify-between items-center">
                   <h3 className="font-medium">

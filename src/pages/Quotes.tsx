@@ -318,16 +318,19 @@ const Quotes = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (labId?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !selectedQuote) return;
+      if (!user) return;
+      
+      const targetLabId = labId || selectedQuote?.lab_id;
+      if (!targetLabId) return;
 
       // First, get all product IDs that have active pricing for this lab
       const { data: pricingData, error: pricingError } = await supabase
         .from("product_vendor_pricing")
         .select("product_id")
-        .eq("lab_id", selectedQuote.lab_id)
+        .eq("lab_id", targetLabId)
         .eq("is_active", true);
 
       if (pricingError) throw pricingError;
@@ -688,7 +691,7 @@ const Quotes = () => {
   const handleManageItems = (quote: Quote) => {
     setSelectedQuote(quote);
     fetchQuoteItems(quote.id);
-    fetchProducts(); // Fetch products for the selected quote's lab
+    fetchProducts(quote.lab_id); // Fetch products for the selected quote's lab
     setItemsDialogOpen(true);
   };
 

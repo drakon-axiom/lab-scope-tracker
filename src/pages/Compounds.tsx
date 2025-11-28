@@ -75,6 +75,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import { getCategoryColors } from "@/lib/categoryColors";
+import { cn } from "@/lib/utils";
 
 interface Compound {
   id: string;
@@ -1163,7 +1165,7 @@ const Compounds = () => {
                               <div className="flex items-center gap-2 cursor-help border-b border-dotted border-muted-foreground w-fit">
                                 {(() => {
                                   const CategoryIcon = getCategoryIcon(compound.category);
-                                  return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                                  return <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />;
                                 })()}
                                 <span>{compound.name}</span>
                               </div>
@@ -1182,7 +1184,7 @@ const Compounds = () => {
                         <div className="flex items-center gap-2">
                           {(() => {
                             const CategoryIcon = getCategoryIcon(compound.category);
-                            return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                            return <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />;
                           })()}
                           <span>{compound.name}</span>
                         </div>
@@ -1190,13 +1192,13 @@ const Compounds = () => {
                     </TableCell>
                     <TableCell>
                       {compound.category ? (
-                        <div className="flex items-center gap-2">
+                        <Badge className={cn("flex items-center gap-1.5 w-fit", getCategoryColors(compound.category).bg, getCategoryColors(compound.category).text)}>
                           {(() => {
                             const CategoryIcon = getCategoryIcon(compound.category);
-                            return <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+                            return <CategoryIcon className="h-3.5 w-3.5 flex-shrink-0" />;
                           })()}
-                          <Badge variant="secondary">{compound.category}</Badge>
-                        </div>
+                          <span>{compound.category}</span>
+                        </Badge>
                       ) : "—"}
                     </TableCell>
                     <TableCell>{compound.standard || "—"}</TableCell>

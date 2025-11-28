@@ -50,6 +50,26 @@ export default {
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         info: "hsl(var(--info))",
+        "category-peptides": {
+          DEFAULT: "hsl(var(--category-peptides))",
+          foreground: "hsl(var(--category-peptides-foreground))",
+        },
+        "category-sarms": {
+          DEFAULT: "hsl(var(--category-sarms))",
+          foreground: "hsl(var(--category-sarms-foreground))",
+        },
+        "category-aas": {
+          DEFAULT: "hsl(var(--category-aas))",
+          foreground: "hsl(var(--category-aas-foreground))",
+        },
+        "category-research-chemicals": {
+          DEFAULT: "hsl(var(--category-research-chemicals))",
+          foreground: "hsl(var(--category-research-chemicals-foreground))",
+        },
+        "category-supplements": {
+          DEFAULT: "hsl(var(--category-supplements))",
+          foreground: "hsl(var(--category-supplements-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

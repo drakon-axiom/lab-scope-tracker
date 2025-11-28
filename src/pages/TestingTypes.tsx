@@ -22,8 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2 } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
+import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 
 interface TestingType {
   id: string;
@@ -40,6 +41,7 @@ const TestingTypes = () => {
   const [editingType, setEditingType] = useState<TestingType | null>(null);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
+  const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -166,13 +168,21 @@ const TestingTypes = () => {
             <h2 className="text-3xl font-bold tracking-tight">Testing Types</h2>
             <p className="text-muted-foreground">Manage types of testing procedures</p>
           </div>
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Testing Type
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBulkPricingWizardOpen(true)}
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Bulk Pricing Setup
+            </Button>
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Testing Type
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingType ? "Edit" : "Add"} Testing Type</DialogTitle>
@@ -225,6 +235,7 @@ const TestingTypes = () => {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="rounded-md border">
@@ -302,6 +313,19 @@ const TestingTypes = () => {
           productName={selectedProduct.name}
         />
       )}
+      
+      {/* Bulk Vendor Pricing Wizard */}
+      <BulkVendorPricingWizard
+        open={bulkPricingWizardOpen}
+        onOpenChange={setBulkPricingWizardOpen}
+        onComplete={() => {
+          toast({
+            title: "Success",
+            description: "Vendor pricing updated successfully",
+          });
+          fetchTestingTypes();
+        }}
+      />
     </Layout>
   );
 };

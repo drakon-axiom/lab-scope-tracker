@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
-import { Eye, Pencil, Package } from "lucide-react";
+import { Eye, Pencil, Package, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Quote {
@@ -275,9 +275,14 @@ function QuoteCard({
         <div className="space-y-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h4 className="font-medium text-sm">
-              {quote.quote_number || "No Quote #"}
-            </h4>
+            <div className="flex items-center gap-1.5">
+              {isLocked && (
+                <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              )}
+              <h4 className="font-medium text-sm">
+                {quote.quote_number || "No Quote #"}
+              </h4>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">{quote.labs.name}</p>
           </div>
           <StatusBadge status={quote.status} />

@@ -180,6 +180,31 @@ const Compounds = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this compound?")) return;
 
+    // Check if compound is used in any quotes
+    const { data: quoteItems, error: checkError } = await supabase
+      .from("quote_items")
+      .select("id")
+      .eq("product_id", id)
+      .limit(1);
+
+    if (checkError) {
+      toast({
+        title: "Error checking compound usage",
+        description: checkError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quoteItems && quoteItems.length > 0) {
+      toast({
+        title: "Cannot delete compound",
+        description: "This compound is currently used in existing quotes and cannot be deleted. Remove it from all quotes first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {
@@ -216,6 +241,57 @@ const Compounds = () => {
     if (selectedIds.size === 0) return;
     
     if (!confirm(`Are you sure you want to delete ${selectedIds.size} compound(s)?`)) return;
+
+    // Check if any compounds are used in quotes
+    const { data: quoteItems, error: checkError } = await supabase
+      .from("quote_items")
+      .select("product_id")
+      .in("product_id", Array.from(selectedIds));
+
+    if (checkError) {
+      toast({
+        title: "Error checking compound usage",
+        description: checkError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quoteItems && quoteItems.length > 0) {
+      const usedIds = new Set(quoteItems.map(item => item.product_id));
+      const unusedIds = Array.from(selectedIds).filter(id => !usedIds.has(id));
+      
+      if (unusedIds.length === 0) {
+        toast({
+          title: "Cannot delete compounds",
+          description: "All selected compounds are currently used in existing quotes and cannot be deleted.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Partial deletion: delete only unused compounds
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .in("id", unusedIds);
+
+      if (error) {
+        toast({
+          title: "Error deleting compounds",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Partial deletion completed",
+          description: `${unusedIds.length} of ${selectedIds.size} compound(s) deleted. ${usedIds.size} compound(s) are used in quotes and were skipped.`,
+        });
+        setSelectedIds(new Set());
+        fetchCompounds();
+      }
+      return;
+    }
 
     const { error } = await supabase
       .from("products")

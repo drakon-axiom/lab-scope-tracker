@@ -61,16 +61,12 @@ const Layout = ({ children }: LayoutProps) => {
       }}
     >
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar user={user} />
+        <AppSidebar user={user} onSignOut={handleSignOut} />
         
         <div className="flex-1 flex flex-col w-full">
           <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <SidebarTrigger />
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
             </div>
           </header>
           

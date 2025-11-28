@@ -1,8 +1,15 @@
-import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube, FileText, Upload } from "lucide-react";
+import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube, FileText, Upload, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import {
   Sidebar,
@@ -33,9 +40,10 @@ const utilityNavItems = [
 
 interface AppSidebarProps {
   user: User | null;
+  onSignOut: () => void;
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
@@ -107,7 +115,26 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarContent>
 
       {user && (
-        <SidebarFooter className="border-t p-3">
+        <SidebarFooter className="border-t p-3 space-y-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-start">
+                <Settings className="h-4 w-4" />
+                {!collapsed && <span className="ml-2">Settings</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarFallback className="bg-primary text-primary-foreground">

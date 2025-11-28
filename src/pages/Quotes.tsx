@@ -323,17 +323,28 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !selectedQuote) return;
 
-      // Only fetch products that have pricing for the selected quote's lab
+      // First, get all product IDs that have active pricing for this lab
+      const { data: pricingData, error: pricingError } = await supabase
+        .from("product_vendor_pricing")
+        .select("product_id")
+        .eq("lab_id", selectedQuote.lab_id)
+        .eq("is_active", true);
+
+      if (pricingError) throw pricingError;
+
+      const productIds = pricingData?.map(p => p.product_id) || [];
+
+      if (productIds.length === 0) {
+        setProducts([]);
+        return;
+      }
+
+      // Then fetch only those products
       const { data, error } = await supabase
         .from("products")
-        .select(`
-          id, 
-          name,
-          product_vendor_pricing!inner(lab_id, price, is_active)
-        `)
+        .select("id, name")
         .eq("user_id", user.id)
-        .eq("product_vendor_pricing.lab_id", selectedQuote.lab_id)
-        .eq("product_vendor_pricing.is_active", true)
+        .in("id", productIds)
         .order("name");
 
       if (error) throw error;

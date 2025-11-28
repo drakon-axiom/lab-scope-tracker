@@ -329,7 +329,8 @@ const Quotes = () => {
       const { data, error } = await supabase
         .from("products")
         .select("id, name")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .order("name");
 
       if (error) throw error;
       setProducts(data || []);

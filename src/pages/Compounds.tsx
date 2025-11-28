@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import {
@@ -50,6 +50,15 @@ interface Compound {
   description: string | null;
   standard: string | null;
   duration_days: number | null;
+  category: string | null;
+  aliases: string[] | null;
+}
+
+interface ImportCompound {
+  compound: string;
+  aliases: string[];
+  category: string;
+  usd: number;
 }
 
 const Compounds = () => {
@@ -67,11 +76,15 @@ const Compounds = () => {
     duration_days: "",
     description: "",
   });
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importLabName, setImportLabName] = useState("Janoshik");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     standard: "",
     duration_days: "",
+    category: "",
   });
   
   // Filtering and Sorting state
@@ -114,6 +127,7 @@ const Compounds = () => {
       description: "",
       standard: "",
       duration_days: "",
+      category: "",
     });
     setEditingCompound(null);
   };
@@ -173,6 +187,7 @@ const Compounds = () => {
       description: compound.description || "",
       standard: compound.standard || "",
       duration_days: compound.duration_days?.toString() || "",
+      category: compound.category || "",
     });
     setOpen(true);
   };
@@ -458,6 +473,152 @@ const Compounds = () => {
     setSortOrder("asc");
   };
 
+  const handleImport = async () => {
+    try {
+      const data: ImportCompound[] = JSON.parse(importJson);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to import compounds",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Find or create the lab
+      let { data: labs } = await supabase
+        .from("labs")
+        .select("id")
+        .eq("name", importLabName)
+        .eq("user_id", user.id)
+        .limit(1);
+
+      let labId: string;
+      if (!labs || labs.length === 0) {
+        const { data: newLab, error: labError } = await supabase
+          .from("labs")
+          .insert([{ name: importLabName, user_id: user.id }])
+          .select("id")
+          .single();
+
+        if (labError || !newLab) {
+          toast({
+            title: "Error creating lab",
+            description: labError?.message || "Unknown error",
+            variant: "destructive",
+          });
+          return;
+        }
+        labId = newLab.id;
+      } else {
+        labId = labs[0].id;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const item of data) {
+        // Check if compound already exists
+        const { data: existing } = await supabase
+          .from("products")
+          .select("id")
+          .eq("name", item.compound)
+          .eq("user_id", user.id)
+          .limit(1);
+
+        let productId: string;
+        if (existing && existing.length > 0) {
+          // Update existing compound
+          productId = existing[0].id;
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({
+              category: item.category,
+              aliases: item.aliases.length > 0 ? item.aliases : null,
+            })
+            .eq("id", productId);
+
+          if (updateError) {
+            errorCount++;
+            continue;
+          }
+        } else {
+          // Create new compound
+          const { data: newProduct, error: productError } = await supabase
+            .from("products")
+            .insert([{
+              name: item.compound,
+              category: item.category,
+              aliases: item.aliases.length > 0 ? item.aliases : null,
+              user_id: user.id,
+            }])
+            .select("id")
+            .single();
+
+          if (productError || !newProduct) {
+            errorCount++;
+            continue;
+          }
+          productId = newProduct.id;
+        }
+
+        // Check if pricing already exists
+        const { data: existingPricing } = await supabase
+          .from("product_vendor_pricing")
+          .select("id")
+          .eq("product_id", productId)
+          .eq("lab_id", labId)
+          .limit(1);
+
+        if (existingPricing && existingPricing.length > 0) {
+          // Update existing pricing
+          const { error: pricingError } = await supabase
+            .from("product_vendor_pricing")
+            .update({ price: item.usd })
+            .eq("id", existingPricing[0].id);
+
+          if (pricingError) {
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } else {
+          // Create new pricing
+          const { error: pricingError } = await supabase
+            .from("product_vendor_pricing")
+            .insert([{
+              product_id: productId,
+              lab_id: labId,
+              price: item.usd,
+              user_id: user.id,
+            }]);
+
+          if (pricingError) {
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        }
+      }
+
+      toast({
+        title: "Import completed",
+        description: `Successfully imported ${successCount} compounds. ${errorCount > 0 ? `${errorCount} errors.` : ""}`,
+      });
+
+      setImportDialogOpen(false);
+      setImportJson("");
+      fetchCompounds();
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: error instanceof Error ? error.message : "Invalid JSON format",
+        variant: "destructive",
+      });
+    }
+  };
+
   const hasActiveFilters = searchQuery || standardFilter !== "all" || durationFilter !== "all";
 
   return (
@@ -499,6 +660,13 @@ const Compounds = () => {
               <Wand2 className="mr-2 h-4 w-4" />
               Bulk Pricing Setup
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setImportDialogOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Import JSON
+            </Button>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button>
@@ -521,6 +689,15 @@ const Compounds = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="e.g., Peptides, SARMs, AAS"
                   />
                 </div>
                 <div className="space-y-2">
@@ -675,6 +852,7 @@ const Compounds = () => {
                     {sortBy !== "name" && <ArrowUpDown className="h-4 w-4 opacity-50" />}
                   </div>
                 </TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead 
                   className="cursor-pointer select-none hover:bg-muted/50"
                   onClick={() => handleSort("standard")}
@@ -707,7 +885,7 @@ const Compounds = () => {
             <TableBody>
               {paginatedCompounds.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     {compounds.length === 0 ? (
                       "No compounds found. Add your first compound to get started."
                     ) : (
@@ -730,6 +908,11 @@ const Compounds = () => {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{compound.name}</TableCell>
+                    <TableCell>
+                      {compound.category ? (
+                        <Badge variant="secondary">{compound.category}</Badge>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell>{compound.standard || "—"}</TableCell>
                     <TableCell>
                       {compound.duration_days ? `${compound.duration_days} days` : "—"}
@@ -882,6 +1065,53 @@ const Compounds = () => {
                 onClick={() => {
                   setBulkUpdateOpen(false);
                   setBulkUpdateData({ standard: "", duration_days: "", description: "" });
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import JSON Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Compounds from JSON</DialogTitle>
+            <DialogDescription>
+              Paste JSON array with compound, aliases, category, and usd fields. Compounds will be created/updated with pricing for the specified lab.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="lab-name">Lab Name</Label>
+              <Input
+                id="lab-name"
+                value={importLabName}
+                onChange={(e) => setImportLabName(e.target.value)}
+                placeholder="e.g., Janoshik"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="import-json">JSON Data</Label>
+              <Textarea
+                id="import-json"
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                placeholder='[{"compound": "Semaglutide", "aliases": [], "category": "Peptides", "usd": 300}]'
+                className="font-mono text-sm min-h-[300px]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleImport} className="flex-1">
+                Import Compounds
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setImportDialogOpen(false);
+                  setImportJson("");
                 }}
               >
                 Cancel

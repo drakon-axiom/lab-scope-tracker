@@ -364,6 +364,8 @@ export type Database = {
       }
       products: {
         Row: {
+          aliases: string[] | null
+          category: string | null
           created_at: string
           description: string | null
           duration_days: number | null
@@ -374,6 +376,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aliases?: string[] | null
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_days?: number | null
@@ -384,6 +388,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aliases?: string[] | null
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_days?: number | null

@@ -8,7 +8,6 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import TestingTypes from "./pages/TestingTypes";
 import Labs from "./pages/Labs";
-import TestRecords from "./pages/TestRecords";
 import Quotes from "./pages/Quotes";
 import BulkImport from "./pages/BulkImport";
 import QuoteConfirm from "./pages/QuoteConfirm";
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/products" element={<TestingTypes />} />
           <Route path="/labs" element={<Labs />} />
           <Route path="/testing-types" element={<TestingTypes />} />
-          <Route path="/test-records" element={<TestRecords />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route path="/bulk-import" element={<BulkImport />} />
           <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />

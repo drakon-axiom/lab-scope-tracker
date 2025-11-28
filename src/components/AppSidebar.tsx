@@ -1,4 +1,4 @@
-import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube, FileText, Upload, Settings, LogOut } from "lucide-react";
+import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
@@ -31,7 +31,6 @@ const mainNavItems = [
   { title: "Labs", url: "/labs", icon: FlaskConical },
   { title: "Testing Types", url: "/testing-types", icon: FileCheck },
   { title: "Quotes", url: "/quotes", icon: FileText },
-  { title: "Test Records", url: "/test-records", icon: TestTube },
 ];
 
 const utilityNavItems = [

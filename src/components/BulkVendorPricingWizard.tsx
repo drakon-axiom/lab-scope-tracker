@@ -66,7 +66,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
       setProducts(data || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching products",
+        title: "Error fetching compounds",
         description: error.message,
         variant: "destructive",
       });
@@ -133,7 +133,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
     if (selectedEntries.length === 0) {
       toast({
         title: "No entries selected",
-        description: "Please select at least one product with a valid price",
+        description: "Please select at least one compound with a valid price",
         variant: "destructive",
       });
       return;
@@ -160,7 +160,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
       if (newEntries.length === 0) {
         toast({
           title: "Already exists",
-          description: "All selected products already have pricing for this vendor",
+          description: "All selected compounds already have pricing for this vendor",
           variant: "destructive",
         });
         setLoading(false);
@@ -183,7 +183,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
 
       toast({
         title: "Success",
-        description: `Added pricing for ${newEntries.length} product(s)`,
+        description: `Added pricing for ${newEntries.length} compound(s)`,
       });
 
       onComplete?.();
@@ -217,7 +217,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
             Bulk Vendor Pricing Setup
           </DialogTitle>
           <DialogDescription>
-            Quickly configure pricing for multiple products at once
+            Quickly configure pricing for multiple compounds at once
           </DialogDescription>
         </DialogHeader>
 
@@ -259,7 +259,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
               disabled={!selectedLab || !bulkPrice}
               className="w-full"
             >
-              Apply to All Products
+              Apply to All Compounds
             </Button>
           </div>
 
@@ -283,7 +283,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
                         }}
                       />
                     </TableHead>
-                    <TableHead>Product</TableHead>
+                    <TableHead>Compound</TableHead>
                     <TableHead>Price</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -323,7 +323,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
             disabled={loading || selectedCount === 0}
             className="flex-1"
           >
-            {loading ? "Adding..." : `Add Pricing for ${selectedCount} Product(s)`}
+            {loading ? "Adding..." : `Add Pricing for ${selectedCount} Compound(s)`}
           </Button>
           <Button
             variant="outline"

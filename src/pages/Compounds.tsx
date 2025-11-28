@@ -26,7 +26,7 @@ import { Plus, Pencil, Trash2, DollarSign, Wand2 } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 
-interface TestingType {
+interface Compound {
   id: string;
   name: string;
   description: string | null;
@@ -34,13 +34,13 @@ interface TestingType {
   duration_days: number | null;
 }
 
-const TestingTypes = () => {
+const Compounds = () => {
   const { toast } = useToast();
-  const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
+  const [compounds, setCompounds] = useState<Compound[]>([]);
   const [open, setOpen] = useState(false);
-  const [editingType, setEditingType] = useState<TestingType | null>(null);
+  const [editingCompound, setEditingCompound] = useState<Compound | null>(null);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
+  const [selectedCompound, setSelectedCompound] = useState<{ id: string; name: string } | null>(null);
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -49,7 +49,7 @@ const TestingTypes = () => {
     duration_days: "",
   });
 
-  const fetchTestingTypes = async () => {
+  const fetchCompounds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -61,17 +61,17 @@ const TestingTypes = () => {
 
     if (error) {
       toast({
-        title: "Error fetching testing types",
+        title: "Error fetching compounds",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      setTestingTypes(data || []);
+      setCompounds(data || []);
     }
   };
 
   useEffect(() => {
-    fetchTestingTypes();
+    fetchCompounds();
   }, []);
 
   const resetForm = () => {
@@ -81,7 +81,7 @@ const TestingTypes = () => {
       standard: "",
       duration_days: "",
     });
-    setEditingType(null);
+    setEditingCompound(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,23 +94,23 @@ const TestingTypes = () => {
       duration_days: formData.duration_days ? parseInt(formData.duration_days) : null,
     };
 
-    if (editingType) {
+    if (editingCompound) {
       const { error } = await supabase
         .from("products")
         .update(submitData)
-        .eq("id", editingType.id);
+        .eq("id", editingCompound.id);
 
       if (error) {
         toast({
-          title: "Error updating testing type",
+          title: "Error updating compound",
           description: error.message,
           variant: "destructive",
         });
       } else {
-        toast({ title: "Testing type updated successfully" });
+        toast({ title: "Compound updated successfully" });
         setOpen(false);
         resetForm();
-        fetchTestingTypes();
+        fetchCompounds();
       }
     } else {
       const { error } = await supabase
@@ -119,44 +119,44 @@ const TestingTypes = () => {
 
       if (error) {
         toast({
-          title: "Error creating testing type",
+          title: "Error creating compound",
           description: error.message,
           variant: "destructive",
         });
       } else {
-        toast({ title: "Testing type created successfully" });
+        toast({ title: "Compound created successfully" });
         setOpen(false);
         resetForm();
-        fetchTestingTypes();
+        fetchCompounds();
       }
     }
   };
 
-  const handleEdit = (type: TestingType) => {
-    setEditingType(type);
+  const handleEdit = (compound: Compound) => {
+    setEditingCompound(compound);
     setFormData({
-      name: type.name,
-      description: type.description || "",
-      standard: type.standard || "",
-      duration_days: type.duration_days?.toString() || "",
+      name: compound.name,
+      description: compound.description || "",
+      standard: compound.standard || "",
+      duration_days: compound.duration_days?.toString() || "",
     });
     setOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this testing type?")) return;
+    if (!confirm("Are you sure you want to delete this compound?")) return;
 
     const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {
       toast({
-        title: "Error deleting testing type",
+        title: "Error deleting compound",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      toast({ title: "Testing type deleted successfully" });
-      fetchTestingTypes();
+      toast({ title: "Compound deleted successfully" });
+      fetchCompounds();
     }
   };
 
@@ -165,8 +165,8 @@ const TestingTypes = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Testing Types</h2>
-            <p className="text-muted-foreground">Manage types of testing procedures</p>
+            <h2 className="text-3xl font-bold tracking-tight">Compounds</h2>
+            <p className="text-muted-foreground">Manage compounds for testing</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -180,19 +180,19 @@ const TestingTypes = () => {
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Testing Type
+                  Add Compound
                 </Button>
               </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingType ? "Edit" : "Add"} Testing Type</DialogTitle>
+                <DialogTitle>{editingCompound ? "Edit" : "Add"} Compound</DialogTitle>
                 <DialogDescription>
-                  {editingType ? "Update" : "Create a new"} testing type entry
+                  {editingCompound ? "Update" : "Create a new"} compound entry
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Test Name</Label>
+                  <Label htmlFor="name">Compound Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -230,7 +230,7 @@ const TestingTypes = () => {
                   <p>💡 Vendor and pricing are managed through the "Manage" button in the Vendor Pricing column</p>
                 </div>
                 <Button type="submit" className="w-full">
-                  {editingType ? "Update" : "Create"} Testing Type
+                  {editingCompound ? "Update" : "Create"} Compound
                 </Button>
               </form>
             </DialogContent>
@@ -251,29 +251,29 @@ const TestingTypes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {testingTypes.length === 0 ? (
+              {compounds.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No testing types found. Add your first testing type to get started.
+                    No compounds found. Add your first compound to get started.
                   </TableCell>
                 </TableRow>
               ) : (
-                testingTypes.map((type) => (
-                  <TableRow key={type.id}>
-                    <TableCell className="font-medium">{type.name}</TableCell>
-                    <TableCell>{type.standard || "—"}</TableCell>
+                compounds.map((compound) => (
+                  <TableRow key={compound.id}>
+                    <TableCell className="font-medium">{compound.name}</TableCell>
+                    <TableCell>{compound.standard || "—"}</TableCell>
                     <TableCell>
-                      {type.duration_days ? `${type.duration_days} days` : "—"}
+                      {compound.duration_days ? `${compound.duration_days} days` : "—"}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {type.description || "—"}
+                      {compound.description || "—"}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setSelectedProduct({ id: type.id, name: type.name });
+                          setSelectedCompound({ id: compound.id, name: compound.name });
                           setPricingDialogOpen(true);
                         }}
                       >
@@ -285,14 +285,14 @@ const TestingTypes = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEdit(type)}
+                        onClick={() => handleEdit(compound)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(type.id)}
+                        onClick={() => handleDelete(compound.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -305,12 +305,12 @@ const TestingTypes = () => {
         </div>
       </div>
 
-      {selectedProduct && (
+      {selectedCompound && (
         <VendorPricingDialog
           open={pricingDialogOpen}
           onOpenChange={setPricingDialogOpen}
-          productId={selectedProduct.id}
-          productName={selectedProduct.name}
+          productId={selectedCompound.id}
+          productName={selectedCompound.name}
         />
       )}
       
@@ -323,11 +323,11 @@ const TestingTypes = () => {
             title: "Success",
             description: "Vendor pricing updated successfully",
           });
-          fetchTestingTypes();
+          fetchCompounds();
         }}
       />
     </Layout>
   );
 };
 
-export default TestingTypes;
+export default Compounds;

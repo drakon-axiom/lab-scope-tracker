@@ -333,6 +333,8 @@ function QuoteCard({
             size="sm"
             className="h-8 flex-1 text-xs"
             onClick={() => onManageItems(quote)}
+            disabled={isLocked}
+            title={isLocked ? "Cannot modify items in paid quotes" : "Manage items"}
           >
             <Package className="h-3 w-3 mr-1" />
             Items

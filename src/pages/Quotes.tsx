@@ -1810,6 +1810,8 @@ const Quotes = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleManageItems(quote)}
+                          disabled={isQuoteLocked(quote.status)}
+                          title={isQuoteLocked(quote.status) ? "Cannot modify items in paid quotes" : "Manage items"}
                         >
                           <FileText className="h-4 w-4" />
                         </Button>
@@ -1940,6 +1942,14 @@ const Quotes = () => {
                   setDialogOpen(true);
                 }}
                 onManageItems={(quote) => {
+                  if (isQuoteLocked(quote.status)) {
+                    toast({
+                      title: "Cannot Modify Items",
+                      description: "Quote items cannot be modified after payment",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setSelectedQuote(quote);
                   fetchQuoteItems(quote.id);
                   setItemsDialogOpen(true);

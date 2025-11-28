@@ -56,6 +56,8 @@ const Auth = () => {
       setEmail("");
       setPassword("");
       setFullName("");
+      // Redirect to MFA setup after successful signup
+      navigate("/mfa-setup");
     }
   };
 
@@ -63,7 +65,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -76,6 +78,14 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check if user has MFA enabled
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    if (!factors?.totp || factors.totp.length === 0) {
+      // User doesn't have MFA set up, redirect to MFA setup
+      navigate("/mfa-setup");
     } else {
       navigate("/");
     }

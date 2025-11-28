@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getCategoryIcon } from "@/lib/categoryIcons";
 
 interface Compound {
   id: string;
@@ -182,11 +183,23 @@ const CompoundDetails = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Compounds
             </Button>
-            <h1 className="text-3xl font-bold">{compound.name}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              {(() => {
+                const CategoryIcon = getCategoryIcon(compound.category);
+                return <CategoryIcon className="h-8 w-8 text-primary" />;
+              })()}
+              <h1 className="text-3xl font-bold">{compound.name}</h1>
+            </div>
             {compound.category && (
-              <Badge variant="secondary" className="mt-2">
-                {compound.category}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const CategoryIcon = getCategoryIcon(compound.category);
+                  return <CategoryIcon className="h-4 w-4 text-muted-foreground" />;
+                })()}
+                <Badge variant="secondary">
+                  {compound.category}
+                </Badge>
+              </div>
             )}
           </div>
         </div>

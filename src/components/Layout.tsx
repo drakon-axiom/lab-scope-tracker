@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 interface LayoutProps {
   children: ReactNode;
@@ -69,6 +70,12 @@ const Layout = ({ children }: LayoutProps) => {
               <SidebarTrigger />
             </div>
           </header>
+          
+          <div className="border-b bg-muted/30 px-4 py-3">
+            <div className="container mx-auto">
+              <Breadcrumbs />
+            </div>
+          </div>
           
           <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
         </div>

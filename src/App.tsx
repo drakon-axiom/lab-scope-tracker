@@ -15,6 +15,7 @@ import BulkImport from "./pages/BulkImport";
 import QuoteConfirm from "./pages/QuoteConfirm";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
+import ImportChromatePricing from "./pages/ImportChromatePricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/bulk-import" element={<BulkImport />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />
+          <Route path="/import-chromate" element={<ImportChromatePricing />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

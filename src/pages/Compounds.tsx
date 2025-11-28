@@ -110,6 +110,7 @@ const Compounds = () => {
     standard: "",
     duration_days: "",
     description: "",
+    category: "",
   });
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
@@ -402,6 +403,7 @@ const Compounds = () => {
     if (bulkUpdateData.standard) updateData.standard = bulkUpdateData.standard;
     if (bulkUpdateData.duration_days) updateData.duration_days = parseInt(bulkUpdateData.duration_days);
     if (bulkUpdateData.description) updateData.description = bulkUpdateData.description;
+    if (bulkUpdateData.category) updateData.category = bulkUpdateData.category;
 
     if (Object.keys(updateData).length === 0) {
       toast({
@@ -426,7 +428,7 @@ const Compounds = () => {
     } else {
       toast({ title: `${selectedIds.size} compound(s) updated successfully` });
       setBulkUpdateOpen(false);
-      setBulkUpdateData({ standard: "", duration_days: "", description: "" });
+      setBulkUpdateData({ standard: "", duration_days: "", description: "", category: "" });
       setSelectedIds(new Set());
       fetchCompounds();
     }
@@ -1325,6 +1327,25 @@ const Compounds = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="bulk-category">Category</Label>
+              <Select
+                value={bulkUpdateData.category}
+                onValueChange={(value) => setBulkUpdateData({ ...bulkUpdateData, category: value })}
+              >
+                <SelectTrigger id="bulk-category">
+                  <SelectValue placeholder="Leave empty to keep existing values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Keep existing values</SelectItem>
+                  {uniqueCategories.map((category) => (
+                    <SelectItem key={category} value={category!}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="bulk-standard">Standard / Specification</Label>
               <Input
                 id="bulk-standard"
@@ -1360,7 +1381,7 @@ const Compounds = () => {
                 variant="outline"
                 onClick={() => {
                   setBulkUpdateOpen(false);
-                  setBulkUpdateData({ standard: "", duration_days: "", description: "" });
+                  setBulkUpdateData({ standard: "", duration_days: "", description: "", category: "" });
                 }}
               >
                 Cancel

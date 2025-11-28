@@ -47,12 +47,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
 
 interface Quote {
   id: string;
@@ -171,7 +172,29 @@ const Quotes = () => {
   const [emailPreviewData, setEmailPreviewData] = useState({ subject: "", html: "", recipient: "" });
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterLab, setFilterLab] = useState("all");
+  const [filterProduct, setFilterProduct] = useState("all");
   const { toast } = useToast();
+
+  // Input validation schema
+  const searchSchema = z.string().max(200, "Search query too long").trim();
+
+  const handleSearchChange = (value: string) => {
+    try {
+      searchSchema.parse(value);
+      setSearchQuery(value);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Invalid input",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const [formData, setFormData] = useState({
     lab_id: "",
@@ -1564,6 +1587,95 @@ const Quotes = () => {
           </TabsList>
 
           <TabsContent value="quotes" className="mt-6">
+            {/* Search and Filter Controls */}
+            <div className="mb-6 space-y-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                <div className="flex-1">
+                  <Label htmlFor="search">Search Quotes</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="search"
+                      placeholder="Search by quote number, notes, or tracking..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="pl-8"
+                      maxLength={200}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:w-auto">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="in_transit">In Transit</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Lab</Label>
+                    <Select value={filterLab} onValueChange={setFilterLab}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Labs</SelectItem>
+                        {labs.map((lab) => (
+                          <SelectItem key={lab.id} value={lab.id}>
+                            {lab.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Product</Label>
+                    <Select value={filterProduct} onValueChange={setFilterProduct}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Products</SelectItem>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all") && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setFilterStatus("all");
+                      setFilterLab("all");
+                      setFilterProduct("all");
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="border rounded-lg">
               <Table>
             <TableHeader>
@@ -1577,14 +1689,50 @@ const Quotes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {quotes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No quotes yet. Create your first quote to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                quotes.map((quote) => (
+              {(() => {
+                // Apply filters
+                let filteredQuotes = quotes;
+
+                // Search filter
+                if (searchQuery.trim()) {
+                  const query = searchQuery.toLowerCase();
+                  filteredQuotes = filteredQuotes.filter(
+                    (quote) =>
+                      quote.quote_number?.toLowerCase().includes(query) ||
+                      quote.notes?.toLowerCase().includes(query) ||
+                      quote.tracking_number?.toLowerCase().includes(query) ||
+                      quote.labs.name.toLowerCase().includes(query)
+                  );
+                }
+
+                // Status filter
+                if (filterStatus !== "all") {
+                  filteredQuotes = filteredQuotes.filter(
+                    (quote) => quote.status === filterStatus
+                  );
+                }
+
+                // Lab filter
+                if (filterLab !== "all") {
+                  filteredQuotes = filteredQuotes.filter(
+                    (quote) => quote.lab_id === filterLab
+                  );
+                }
+
+                // Note: Product filter would require pre-fetching quote items
+                // For now, it's available in the UI but needs server-side implementation
+                // to work efficiently with large datasets
+
+                return filteredQuotes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      {quotes.length === 0
+                        ? "No quotes yet. Create your first quote to get started."
+                        : "No quotes match your filters."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredQuotes.map((quote) => (
                   <TableRow key={quote.id}>
                     <TableCell className="font-medium">
                       {quote.quote_number || "—"}
@@ -1668,8 +1816,9 @@ const Quotes = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                    ))
+                  );
+              })()}
             </TableBody>
           </Table>
         </div>
@@ -2524,13 +2673,14 @@ const Quotes = () => {
               </form>
 
               <div>
-                <Label>Current Items</Label>
+                <Label>Current Items - Testing Phases</Label>
                 <div className="border rounded-lg mt-2">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
                         <TableHead>Submission Info</TableHead>
+                        <TableHead>Testing Phase</TableHead>
                         <TableHead className="text-right">Price</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -2539,7 +2689,7 @@ const Quotes = () => {
                       {quoteItems.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={4}
+                            colSpan={5}
                             className="text-center text-muted-foreground"
                           >
                             No items added yet
@@ -2548,7 +2698,7 @@ const Quotes = () => {
                       ) : (
                         quoteItems.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell>{item.products.name}</TableCell>
+                            <TableCell className="font-medium">{item.products.name}</TableCell>
                             <TableCell className="text-sm">
                               {item.client && <div>Client: {item.client}</div>}
                               {item.sample && <div>Sample: {item.sample}</div>}
@@ -2575,6 +2725,43 @@ const Quotes = () => {
                                   ))}
                                 </div>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <StatusBadge status={item.status || "pending"} />
+                                {item.date_submitted && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Submitted: {new Date(item.date_submitted).toLocaleDateString()}
+                                  </div>
+                                )}
+                                {item.date_completed && (
+                                  <div className="text-xs text-success">
+                                    Completed: {new Date(item.date_completed).toLocaleDateString()}
+                                  </div>
+                                )}
+                                {item.report_url && (
+                                  <a
+                                    href={item.report_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    View Report
+                                  </a>
+                                )}
+                                {item.report_file && (
+                                  <a
+                                    href={item.report_file}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    Download File
+                                  </a>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               ${item.price?.toFixed(2) || "0.00"}

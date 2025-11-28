@@ -549,6 +549,7 @@ export type Database = {
           discount_type: string | null
           id: string
           lab_id: string
+          lab_quote_number: string | null
           lab_response: string | null
           notes: string | null
           payment_amount_crypto: string | null
@@ -570,6 +571,7 @@ export type Database = {
           discount_type?: string | null
           id?: string
           lab_id: string
+          lab_quote_number?: string | null
           lab_response?: string | null
           notes?: string | null
           payment_amount_crypto?: string | null
@@ -591,6 +593,7 @@ export type Database = {
           discount_type?: string | null
           id?: string
           lab_id?: string
+          lab_quote_number?: string | null
           lab_response?: string | null
           notes?: string | null
           payment_amount_crypto?: string | null

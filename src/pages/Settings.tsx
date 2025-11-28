@@ -56,6 +56,8 @@ const Settings = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [enrolling, setEnrolling] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -142,6 +144,43 @@ const Settings = () => {
     }
   };
 
+  const generateBackupCodes = () => {
+    const codes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = Array.from({ length: 8 }, () => 
+        Math.random().toString(36).charAt(2).toUpperCase()
+      ).join('');
+      codes.push(code.slice(0, 4) + '-' + code.slice(4));
+    }
+    return codes;
+  };
+
+  const hashCode = async (code: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(code);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const saveBackupCodes = async (codes: string[]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const hashedCodes = await Promise.all(codes.map(code => hashCode(code)));
+    
+    const inserts = hashedCodes.map(hash => ({
+      user_id: user.id,
+      code_hash: hash,
+    }));
+
+    const { error } = await supabase
+      .from('mfa_backup_codes')
+      .insert(inserts);
+
+    if (error) throw error;
+  };
+
   const handleVerifyMfa = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
       toast({
@@ -162,9 +201,15 @@ const Settings = () => {
 
       if (error) throw error;
 
+      // Generate and save backup codes
+      const codes = generateBackupCodes();
+      await saveBackupCodes(codes);
+      setBackupCodes(codes);
+
       setMfaEnabled(true);
       setShowMfaSetup(false);
       setVerificationCode("");
+      setShowBackupCodes(true);
       
       toast({
         title: "Success",
@@ -564,6 +609,79 @@ const Settings = () => {
                   Cancel
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showBackupCodes} onOpenChange={setShowBackupCodes}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Save Your Backup Codes</DialogTitle>
+              <DialogDescription>
+                Store these codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <Alert>
+                <ShieldCheck className="h-4 w-4" />
+                <AlertDescription>
+                  These codes will only be shown once. Download or copy them now.
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid grid-cols-2 gap-2 p-4 bg-muted rounded-lg font-mono text-sm">
+                {backupCodes.map((code, index) => (
+                  <div key={index} className="p-2 bg-background rounded">
+                    {code}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(backupCodes.join('\n'));
+                    toast({
+                      title: "Copied",
+                      description: "Backup codes copied to clipboard",
+                    });
+                  }}
+                >
+                  Copy Codes
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    const blob = new Blob([backupCodes.join('\n')], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '2fa-backup-codes.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast({
+                      title: "Downloaded",
+                      description: "Backup codes saved to file",
+                    });
+                  }}
+                >
+                  Download
+                </Button>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setShowBackupCodes(false);
+                  setBackupCodes([]);
+                }}
+                className="w-full"
+              >
+                I've Saved My Codes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -315,10 +315,10 @@ const Compounds = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === compounds.length) {
+    if (selectedIds.size === filteredAndSortedCompounds.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(compounds.map(c => c.id)));
+      setSelectedIds(new Set(filteredAndSortedCompounds.map(c => c.id)));
     }
   };
 

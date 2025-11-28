@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import { getCategoryColors } from "@/lib/categoryColors";
+import { cn } from "@/lib/utils";
 
 interface Compound {
   id: string;
@@ -183,24 +185,29 @@ const CompoundDetails = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Compounds
             </Button>
-            <div className="flex items-center gap-3 mb-2">
-              {(() => {
+            <div className="flex items-center gap-4 mb-2">
+              {compound.category && (() => {
                 const CategoryIcon = getCategoryIcon(compound.category);
-                return <CategoryIcon className="h-8 w-8 text-primary" />;
+                const colors = getCategoryColors(compound.category);
+                return (
+                  <div className={cn("p-3 rounded-lg", colors.bg)}>
+                    <CategoryIcon className={cn("h-8 w-8", colors.text)} />
+                  </div>
+                );
               })()}
-              <h1 className="text-3xl font-bold">{compound.name}</h1>
-            </div>
-            {compound.category && (
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const CategoryIcon = getCategoryIcon(compound.category);
-                  return <CategoryIcon className="h-4 w-4 text-muted-foreground" />;
-                })()}
-                <Badge variant="secondary">
-                  {compound.category}
-                </Badge>
+              <div>
+                <h1 className="text-3xl font-bold">{compound.name}</h1>
+                {compound.category && (
+                  <Badge className={cn("mt-2 flex items-center gap-1.5 w-fit", getCategoryColors(compound.category).bg, getCategoryColors(compound.category).text)}>
+                    {(() => {
+                      const CategoryIcon = getCategoryIcon(compound.category);
+                      return <CategoryIcon className="h-3.5 w-3.5" />;
+                    })()}
+                    <span>{compound.category}</span>
+                  </Badge>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 

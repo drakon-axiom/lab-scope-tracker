@@ -40,6 +40,18 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
 
+    /* Category colors */
+    --category-peptides: 280 70% 60%;
+    --category-peptides-foreground: 0 0% 100%;
+    --category-sarms: 30 85% 55%;
+    --category-sarms-foreground: 0 0% 100%;
+    --category-aas: 150 60% 45%;
+    --category-aas-foreground: 0 0% 100%;
+    --category-research-chemicals: 200 75% 50%;
+    --category-research-chemicals-foreground: 0 0% 100%;
+    --category-supplements: 340 70% 55%;
+    --category-supplements-foreground: 0 0% 100%;
+
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
@@ -91,6 +103,19 @@ All colors MUST be HSL.
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
+
+    /* Category colors - dark mode */
+    --category-peptides: 280 65% 65%;
+    --category-peptides-foreground: 280 95% 10%;
+    --category-sarms: 30 80% 60%;
+    --category-sarms-foreground: 30 95% 10%;
+    --category-aas: 150 55% 50%;
+    --category-aas-foreground: 150 95% 10%;
+    --category-research-chemicals: 200 70% 55%;
+    --category-research-chemicals-foreground: 200 95% 10%;
+    --category-supplements: 340 65% 60%;
+    --category-supplements-foreground: 340 95% 10%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

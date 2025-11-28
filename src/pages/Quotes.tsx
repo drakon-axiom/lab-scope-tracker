@@ -47,7 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, LayoutGrid, Table as TableIcon, Lock } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { QuoteKanbanBoard } from "@/components/QuoteKanbanBoard";
 import jsPDF from "jspdf";
@@ -1765,7 +1765,12 @@ const Quotes = () => {
                   filteredQuotes.map((quote) => (
                   <TableRow key={quote.id}>
                     <TableCell className="font-medium">
-                      {quote.quote_number || "—"}
+                      <div className="flex items-center gap-2">
+                        {isQuoteLocked(quote.status) && (
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        {quote.quote_number || "—"}
+                      </div>
                     </TableCell>
                     <TableCell>{quote.labs.name}</TableCell>
                     <TableCell>

@@ -23,8 +23,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 
@@ -57,6 +64,13 @@ const Compounds = () => {
     standard: "",
     duration_days: "",
   });
+  
+  // Filtering and Sorting state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [standardFilter, setStandardFilter] = useState("all");
+  const [durationFilter, setDurationFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"name" | "standard" | "duration">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const fetchCompounds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -247,6 +261,77 @@ const Compounds = () => {
     }
   };
 
+  // Get unique standards for filter dropdown
+  const uniqueStandards = Array.from(new Set(compounds.map(c => c.standard).filter(Boolean)));
+
+  // Filter and sort compounds
+  const filteredAndSortedCompounds = compounds
+    .filter(compound => {
+      // Search filter
+      if (searchQuery && !compound.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Standard filter
+      if (standardFilter !== "all" && compound.standard !== standardFilter) {
+        return false;
+      }
+      
+      // Duration filter
+      if (durationFilter !== "all") {
+        if (durationFilter === "short" && (compound.duration_days === null || compound.duration_days > 7)) {
+          return false;
+        }
+        if (durationFilter === "medium" && (compound.duration_days === null || compound.duration_days <= 7 || compound.duration_days > 14)) {
+          return false;
+        }
+        if (durationFilter === "long" && (compound.duration_days === null || compound.duration_days <= 14)) {
+          return false;
+        }
+        if (durationFilter === "none" && compound.duration_days !== null) {
+          return false;
+        }
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      let compareValue = 0;
+      
+      if (sortBy === "name") {
+        compareValue = a.name.localeCompare(b.name);
+      } else if (sortBy === "standard") {
+        const aStandard = a.standard || "";
+        const bStandard = b.standard || "";
+        compareValue = aStandard.localeCompare(bStandard);
+      } else if (sortBy === "duration") {
+        const aDuration = a.duration_days || 0;
+        const bDuration = b.duration_days || 0;
+        compareValue = aDuration - bDuration;
+      }
+      
+      return sortOrder === "asc" ? compareValue : -compareValue;
+    });
+
+  const handleSort = (column: "name" | "standard" | "duration") => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStandardFilter("all");
+    setDurationFilter("all");
+    setSortBy("name");
+    setSortOrder("asc");
+  };
+
+  const hasActiveFilters = searchQuery || standardFilter !== "all" || durationFilter !== "all";
+
   return (
     <Layout>
       <div className="space-y-4">
@@ -348,33 +433,146 @@ const Compounds = () => {
           </div>
         </div>
 
+        {/* Filters and Search */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="search" className="mb-2 block">Search by Name</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="search"
+                placeholder="Search compounds..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="w-[180px]">
+            <Label htmlFor="standard-filter" className="mb-2 block">Standard</Label>
+            <Select value={standardFilter} onValueChange={setStandardFilter}>
+              <SelectTrigger id="standard-filter">
+                <SelectValue placeholder="All Standards" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Standards</SelectItem>
+                {uniqueStandards.map((standard) => (
+                  <SelectItem key={standard} value={standard!}>
+                    {standard}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[180px]">
+            <Label htmlFor="duration-filter" className="mb-2 block">Duration</Label>
+            <Select value={durationFilter} onValueChange={setDurationFilter}>
+              <SelectTrigger id="duration-filter">
+                <SelectValue placeholder="All Durations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Durations</SelectItem>
+                <SelectItem value="short">Short (≤7 days)</SelectItem>
+                <SelectItem value="medium">Medium (8-14 days)</SelectItem>
+                <SelectItem value="long">Long (&gt;14 days)</SelectItem>
+                <SelectItem value="none">No Duration Set</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              onClick={clearFilters}
+              className="mb-0"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        {/* Results count */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing {filteredAndSortedCompounds.length} of {compounds.length} compounds
+          </div>
+          {hasActiveFilters && (
+            <Badge variant="secondary">Filters Active</Badge>
+          )}
+        </div>
+
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={compounds.length > 0 && selectedIds.size === compounds.length}
+                    checked={filteredAndSortedCompounds.length > 0 && selectedIds.size === filteredAndSortedCompounds.length}
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Standard</TableHead>
-                <TableHead>Duration</TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("name")}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    {sortBy === "name" && (
+                      sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                    )}
+                    {sortBy !== "name" && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("standard")}
+                >
+                  <div className="flex items-center gap-1">
+                    Standard
+                    {sortBy === "standard" && (
+                      sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                    )}
+                    {sortBy !== "standard" && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("duration")}
+                >
+                  <div className="flex items-center gap-1">
+                    Duration
+                    {sortBy === "duration" && (
+                      sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                    )}
+                    {sortBy !== "duration" && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                  </div>
+                </TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Vendor Pricing</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {compounds.length === 0 ? (
+              {filteredAndSortedCompounds.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No compounds found. Add your first compound to get started.
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    {compounds.length === 0 ? (
+                      "No compounds found. Add your first compound to get started."
+                    ) : (
+                      <>
+                        No compounds match your filters.{" "}
+                        <Button variant="link" onClick={clearFilters} className="p-0 h-auto">
+                          Clear filters
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
-                compounds.map((compound) => (
+                filteredAndSortedCompounds.map((compound) => (
                   <TableRow key={compound.id}>
                     <TableCell>
                       <Checkbox

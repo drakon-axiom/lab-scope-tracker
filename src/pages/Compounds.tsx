@@ -31,8 +31,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import {
@@ -110,6 +133,9 @@ const Compounds = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false);
+  const [newCategoryDialogOpen, setNewCategoryDialogOpen] = useState(false);
+  const [pendingCategory, setPendingCategory] = useState("");
 
   const fetchCompounds = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -170,6 +196,7 @@ const Compounds = () => {
       category: "",
     });
     setEditingCompound(null);
+    setCategoryComboOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -803,12 +830,73 @@ const Compounds = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="e.g., Peptides, SARMs, AAS"
-                  />
+                  <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={categoryComboOpen}
+                        className="w-full justify-between"
+                      >
+                        {formData.category || "Select or type category..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0 bg-popover z-50" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search or type new category..." 
+                          value={formData.category}
+                          onValueChange={(value) => setFormData({ ...formData, category: value })}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => {
+                                if (formData.category.trim()) {
+                                  // Check if category already exists
+                                  if (uniqueCategories.includes(formData.category.trim())) {
+                                    setCategoryComboOpen(false);
+                                    return;
+                                  }
+                                  // Show confirmation for new category
+                                  setPendingCategory(formData.category.trim());
+                                  setNewCategoryDialogOpen(true);
+                                  setCategoryComboOpen(false);
+                                }
+                              }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add "{formData.category}"
+                            </Button>
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {uniqueCategories.map((category) => (
+                              <CommandItem
+                                key={category}
+                                value={category!}
+                                onSelect={(currentValue) => {
+                                  setFormData({ ...formData, category: currentValue });
+                                  setCategoryComboOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={
+                                    formData.category === category
+                                      ? "mr-2 h-4 w-4 opacity-100"
+                                      : "mr-2 h-4 w-4 opacity-0"
+                                  }
+                                />
+                                {category}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="standard">Standard / Specification</Label>
@@ -847,6 +935,39 @@ const Compounds = () => {
           </Dialog>
           </div>
         </div>
+
+        {/* New Category Confirmation Dialog */}
+        <AlertDialog open={newCategoryDialogOpen} onOpenChange={setNewCategoryDialogOpen}>
+          <AlertDialogContent className="bg-card z-50">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Add New Category</AlertDialogTitle>
+              <AlertDialogDescription>
+                You're about to add a new category: <strong>"{pendingCategory}"</strong>
+                <br /><br />
+                This category will be added to your category list and can be used for other compounds.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setPendingCategory("");
+                setFormData({ ...formData, category: "" });
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                setFormData({ ...formData, category: pendingCategory });
+                setPendingCategory("");
+                setNewCategoryDialogOpen(false);
+                toast({
+                  title: "Category added",
+                  description: `"${pendingCategory}" can now be used for this compound.`,
+                });
+              }}>
+                Add Category
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Filters and Search */}
         <div className="flex flex-wrap gap-4 items-end">

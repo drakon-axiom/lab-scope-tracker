@@ -96,7 +96,7 @@ interface QuoteItem {
   report_url: string | null;
   report_file: string | null;
   testing_notes: string | null;
-  products: { name: string; price: number | null };
+  products: { name: string };
 }
 
 interface Product {
@@ -122,8 +122,6 @@ interface Manufacturer {
 interface TestingType {
   id: string;
   name: string;
-  price: number | null;
-  vendor: string | null;
   standard: string | null;
   duration_days: number | null;
 }
@@ -357,13 +355,36 @@ const Quotes = () => {
 
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, price, vendor, standard, duration_days")
+        .select("id, name, standard, duration_days")
         .eq("user_id", user.id);
 
       if (error) throw error;
       setTestingTypes(data || []);
     } catch (error: any) {
       console.error("Error fetching testing types:", error);
+    }
+  };
+
+  const fetchVendorPrice = async (productId: string, labId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("product_vendor_pricing")
+        .select("price")
+        .eq("product_id", productId)
+        .eq("lab_id", labId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setItemFormData((prev) => ({
+          ...prev,
+          price: data.price.toString(),
+        }));
+      }
+    } catch (error: any) {
+      console.error("Error fetching vendor price:", error);
     }
   };
 
@@ -407,7 +428,7 @@ const Quotes = () => {
     try {
       const { data, error } = await supabase
         .from("quote_items")
-        .select("*, products(name, price)")
+        .select("*, products(name)")
         .eq("quote_id", quoteId);
 
       if (error) throw error;
@@ -1309,13 +1330,17 @@ const Quotes = () => {
     if (product) {
       setItemFormData((prev) => ({
         ...prev,
-        price: product.price?.toString() || "",
         sample: product.name, // Auto-populate sample with product name
         additional_headers_data: prev.additional_headers_data.map(header => ({
           ...header,
           sample: product.name,
         })),
       }));
+      
+      // Fetch vendor pricing for this product and the current lab
+      if (formData.lab_id) {
+        fetchVendorPrice(productId, formData.lab_id);
+      }
     }
   };
 

@@ -29,9 +29,7 @@ interface TestingType {
   id: string;
   name: string;
   description: string | null;
-  vendor: string | null;
   standard: string | null;
-  price: number | null;
   duration_days: number | null;
 }
 
@@ -45,9 +43,7 @@ const TestingTypes = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    vendor: "",
     standard: "",
-    price: "",
     duration_days: "",
   });
 
@@ -80,9 +76,7 @@ const TestingTypes = () => {
     setFormData({
       name: "",
       description: "",
-      vendor: "",
       standard: "",
-      price: "",
       duration_days: "",
     });
     setEditingType(null);
@@ -95,7 +89,6 @@ const TestingTypes = () => {
 
     const submitData = {
       ...formData,
-      price: formData.price ? parseFloat(formData.price) : null,
       duration_days: formData.duration_days ? parseInt(formData.duration_days) : null,
     };
 
@@ -142,9 +135,7 @@ const TestingTypes = () => {
     setFormData({
       name: type.name,
       description: type.description || "",
-      vendor: type.vendor || "",
       standard: type.standard || "",
-      price: type.price?.toString() || "",
       duration_days: type.duration_days?.toString() || "",
     });
     setOpen(true);
@@ -200,31 +191,12 @@ const TestingTypes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vendor">Vendor</Label>
-                  <Input
-                    id="vendor"
-                    value={formData.vendor}
-                    onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                    placeholder="e.g., Janoshik"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="standard">Standard / Specification</Label>
                   <Input
                     id="standard"
                     value={formData.standard}
                     onChange={(e) => setFormData({ ...formData, standard: e.target.value })}
-                    placeholder="e.g., HPLC, LC-MS, GCMS"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price ($)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="e.g., HPLC-MS, HPLC-UV, LC-MS"
                   />
                 </div>
                 <div className="space-y-2">
@@ -244,6 +216,9 @@ const TestingTypes = () => {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
+                <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                  <p>💡 Vendor and pricing are managed through the "Manage" button in the Vendor Pricing column</p>
+                </div>
                 <Button type="submit" className="w-full">
                   {editingType ? "Update" : "Create"} Testing Type
                 </Button>
@@ -257,9 +232,7 @@ const TestingTypes = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Vendor</TableHead>
                 <TableHead>Standard</TableHead>
-                <TableHead>Price</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Vendor Pricing</TableHead>
@@ -269,7 +242,7 @@ const TestingTypes = () => {
             <TableBody>
               {testingTypes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No testing types found. Add your first testing type to get started.
                   </TableCell>
                 </TableRow>
@@ -277,11 +250,7 @@ const TestingTypes = () => {
                 testingTypes.map((type) => (
                   <TableRow key={type.id}>
                     <TableCell className="font-medium">{type.name}</TableCell>
-                    <TableCell>{type.vendor || "—"}</TableCell>
                     <TableCell>{type.standard || "—"}</TableCell>
-                    <TableCell>
-                      {type.price ? `$${type.price.toFixed(2)}` : "—"}
-                    </TableCell>
                     <TableCell>
                       {type.duration_days ? `${type.duration_days} days` : "—"}
                     </TableCell>

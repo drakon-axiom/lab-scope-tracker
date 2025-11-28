@@ -61,7 +61,7 @@ const Layout = ({ children }: LayoutProps) => {
       }}
     >
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
+        <AppSidebar user={user} />
         
         <div className="flex-1 flex flex-col w-full">
           <header className="sticky top-0 z-10 border-b bg-card shadow-sm">

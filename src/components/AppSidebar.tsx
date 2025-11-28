@@ -1,6 +1,8 @@
 import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, TestTube, FileText, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { User } from "@supabase/supabase-js";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import {
   Sidebar,
@@ -13,6 +15,7 @@ import {
   SidebarMenuItem,
   useSidebar,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 
 const mainNavItems = [
@@ -28,10 +31,18 @@ const utilityNavItems = [
   { title: "Bulk Import", url: "/bulk-import", icon: Upload },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  user: User | null;
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
+
+  const getInitials = (email: string) => {
+    return email.charAt(0).toUpperCase();
+  };
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
@@ -94,6 +105,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {user && (
+        <SidebarFooter className="border-t p-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8 flex-shrink-0">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {getInitials(user.email || "U")}
+              </AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="flex-1 overflow-hidden">
+                <p className="text-sm font-medium truncate">{user.email}</p>
+              </div>
+            )}
+          </div>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

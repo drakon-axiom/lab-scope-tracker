@@ -43,6 +43,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { Progress } from "@/components/ui/progress";
 
 interface Compound {
   id: string;
@@ -78,7 +79,11 @@ const Compounds = () => {
   });
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
-  const [importLabName, setImportLabName] = useState("Janoshik");
+  const [importLabId, setImportLabId] = useState("");
+  const [importProgress, setImportProgress] = useState(0);
+  const [importTotal, setImportTotal] = useState(0);
+  const [isImporting, setIsImporting] = useState(false);
+  const [labs, setLabs] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -117,8 +122,33 @@ const Compounds = () => {
     }
   };
 
+  const fetchLabs = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("labs")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("name");
+
+    if (error) {
+      toast({
+        title: "Error fetching labs",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setLabs(data || []);
+      if (data && data.length > 0) {
+        setImportLabId(data[0].id);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchCompounds();
+    fetchLabs();
   }, []);
 
   const resetForm = () => {
@@ -486,39 +516,25 @@ const Compounds = () => {
         return;
       }
 
-      // Find or create the lab
-      let { data: labs } = await supabase
-        .from("labs")
-        .select("id")
-        .eq("name", importLabName)
-        .eq("user_id", user.id)
-        .limit(1);
-
-      let labId: string;
-      if (!labs || labs.length === 0) {
-        const { data: newLab, error: labError } = await supabase
-          .from("labs")
-          .insert([{ name: importLabName, user_id: user.id }])
-          .select("id")
-          .single();
-
-        if (labError || !newLab) {
-          toast({
-            title: "Error creating lab",
-            description: labError?.message || "Unknown error",
-            variant: "destructive",
-          });
-          return;
-        }
-        labId = newLab.id;
-      } else {
-        labId = labs[0].id;
+      if (!importLabId) {
+        toast({
+          title: "Error",
+          description: "Please select a lab",
+          variant: "destructive",
+        });
+        return;
       }
+
+      setIsImporting(true);
+      setImportTotal(data.length);
+      setImportProgress(0);
 
       let successCount = 0;
       let errorCount = 0;
 
-      for (const item of data) {
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
         // Check if compound already exists
         const { data: existing } = await supabase
           .from("products")
@@ -541,6 +557,7 @@ const Compounds = () => {
 
           if (updateError) {
             errorCount++;
+            setImportProgress(i + 1);
             continue;
           }
         } else {
@@ -558,6 +575,7 @@ const Compounds = () => {
 
           if (productError || !newProduct) {
             errorCount++;
+            setImportProgress(i + 1);
             continue;
           }
           productId = newProduct.id;
@@ -568,7 +586,7 @@ const Compounds = () => {
           .from("product_vendor_pricing")
           .select("id")
           .eq("product_id", productId)
-          .eq("lab_id", labId)
+          .eq("lab_id", importLabId)
           .limit(1);
 
         if (existingPricing && existingPricing.length > 0) {
@@ -589,7 +607,7 @@ const Compounds = () => {
             .from("product_vendor_pricing")
             .insert([{
               product_id: productId,
-              lab_id: labId,
+              lab_id: importLabId,
               price: item.usd,
               user_id: user.id,
             }]);
@@ -600,6 +618,8 @@ const Compounds = () => {
             successCount++;
           }
         }
+
+        setImportProgress(i + 1);
       }
 
       toast({
@@ -609,14 +629,42 @@ const Compounds = () => {
 
       setImportDialogOpen(false);
       setImportJson("");
+      setImportProgress(0);
+      setImportTotal(0);
+      setIsImporting(false);
       fetchCompounds();
     } catch (error) {
+      setIsImporting(false);
       toast({
         title: "Import failed",
         description: error instanceof Error ? error.message : "Invalid JSON format",
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = event.target?.result as string;
+        setImportJson(json);
+        toast({
+          title: "File loaded",
+          description: "JSON file loaded successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error reading file",
+          description: "Failed to read the file",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
   };
 
   const hasActiveFilters = searchQuery || standardFilter !== "all" || durationFilter !== "all";
@@ -1080,19 +1128,45 @@ const Compounds = () => {
           <DialogHeader>
             <DialogTitle>Import Compounds from JSON</DialogTitle>
             <DialogDescription>
-              Paste JSON array with compound, aliases, category, and usd fields. Compounds will be created/updated with pricing for the specified lab.
+              Upload a JSON file or paste JSON data with compound, aliases, category, and usd fields.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="lab-name">Lab Name</Label>
+              <Label htmlFor="lab-select">Lab</Label>
+              <Select
+                value={importLabId}
+                onValueChange={setImportLabId}
+                disabled={isImporting}
+              >
+                <SelectTrigger id="lab-select">
+                  <SelectValue placeholder="Select a lab" />
+                </SelectTrigger>
+                <SelectContent>
+                  {labs.length === 0 ? (
+                    <SelectItem value="none" disabled>No labs available - create one first</SelectItem>
+                  ) : (
+                    labs.map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id}>
+                        {lab.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="file-upload">Upload JSON File (Optional)</Label>
               <Input
-                id="lab-name"
-                value={importLabName}
-                onChange={(e) => setImportLabName(e.target.value)}
-                placeholder="e.g., Janoshik"
+                id="file-upload"
+                type="file"
+                accept=".json"
+                onChange={handleFileUpload}
+                disabled={isImporting}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="import-json">JSON Data</Label>
               <Textarea
@@ -1101,18 +1175,37 @@ const Compounds = () => {
                 onChange={(e) => setImportJson(e.target.value)}
                 placeholder='[{"compound": "Semaglutide", "aliases": [], "category": "Peptides", "usd": 300}]'
                 className="font-mono text-sm min-h-[300px]"
+                disabled={isImporting}
               />
             </div>
+
+            {isImporting && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Importing compounds...</span>
+                  <span>{importProgress} / {importTotal}</span>
+                </div>
+                <Progress value={(importProgress / importTotal) * 100} />
+              </div>
+            )}
+
             <div className="flex gap-2">
-              <Button onClick={handleImport} className="flex-1">
-                Import Compounds
+              <Button 
+                onClick={handleImport} 
+                className="flex-1"
+                disabled={isImporting || !importLabId || !importJson.trim()}
+              >
+                {isImporting ? "Importing..." : "Import Compounds"}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => {
                   setImportDialogOpen(false);
                   setImportJson("");
+                  setImportProgress(0);
+                  setImportTotal(0);
                 }}
+                disabled={isImporting}
               >
                 Cancel
               </Button>

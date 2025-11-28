@@ -59,6 +59,7 @@ interface Quote {
   id: string;
   lab_id: string;
   quote_number: string | null;
+  lab_quote_number: string | null;
   status: string;
   notes: string | null;
   tracking_number: string | null;
@@ -209,6 +210,7 @@ const Quotes = () => {
   const [formData, setFormData] = useState({
     lab_id: "",
     quote_number: "",
+    lab_quote_number: "",
     status: "draft",
     notes: "",
     tracking_number: "",
@@ -559,6 +561,7 @@ const Quotes = () => {
     setFormData({
       lab_id: "",
       quote_number: "",
+      lab_quote_number: "",
       status: "draft",
       notes: "",
       tracking_number: "",
@@ -668,6 +671,7 @@ const Quotes = () => {
     setFormData({
       lab_id: quote.lab_id,
       quote_number: quote.quote_number || "",
+      lab_quote_number: quote.lab_quote_number || "",
       status: quote.status,
       notes: quote.notes || "",
       tracking_number: quote.tracking_number || "",
@@ -1465,178 +1469,53 @@ const Quotes = () => {
                     {editingId ? "Edit Quote" : "New Quote"}
                   </DialogTitle>
                 <DialogDescription>
-                  Create a quote for testing services
+                  {editingId ? "Update quote information" : "Create a new quote request for lab testing"}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lab_id">Lab *</Label>
+                  <Select
+                    value={formData.lab_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, lab_id: value })
+                    }
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select lab" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {labs.map((lab) => (
+                        <SelectItem key={lab.id} value={lab.id}>
+                          {lab.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="lab_id">Lab *</Label>
-                    <Select
-                      value={formData.lab_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, lab_id: value })
-                      }
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select lab" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {labs.map((lab) => (
-                          <SelectItem key={lab.id} value={lab.id}>
-                            {lab.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quote_number">Quote Number</Label>
+                    <Label htmlFor="quote_number">Internal Quote Number</Label>
                     <Input
                       id="quote_number"
                       value={formData.quote_number}
                       onChange={(e) =>
                         setFormData({ ...formData, quote_number: e.target.value })
                       }
-                      placeholder="Enter or leave blank for auto-generation"
+                      placeholder="Your internal tracking number"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="status">Status *</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, status: value })
-                      }
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="payment_pending">Payment Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="in_transit">In Transit</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="shipped_date">Shipped Date</Label>
+                    <Label htmlFor="lab_quote_number">Lab Quote Number</Label>
                     <Input
-                      id="shipped_date"
-                      type="date"
-                      value={formData.shipped_date}
+                      id="lab_quote_number"
+                      value={formData.lab_quote_number}
                       onChange={(e) =>
-                        setFormData({ ...formData, shipped_date: e.target.value })
+                        setFormData({ ...formData, lab_quote_number: e.target.value })
                       }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tracking_number">Tracking Number</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="tracking_number"
-                      value={formData.tracking_number}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tracking_number: e.target.value })
-                      }
-                      placeholder="Enter tracking number"
-                      className="flex-1"
-                    />
-                    {editingId && formData.tracking_number && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleRefreshTracking(formData.tracking_number)}
-                        title="Refresh UPS tracking"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Payment Information */}
-                <div className="border-t pt-4 space-y-4">
-                  <h3 className="font-medium text-sm">Payment Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_status">Payment Status</Label>
-                      <Select
-                        value={formData.payment_status}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, payment_status: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="paid_usd">Paid (USD)</SelectItem>
-                          <SelectItem value="paid_crypto">Paid (Crypto)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_date">Payment Date</Label>
-                      <Input
-                        id="payment_date"
-                        type="date"
-                        value={formData.payment_date}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_date: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_amount_usd">Amount (USD)</Label>
-                      <Input
-                        id="payment_amount_usd"
-                        type="number"
-                        step="0.01"
-                        value={formData.payment_amount_usd}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_amount_usd: e.target.value })
-                        }
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_amount_crypto">Amount (Crypto)</Label>
-                      <Input
-                        id="payment_amount_crypto"
-                        value={formData.payment_amount_crypto}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_amount_crypto: e.target.value })
-                        }
-                        placeholder="e.g., 0.5 BTC"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="transaction_id">Transaction ID (for crypto)</Label>
-                    <Input
-                      id="transaction_id"
-                      value={formData.transaction_id}
-                      onChange={(e) =>
-                        setFormData({ ...formData, transaction_id: e.target.value })
-                      }
-                      placeholder="Blockchain transaction ID"
+                      placeholder="Vendor's quote number"
                     />
                   </div>
                 </div>
@@ -1649,10 +1528,156 @@ const Quotes = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, notes: e.target.value })
                     }
-                    placeholder="Additional notes"
+                    placeholder="Additional notes about this quote"
                     rows={3}
                   />
                 </div>
+
+                {/* Show additional fields only when editing approved or later quotes */}
+                {editingId && formData.status !== "draft" && formData.status !== "sent_to_vendor" && (
+                  <>
+                    <div className="border-t pt-4 space-y-4">
+                      <h3 className="font-medium text-sm">Fulfillment Details</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="status">Status *</Label>
+                          <Select
+                            value={formData.status}
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, status: value })
+                            }
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="shipped">Shipped</SelectItem>
+                              <SelectItem value="in_transit">In Transit</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="shipped_date">Shipped Date</Label>
+                          <Input
+                            id="shipped_date"
+                            type="date"
+                            value={formData.shipped_date}
+                            onChange={(e) =>
+                              setFormData({ ...formData, shipped_date: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tracking_number">Tracking Number</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="tracking_number"
+                            value={formData.tracking_number}
+                            onChange={(e) =>
+                              setFormData({ ...formData, tracking_number: e.target.value })
+                            }
+                            placeholder="Enter tracking number"
+                            className="flex-1"
+                          />
+                          {formData.tracking_number && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleRefreshTracking(formData.tracking_number)}
+                              title="Refresh UPS tracking"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Payment Information */}
+                      <div className="border-t pt-4 space-y-4">
+                        <h3 className="font-medium text-sm">Payment Information</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_status">Payment Status</Label>
+                            <Select
+                              value={formData.payment_status}
+                              onValueChange={(value) =>
+                                setFormData({ ...formData, payment_status: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="paid_usd">Paid (USD)</SelectItem>
+                                <SelectItem value="paid_crypto">Paid (Crypto)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_date">Payment Date</Label>
+                            <Input
+                              id="payment_date"
+                              type="date"
+                              value={formData.payment_date}
+                              onChange={(e) =>
+                                setFormData({ ...formData, payment_date: e.target.value })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_amount_usd">Amount (USD)</Label>
+                            <Input
+                              id="payment_amount_usd"
+                              type="number"
+                              step="0.01"
+                              value={formData.payment_amount_usd}
+                              onChange={(e) =>
+                                setFormData({ ...formData, payment_amount_usd: e.target.value })
+                              }
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_amount_crypto">Amount (Crypto)</Label>
+                            <Input
+                              id="payment_amount_crypto"
+                              value={formData.payment_amount_crypto}
+                              onChange={(e) =>
+                                setFormData({ ...formData, payment_amount_crypto: e.target.value })
+                              }
+                              placeholder="e.g., 0.5 BTC"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="transaction_id">Transaction ID (for crypto)</Label>
+                          <Input
+                            id="transaction_id"
+                            value={formData.transaction_id}
+                            onChange={(e) =>
+                              setFormData({ ...formData, transaction_id: e.target.value })
+                            }
+                            placeholder="Blockchain transaction ID"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -2033,7 +2058,7 @@ const Quotes = () => {
                   }
                 }}
                 onViewQuote={(quote) => {
-                  setSelectedQuote(quote);
+                  setSelectedQuote(quote as Quote);
                   fetchQuoteItems(quote.id);
                   fetchTrackingHistory(quote.id);
                   setViewDialogOpen(true);
@@ -2051,6 +2076,7 @@ const Quotes = () => {
                   setFormData({
                     lab_id: quote.lab_id,
                     quote_number: quote.quote_number || "",
+                    lab_quote_number: (quote as any).lab_quote_number || "",
                     status: quote.status,
                     notes: quote.notes || "",
                     tracking_number: quote.tracking_number || "",
@@ -2073,7 +2099,7 @@ const Quotes = () => {
                     });
                     return;
                   }
-                  setSelectedQuote(quote);
+                  setSelectedQuote(quote as Quote);
                   fetchQuoteItems(quote.id);
                   setItemsDialogOpen(true);
                 }}

@@ -41,9 +41,17 @@ export type Database = {
       email_history: {
         Row: {
           body: string
+          bounce_reason: string | null
+          bounced_at: string | null
+          clicked_at: string | null
           created_at: string
+          delivered_at: string | null
+          delivery_status: string | null
+          failed_at: string | null
+          failure_reason: string | null
           id: string
           lab_id: string
+          opened_at: string | null
           quote_id: string
           recipient_email: string
           sent_at: string
@@ -54,9 +62,17 @@ export type Database = {
         }
         Insert: {
           body: string
+          bounce_reason?: string | null
+          bounced_at?: string | null
+          clicked_at?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
           lab_id: string
+          opened_at?: string | null
           quote_id: string
           recipient_email: string
           sent_at?: string
@@ -67,9 +83,17 @@ export type Database = {
         }
         Update: {
           body?: string
+          bounce_reason?: string | null
+          bounced_at?: string | null
+          clicked_at?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
           lab_id?: string
+          opened_at?: string | null
           quote_id?: string
           recipient_email?: string
           sent_at?: string

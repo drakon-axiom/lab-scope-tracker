@@ -27,9 +27,9 @@ import {
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Labs", url: "/labs", icon: FlaskConical },
-  { title: "Compounds", url: "/compounds", icon: FileCheck },
   { title: "Quotes", url: "/quotes", icon: FileText },
+  { title: "Compounds", url: "/compounds", icon: FileCheck },
+  { title: "Labs", url: "/labs", icon: FlaskConical },
 ];
 
 const utilityNavItems = [

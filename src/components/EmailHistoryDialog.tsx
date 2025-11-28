@@ -5,8 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, Mail, MailOpen, MousePointerClick } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EmailHistory {
   id: string;
@@ -15,6 +16,14 @@ interface EmailHistory {
   body: string;
   sent_at: string;
   status: string;
+  delivery_status: string;
+  delivered_at: string | null;
+  opened_at: string | null;
+  bounced_at: string | null;
+  bounce_reason: string | null;
+  clicked_at: string | null;
+  failed_at: string | null;
+  failure_reason: string | null;
   quotes: { quote_number: string | null };
   labs: { name: string };
 }
@@ -89,7 +98,8 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
                     <TableHead>Lab</TableHead>
                     <TableHead>Recipient</TableHead>
                     <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Delivery Status</TableHead>
+                    <TableHead>Tracking</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -104,9 +114,88 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
                       <TableCell className="text-sm">{email.recipient_email}</TableCell>
                       <TableCell className="max-w-xs truncate">{email.subject}</TableCell>
                       <TableCell>
-                        <Badge variant={email.status === "sent" ? "default" : "secondary"}>
-                          {email.status}
+                        <Badge 
+                          variant={
+                            email.delivery_status === "delivered" ? "default" :
+                            email.delivery_status === "opened" ? "default" :
+                            email.delivery_status === "bounced" ? "destructive" :
+                            email.delivery_status === "failed" ? "destructive" :
+                            "secondary"
+                          }
+                        >
+                          {email.delivery_status || "sent"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <div className="flex gap-1">
+                            {email.delivered_at && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Delivered: {new Date(email.delivered_at).toLocaleString()}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {email.opened_at && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <MailOpen className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Opened: {new Date(email.opened_at).toLocaleString()}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {email.clicked_at && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <MousePointerClick className="h-4 w-4 text-purple-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Clicked: {new Date(email.clicked_at).toLocaleString()}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {email.bounced_at && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Bounced: {new Date(email.bounced_at).toLocaleString()}
+                                  {email.bounce_reason && <div className="text-xs mt-1">{email.bounce_reason}</div>}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {email.failed_at && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center">
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Failed: {new Date(email.failed_at).toLocaleString()}
+                                  {email.failure_reason && <div className="text-xs mt-1">{email.failure_reason}</div>}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {!email.delivered_at && !email.opened_at && !email.clicked_at && !email.bounced_at && !email.failed_at && (
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <Button
@@ -145,6 +234,60 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
                 <div className="col-span-2">
                   <span className="font-semibold">Subject:</span> {viewingEmail.subject}
                 </div>
+                <div className="col-span-2">
+                  <span className="font-semibold">Delivery Status:</span>{" "}
+                  <Badge 
+                    variant={
+                      viewingEmail.delivery_status === "delivered" ? "default" :
+                      viewingEmail.delivery_status === "opened" ? "default" :
+                      viewingEmail.delivery_status === "bounced" ? "destructive" :
+                      viewingEmail.delivery_status === "failed" ? "destructive" :
+                      "secondary"
+                    }
+                  >
+                    {viewingEmail.delivery_status || "sent"}
+                  </Badge>
+                </div>
+                {viewingEmail.delivered_at && (
+                  <div>
+                    <span className="font-semibold">Delivered:</span>{" "}
+                    {new Date(viewingEmail.delivered_at).toLocaleString()}
+                  </div>
+                )}
+                {viewingEmail.opened_at && (
+                  <div>
+                    <span className="font-semibold">Opened:</span>{" "}
+                    {new Date(viewingEmail.opened_at).toLocaleString()}
+                  </div>
+                )}
+                {viewingEmail.clicked_at && (
+                  <div>
+                    <span className="font-semibold">Clicked:</span>{" "}
+                    {new Date(viewingEmail.clicked_at).toLocaleString()}
+                  </div>
+                )}
+                {viewingEmail.bounced_at && (
+                  <div className="col-span-2">
+                    <span className="font-semibold">Bounced:</span>{" "}
+                    {new Date(viewingEmail.bounced_at).toLocaleString()}
+                    {viewingEmail.bounce_reason && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Reason: {viewingEmail.bounce_reason}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {viewingEmail.failed_at && (
+                  <div className="col-span-2">
+                    <span className="font-semibold">Failed:</span>{" "}
+                    {new Date(viewingEmail.failed_at).toLocaleString()}
+                    {viewingEmail.failure_reason && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Reason: {viewingEmail.failure_reason}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <ScrollArea className="h-[500px] w-full rounded-md border p-4">
                 <div dangerouslySetInnerHTML={{ __html: viewingEmail.body }} />

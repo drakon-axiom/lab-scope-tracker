@@ -30,7 +30,7 @@ interface VendorPricingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId: string;
-  productName: string;
+  productName: string; // This is the compound name
 }
 
 export function VendorPricingDialog({ open, onOpenChange, productId, productName }: VendorPricingDialogProps) {

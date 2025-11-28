@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import TestingTypes from "./pages/TestingTypes";
+import Compounds from "./pages/Compounds";
 import Labs from "./pages/Labs";
 import Quotes from "./pages/Quotes";
 import BulkImport from "./pages/BulkImport";
@@ -26,9 +26,10 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/products" element={<TestingTypes />} />
+          <Route path="/compounds" element={<Compounds />} />
+          <Route path="/products" element={<Compounds />} />
+          <Route path="/testing-types" element={<Compounds />} />
           <Route path="/labs" element={<Labs />} />
-          <Route path="/testing-types" element={<TestingTypes />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route path="/bulk-import" element={<BulkImport />} />
           <Route path="/notifications" element={<Notifications />} />

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Plus, Pencil, Trash2 } from "lucide-react";
+import { Mail, Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface EmailTemplate {
@@ -28,6 +28,8 @@ export function EmailTemplatesManager() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewContent, setPreviewContent] = useState({ subject: "", body: "" });
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -164,6 +166,49 @@ Best regards`,
     }
   };
 
+  const handlePreview = () => {
+    // Sample data for preview
+    const sampleData = {
+      lab_name: "Janoshik Analytical",
+      quote_number: "Q-2024-001",
+      quote_items: `<div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+<strong>1. Tirzepatide Testing</strong> - $250.00<br/>
+<div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">
+Client: ACME Corp<br/>
+Sample: Sample #123<br/>
+Manufacturer: PharmaCo<br/>
+Batch: BATCH-001
+</div>
+<div style="margin-top: 8px; padding: 8px; background-color: #f9fafb; border-radius: 4px;">
+Additional Samples: 2 × $60 = $120.00
+</div>
+</div>
+<div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+<strong>2. Semaglutide Testing</strong> - $280.00<br/>
+<div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">
+Client: TechMed Inc<br/>
+Sample: Sample #456<br/>
+Manufacturer: BioLab<br/>
+Batch: BATCH-002
+</div>
+</div>`,
+      total: "$650.00"
+    };
+
+    let subject = formData.subject;
+    let body = formData.body;
+
+    // Replace all template variables
+    Object.entries(sampleData).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      subject = subject.replace(regex, value);
+      body = body.replace(regex, value);
+    });
+
+    setPreviewContent({ subject, body });
+    setPreviewOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -187,6 +232,23 @@ Best regards`,
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setFormData({
+                        name: template.name,
+                        subject: template.subject,
+                        body: template.body,
+                        lab_id: template.lab_id || "",
+                        is_default: template.is_default,
+                      });
+                      handlePreview();
+                    }}
+                    title="Preview template"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -312,8 +374,45 @@ Best regards`,
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
+            <Button variant="outline" onClick={handlePreview}>
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </Button>
             <Button onClick={handleSaveTemplate}>
               {editingTemplate ? "Update" : "Create"} Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Template Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-semibold">Subject:</Label>
+              <div className="mt-1 p-3 bg-muted rounded border">
+                {previewContent.subject}
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-semibold">Body:</Label>
+              <div 
+                className="mt-1 p-4 bg-background rounded border"
+                dangerouslySetInnerHTML={{ __html: previewContent.body.replace(/\n/g, '<br/>') }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded">
+              <p className="font-semibold mb-1">Note:</p>
+              <p>This preview uses sample data. Actual emails will contain real quote information.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

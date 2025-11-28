@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import {
@@ -44,6 +44,12 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Compound {
   id: string;
@@ -96,6 +102,7 @@ const Compounds = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
   const [durationFilter, setDurationFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"name" | "standard" | "duration">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -395,6 +402,9 @@ const Compounds = () => {
 
   // Get unique standards for filter dropdown
   const uniqueStandards = Array.from(new Set(compounds.map(c => c.standard).filter(Boolean)));
+  
+  // Get unique categories for filter dropdown
+  const uniqueCategories = Array.from(new Set(compounds.map(c => c.category).filter(Boolean)));
 
   // Filter and sort compounds
   const filteredAndSortedCompounds = useMemo(() => compounds
@@ -406,6 +416,11 @@ const Compounds = () => {
       
       // Standard filter
       if (standardFilter !== "all" && compound.standard !== standardFilter) {
+        return false;
+      }
+      
+      // Category filter
+      if (categoryFilter !== "all" && compound.category !== categoryFilter) {
         return false;
       }
       
@@ -443,12 +458,12 @@ const Compounds = () => {
       }
       
       return sortOrder === "asc" ? compareValue : -compareValue;
-    }), [compounds, searchQuery, standardFilter, durationFilter, sortBy, sortOrder]);
+    }), [compounds, searchQuery, standardFilter, categoryFilter, durationFilter, sortBy, sortOrder]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, standardFilter, durationFilter, sortBy, sortOrder]);
+  }, [searchQuery, standardFilter, categoryFilter, durationFilter, sortBy, sortOrder]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredAndSortedCompounds.length / itemsPerPage);
@@ -498,9 +513,47 @@ const Compounds = () => {
   const clearFilters = () => {
     setSearchQuery("");
     setStandardFilter("all");
+    setCategoryFilter("all");
     setDurationFilter("all");
     setSortBy("name");
     setSortOrder("asc");
+  };
+
+  const hasActiveFilters = searchQuery || standardFilter !== "all" || categoryFilter !== "all" || durationFilter !== "all";
+
+  const handleExport = () => {
+    try {
+      const exportData = filteredAndSortedCompounds.map(compound => ({
+        compound: compound.name,
+        category: compound.category || "",
+        aliases: compound.aliases || [],
+        standard: compound.standard || "",
+        duration_days: compound.duration_days || null,
+        description: compound.description || "",
+      }));
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `compounds-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} compound(s) to JSON file`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Failed to export compounds",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleImport = async () => {
@@ -667,8 +720,6 @@ const Compounds = () => {
     reader.readAsText(file);
   };
 
-  const hasActiveFilters = searchQuery || standardFilter !== "all" || durationFilter !== "all";
-
   return (
     <Layout>
       <div className="space-y-4">
@@ -701,6 +752,14 @@ const Compounds = () => {
                 </Button>
               </>
             )}
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={compounds.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export JSON
+            </Button>
             <Button
               variant="outline"
               onClick={() => setBulkPricingWizardOpen(true)}
@@ -813,6 +872,23 @@ const Compounds = () => {
                 {uniqueStandards.map((standard) => (
                   <SelectItem key={standard} value={standard!}>
                     {standard}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[180px]">
+            <Label htmlFor="category-filter" className="mb-2 block">Category</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger id="category-filter">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {uniqueCategories.map((category) => (
+                  <SelectItem key={category} value={category!}>
+                    {category}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -955,7 +1031,29 @@ const Compounds = () => {
                         onCheckedChange={() => toggleSelection(compound.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{compound.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {compound.aliases && compound.aliases.length > 0 ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help border-b border-dotted border-muted-foreground">
+                                {compound.name}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-semibold mb-1">Aliases:</p>
+                              <ul className="list-disc list-inside space-y-0.5">
+                                {compound.aliases.map((alias, idx) => (
+                                  <li key={idx} className="text-sm">{alias}</li>
+                                ))}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        compound.name
+                      )}
+                    </TableCell>
                     <TableCell>
                       {compound.category ? (
                         <Badge variant="secondary">{compound.category}</Badge>

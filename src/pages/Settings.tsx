@@ -58,6 +58,10 @@ const Settings = () => {
   const [verifying, setVerifying] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [showDisableMfaDialog, setShowDisableMfaDialog] = useState(false);
+  const [disableVerificationCode, setDisableVerificationCode] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [disabling, setDisabling] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -229,28 +233,75 @@ const Settings = () => {
     }
   };
 
-  const handleDisableMfa = async () => {
+  const handleDisableMfaRequest = async () => {
     if (!factorId) return;
 
     try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId });
-
+      // Create MFA challenge to verify user has access to their device
+      const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+      
       if (error) throw error;
+      
+      setChallengeId(data.id);
+      setShowDisableMfaDialog(true);
+    } catch (error) {
+      console.error("Error creating MFA challenge:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate 2FA verification. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDisableMfaVerify = async () => {
+    if (!disableVerificationCode || disableVerificationCode.length !== 6) {
+      toast({
+        title: "Invalid code",
+        description: "Please enter a 6-digit code from your authenticator app",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setDisabling(true);
+
+      // Verify the challenge
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId,
+        code: disableVerificationCode,
+      });
+
+      if (verifyError) throw verifyError;
+
+      // Now we can unenroll
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId });
+
+      if (unenrollError) throw unenrollError;
 
       setMfaEnabled(false);
       setFactorId("");
+      setShowDisableMfaDialog(false);
+      setDisableVerificationCode("");
+      setChallengeId("");
       
       toast({
         title: "Success",
         description: "Two-factor authentication has been disabled",
       });
+
+      await checkMfaStatus();
     } catch (error) {
       console.error("Error disabling MFA:", error);
       toast({
         title: "Error",
-        description: "Failed to disable 2FA. Please try again.",
+        description: "Invalid verification code or failed to disable 2FA. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setDisabling(false);
     }
   };
 
@@ -532,7 +583,7 @@ const Settings = () => {
             {mfaEnabled ? (
               <Button 
                 variant="destructive" 
-                onClick={handleDisableMfa}
+                onClick={handleDisableMfaRequest}
               >
                 <ShieldOff className="mr-2 h-4 w-4" />
                 Disable 2FA
@@ -682,6 +733,62 @@ const Settings = () => {
               >
                 I've Saved My Codes
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showDisableMfaDialog} onOpenChange={setShowDisableMfaDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+              <DialogDescription>
+                To disable 2FA, please verify your identity by entering the code from your authenticator app.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <Alert variant="destructive">
+                <ShieldOff className="h-4 w-4" />
+                <AlertDescription>
+                  Disabling 2FA will make your account less secure. You can re-enable it at any time.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="disableVerificationCode">Enter 6-digit code from your app:</Label>
+                <Input
+                  id="disableVerificationCode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={disableVerificationCode}
+                  onChange={(e) => setDisableVerificationCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  className="text-center text-lg tracking-widest"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDisableMfaVerify}
+                  disabled={disabling || disableVerificationCode.length !== 6}
+                  className="flex-1"
+                >
+                  {disabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Verify and Disable 2FA
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDisableMfaDialog(false);
+                    setDisableVerificationCode("");
+                    setChallengeId("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

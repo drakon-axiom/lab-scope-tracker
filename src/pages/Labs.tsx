@@ -22,7 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SwipeableTableRow } from "@/components/SwipeableTableRow";
 
 interface Lab {
   id: string;
@@ -194,32 +196,48 @@ const Labs = () => {
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact_email">Contact Email</Label>
-                  <Input
-                    id="contact_email"
-                    type="email"
-                    value={formData.contact_email}
-                    onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact_phone">Contact Phone</Label>
-                  <Input
-                    id="contact_phone"
-                    type="tel"
-                    value={formData.contact_phone}
-                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="accreditations">Accreditations</Label>
-                  <Textarea
-                    id="accreditations"
-                    value={formData.accreditations}
-                    onChange={(e) => setFormData({ ...formData, accreditations: e.target.value })}
-                  />
-                </div>
+                
+                <Collapsible defaultOpen className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 font-medium text-sm hover:text-primary transition-colors">
+                    <span>Contact Details</span>
+                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contact_email">Contact Email</Label>
+                      <Input
+                        id="contact_email"
+                        type="email"
+                        value={formData.contact_email}
+                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact_phone">Contact Phone</Label>
+                      <Input
+                        id="contact_phone"
+                        type="tel"
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 font-medium text-sm hover:text-primary transition-colors">
+                    <span>Accreditations</span>
+                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2">
+                    <Label htmlFor="accreditations">Accreditations</Label>
+                    <Textarea
+                      id="accreditations"
+                      value={formData.accreditations}
+                      onChange={(e) => setFormData({ ...formData, accreditations: e.target.value })}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
                 <Button type="submit" className="w-full">
                   {editingLab ? "Update" : "Create"} Lab
                 </Button>
@@ -248,7 +266,11 @@ const Labs = () => {
                 </TableRow>
               ) : (
                 labs.map((lab) => (
-                  <TableRow key={lab.id}>
+                  <SwipeableTableRow 
+                    key={lab.id}
+                    onEdit={() => handleEdit(lab)}
+                    onDelete={() => handleDelete(lab.id)}
+                  >
                     <TableCell className="font-medium">{lab.name}</TableCell>
                     <TableCell className="hidden md:table-cell">{lab.location || "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">
@@ -279,7 +301,7 @@ const Labs = () => {
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
+                  </SwipeableTableRow>
                 ))
               )}
             </TableBody>

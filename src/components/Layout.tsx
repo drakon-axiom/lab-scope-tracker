@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 interface LayoutProps {
   children: ReactNode;
@@ -83,9 +84,10 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
           
-          <main className="flex-1 container mx-auto px-3 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8">{children}</main>
+          <main className="flex-1 container mx-auto px-3 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 pb-20 md:pb-8">{children}</main>
         </div>
       </div>
+      <MobileBottomNav />
     </SidebarProvider>
   );
 };

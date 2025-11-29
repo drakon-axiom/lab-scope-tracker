@@ -2590,7 +2590,7 @@ const Quotes = () => {
                   </div>
                   
                   <div className="space-y-2 col-span-2">
-                    <Label>Price</Label>
+                    <Label>Price (auto-populated from vendor pricing)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -2599,7 +2599,27 @@ const Quotes = () => {
                         setItemFormData({ ...itemFormData, price: e.target.value })
                       }
                       placeholder="0.00"
+                      disabled
+                      className="bg-muted"
                     />
+                    {(parseFloat(itemFormData.price) > 0 || itemFormData.additional_report_headers > 0) && (
+                      <div className="text-sm space-y-1 p-2 bg-muted/50 rounded">
+                        <div className="flex justify-between">
+                          <span>Base Price:</span>
+                          <span>${parseFloat(itemFormData.price || "0").toFixed(2)}</span>
+                        </div>
+                        {itemFormData.additional_report_headers > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Additional Headers ({itemFormData.additional_report_headers} × $30):</span>
+                            <span>+${(itemFormData.additional_report_headers * 30).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                          <span>Total:</span>
+                          <span>${(parseFloat(itemFormData.price || "0") + (itemFormData.additional_report_headers * 30)).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-3 col-span-2">
                     <div className="flex items-center space-x-2">

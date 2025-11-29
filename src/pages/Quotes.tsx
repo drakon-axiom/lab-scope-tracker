@@ -354,11 +354,10 @@ const Quotes = () => {
       const targetLabId = labId || selectedQuote?.lab_id;
       if (!targetLabId) return;
 
-      // Fetch all products for the user
+      // Fetch all products
       const { data: allProductsData, error: allProductsError } = await supabase
         .from("products")
         .select("id, name")
-        .eq("user_id", user.id)
         .order("name");
 
       if (allProductsError) throw allProductsError;
@@ -398,8 +397,7 @@ const Quotes = () => {
 
       const { data, error } = await supabase
         .from("labs")
-        .select("id, name")
-        .eq("user_id", user.id);
+        .select("id, name");
 
       if (error) throw error;
       setLabs(data || []);
@@ -456,7 +454,6 @@ const Quotes = () => {
       const { data, error } = await supabase
         .from("clients")
         .select("id, name")
-        .eq("user_id", user.id)
         .order("name");
 
       if (error) throw error;
@@ -474,7 +471,6 @@ const Quotes = () => {
       const { data, error } = await supabase
         .from("manufacturers")
         .select("id, name")
-        .eq("user_id", user.id)
         .order("name");
 
       if (error) throw error;

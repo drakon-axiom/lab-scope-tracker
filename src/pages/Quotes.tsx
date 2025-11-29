@@ -1139,6 +1139,31 @@ const Quotes = () => {
     notes: string | null,
     emailTemplate: any
   ) => {
+    // Calculate subtotal, discount, and total
+    const subtotal = items.reduce((sum, item) => {
+      let itemTotal = item.price || 0;
+      
+      // Add additional samples cost
+      if ((item.additional_samples || 0) > 0) {
+        const productName = item.products.name.toLowerCase();
+        if (productName.includes("tirzepatide") || productName.includes("semaglutide") || productName.includes("retatrutide")) {
+          itemTotal += (item.additional_samples || 0) * 60;
+        }
+      }
+      
+      // Add additional headers cost
+      if ((item.additional_report_headers || 0) > 0) {
+        itemTotal += (item.additional_report_headers || 0) * 30;
+      }
+      
+      return sum + itemTotal;
+    }, 0);
+    
+    // Apply automatic discount: 5% under $1200, 10% over $1200
+    const discountPercent = subtotal < 1200 ? 5 : 10;
+    const discount = (subtotal * discountPercent) / 100;
+    const total = subtotal - discount;
+
     const itemsHtml = items.map((item, index) => {
       const productName = item.products.name.toLowerCase();
       const qualifiesForAdditionalSamplePricing = 
@@ -1147,39 +1172,59 @@ const Quotes = () => {
         productName.includes("retatrutide");
 
       let itemHtml = 
-        `<div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">` +
-        `<strong>${index + 1}. ${item.products.name}</strong> - $${(item.price || 0).toFixed(2)}<br/>` +
-        `<div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">` +
-        `Client: ${item.client || "—"}<br/>` +
-        `Sample: ${item.sample || "—"}<br/>` +
-        `Manufacturer: ${item.manufacturer || "—"}<br/>` +
-        `Batch: ${item.batch || "—"}` +
-        `</div>`;
+        `<div style="margin-bottom: 20px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff;">` +
+        `<div style="font-size: 1.1em; font-weight: bold; margin-bottom: 12px; color: #111827;">${index + 1}. ${item.products.name}</div>` +
+        `<div style="padding: 12px; background-color: #f9fafb; border-radius: 6px; margin-bottom: 12px;">` +
+        `<div style="color: #374151; font-size: 0.95em; line-height: 1.6;">` +
+        `<strong>Client:</strong> ${item.client || "—"}<br/>` +
+        `<strong>Sample:</strong> ${item.sample || "—"}<br/>` +
+        `<strong>Manufacturer:</strong> ${item.manufacturer || "—"}<br/>` +
+        `<strong>Batch:</strong> ${item.batch || "—"}` +
+        `</div></div>` +
+        `<div style="text-align: right; font-size: 1.1em; font-weight: 600; color: #059669;">Base Price: $${(item.price || 0).toFixed(2)}</div>`;
+
+      // Calculate item total
+      let itemTotal = item.price || 0;
 
       if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+        itemTotal += (item.additional_samples || 0) * 60;
         itemHtml += 
-          `<div style="margin-top: 8px; padding: 8px; background-color: #f9fafb; border-radius: 4px;">` +
-          `Additional Samples: ${item.additional_samples} × $60 = $${((item.additional_samples || 0) * 60).toFixed(2)}` +
-          `</div>`;
+          `<div style="margin-top: 12px; padding: 12px; background-color: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px;">` +
+          `<div style="color: #065f46; font-size: 0.95em;">` +
+          `<strong>Additional Samples:</strong> ${item.additional_samples} × $60.00 = <strong>$${((item.additional_samples || 0) * 60).toFixed(2)}</strong>` +
+          `</div></div>`;
       }
 
       if ((item.additional_report_headers || 0) > 0) {
+        itemTotal += (item.additional_report_headers || 0) * 30;
         itemHtml += 
-          `<div style="margin-top: 8px; padding: 8px; background-color: #fefce8; border-radius: 4px;">` +
-          `<strong>Additional Report Headers:</strong> ${item.additional_report_headers} × $30 = $${((item.additional_report_headers || 0) * 30).toFixed(2)}<br/>`;
+          `<div style="margin-top: 12px; padding: 12px; background-color: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px;">` +
+          `<div style="color: #92400e; font-size: 0.95em; margin-bottom: 8px;">` +
+          `<strong>Additional Report Headers:</strong> ${item.additional_report_headers} × $30.00 = <strong>$${((item.additional_report_headers || 0) * 30).toFixed(2)}</strong>` +
+          `</div>`;
         
         if (item.additional_headers_data && item.additional_headers_data.length > 0) {
           item.additional_headers_data.forEach((header, idx) => {
             itemHtml += 
-              `<div style="margin-left: 16px; margin-top: 4px; font-size: 0.85em;">` +
-              `Header #${idx + 1}: ${header.client} / ${header.sample} / ${header.manufacturer} / ${header.batch}` +
-              `</div>`;
+              `<div style="margin-top: 8px; padding: 10px; background-color: #fffbeb; border-radius: 4px; border: 1px solid #fcd34d;">` +
+              `<div style="font-weight: 600; color: #78350f; margin-bottom: 4px;">Header #${idx + 1}:</div>` +
+              `<div style="color: #78350f; font-size: 0.9em; line-height: 1.5;">` +
+              `<strong>Client:</strong> ${header.client || "—"}<br/>` +
+              `<strong>Sample:</strong> ${header.sample || "—"}<br/>` +
+              `<strong>Manufacturer:</strong> ${header.manufacturer || "—"}<br/>` +
+              `<strong>Batch:</strong> ${header.batch || "—"}` +
+              `</div></div>`;
           });
         }
         itemHtml += `</div>`;
       }
 
-      itemHtml += `</div>`;
+      // Show item total
+      itemHtml += 
+        `<div style="margin-top: 12px; padding: 12px; background-color: #f3f4f6; border-radius: 6px; text-align: right;">` +
+        `<div style="font-size: 1.15em; font-weight: bold; color: #111827;">Item Total: $${itemTotal.toFixed(2)}</div>` +
+        `</div></div>`;
+
       return itemHtml;
     }).join("");
 
@@ -1192,39 +1237,55 @@ const Quotes = () => {
         .replace(/\{\{lab_name\}\}/g, labName);
 
       html = 
-        `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>` +
-        `<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">` +
-        `<div>${emailTemplate.body
+        `<!DOCTYPE html><html><head><meta charset="UTF-8">` +
+        `<style>body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; } .container { max-width: 800px; margin: 0 auto; padding: 20px; }</style>` +
+        `</head><body><div class="container">` +
+        `<div style="white-space: pre-wrap;">${emailTemplate.body
           .replace(/\{\{lab_name\}\}/g, labName)
           .replace(/\{\{quote_number\}\}/g, quoteNumber)
           .replace(/\{\{quote_items\}\}/g, itemsHtml)
-          .replace(/\{\{total\}\}/g, `$${totalQuoteValue.toFixed(2)}`)
+          .replace(/\{\{total\}\}/g, `$${total.toFixed(2)}`)
         }</div>` +
         (notes ? `<div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : "") +
-        `</body></html>`;
+        `<div style="margin-top: 32px; padding: 20px; background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; text-align: center;">` +
+        `<p style="margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #166534;">Confirm Quote</p>` +
+        `<p style="margin: 0 0 16px 0; color: #15803d;">Click the button below to confirm this quote and provide payment information:</p>` +
+        `<a href="${window.location.origin}/quote-confirm/${selectedQuote?.id}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1em;">Confirm Quote</a>` +
+        `</div></div></body></html>`;
     } else {
       subject = `Testing Quote Request ${quoteNumber ? `#${quoteNumber}` : ""}`;
       html = 
-        `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>` +
-        `<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">` +
-        `<h1 style="color: #111827;">Testing Quote Request</h1>` +
-        `<p style="color: #6b7280;">Quote Number: ${quoteNumber}</p>` +
+        `<!DOCTYPE html><html><head><meta charset="UTF-8">` +
+        `<style>body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; } .container { max-width: 800px; margin: 0 auto; padding: 20px; }</style>` +
+        `</head><body><div class="container">` +
+        `<div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 24px;">` +
+        `<h1 style="margin: 0; color: #111827;">Testing Quote Request</h1>` +
+        `<p style="margin: 8px 0 0 0; color: #6b7280;">Quote Number: ${quoteNumber || "Pending Assignment"}</p>` +
+        `</div>` +
         `<p>Dear ${labName},</p>` +
         `<p>Please review the following quote request for testing services:</p>` +
         itemsHtml +
-        `<div style="margin: 20px 0; padding: 15px; background-color: #f3f4f6; border-radius: 8px; font-size: 1.25em; font-weight: bold; text-align: right;">` +
-        `Total Quote Value: $${totalQuoteValue.toFixed(2)}</div>` +
-        (notes ? `<div style="margin: 24px 0; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><strong>Additional Notes:</strong><br/>${notes}</div>` : "") +
+        `<div style="text-align: right; margin: 20px 0; padding: 16px; background-color: #f9fafb; border-radius: 8px;">` +
+        `<div style="font-size: 1em; margin-bottom: 8px;">Subtotal: $${subtotal.toFixed(2)}</div>` +
+        `<div style="font-size: 1em; margin-bottom: 8px; color: #16a34a;">Discount (${discountPercent}%): -$${discount.toFixed(2)}</div>` +
+        `<div style="font-size: 1.25em; font-weight: bold;">Total: $${total.toFixed(2)}</div>` +
+        `</div>` +
+        (notes ? `<div style="margin: 24px 0; padding: 16px; background-color: #f9fafb; border-radius: 8px;"><h3 style="margin: 0 0 8px 0; color: #374151;">Additional Notes:</h3><p style="margin: 0; white-space: pre-wrap;">${notes}</p></div>` : "") +
+        `<div style="margin: 32px 0; padding: 20px; background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; text-align: center;">` +
+        `<p style="margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #166534;">Confirm Quote</p>` +
+        `<p style="margin: 0 0 16px 0; color: #15803d;">Click the button below to confirm this quote and provide payment information:</p>` +
+        `<a href="${window.location.origin}/quote-confirm/${selectedQuote?.id}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1em;">Confirm Quote</a>` +
+        `</div>` +
         `<div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e5e7eb;">` +
         `<p><strong>Next Steps:</strong></p>` +
         `<ul style="color: #6b7280;">` +
-        `<li>Please review the quote details above</li>` +
+        `<li>Click the "Confirm Quote" button above to approve and provide payment details</li>` +
+        `<li>Review the quote details</li>` +
         `<li>Confirm pricing and availability</li>` +
-        `<li>Provide a quote number if needed</li>` +
         `<li>Respond with any questions or concerns</li>` +
         `</ul>` +
         `<p style="margin-top: 20px;">Thank you for your service!</p>` +
-        `</div></body></html>`;
+        `</div></div></body></html>`;
     }
 
     return { subject, html };

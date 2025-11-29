@@ -56,43 +56,30 @@ const UserManagement = () => {
     try {
       setLoading(true);
 
-      // Get all users with their profiles and roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .order("created_at", { ascending: false });
+      // Call edge function to get users (requires admin privileges)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
 
-      if (rolesError) throw rolesError;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/list-users`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
-      // Get profiles for additional info
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch users");
+      }
 
-      if (profilesError) throw profilesError;
-
-      // Get auth users to get email addresses
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) throw authError;
-
-      const authUsers = authData?.users || [];
-
-      // Combine all data
-      const usersWithRoles: UserWithRole[] = userRoles.map((ur) => {
-        const authUser = authUsers.find((u) => u.id === ur.user_id);
-        const profile = profiles.find((p) => p.id === ur.user_id);
-
-        return {
-          id: ur.user_id,
-          email: authUser?.email || "Unknown",
-          full_name: profile?.full_name || null,
-          created_at: authUser?.created_at || "",
-          role: ur.role as "admin" | "subscriber",
-        };
-      });
-
-      setUsers(usersWithRoles);
+      const { users: usersData } = await response.json();
+      setUsers(usersData);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
@@ -107,12 +94,29 @@ const UserManagement = () => {
 
   const handleRoleChange = async (userId: string, newRole: "admin" | "subscriber") => {
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ role: newRole })
-        .eq("user_id", userId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
 
-      if (error) throw error;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/update-user-role`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId, newRole }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update role");
+      }
 
       toast({
         title: "Role updated",

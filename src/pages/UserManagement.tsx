@@ -7,7 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Users, Shield, UserCheck } from "lucide-react";
+import { Users, Shield, UserCheck, UserPlus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -39,6 +49,14 @@ const UserManagement = () => {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newUser, setNewUser] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    role: "subscriber" as "admin" | "subscriber",
+  });
 
   useEffect(() => {
     // Redirect non-admins
@@ -139,6 +157,64 @@ const UserManagement = () => {
     await fetchUsers();
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setIsCreating(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newUser),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create user");
+      }
+
+      toast({
+        title: "User created",
+        description: `User ${newUser.email} has been created successfully`,
+      });
+
+      // Reset form and close dialog
+      setNewUser({
+        email: "",
+        password: "",
+        fullName: "",
+        role: "subscriber",
+      });
+      setIsAddUserOpen(false);
+
+      // Refresh the users list
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (roleLoading || !isAdmin) {
     return null;
   }
@@ -157,9 +233,92 @@ const UserManagement = () => {
     <Layout>
       <PullToRefreshWrapper onRefresh={handleRefresh}>
         <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h2>
-            <p className="text-sm text-muted-foreground">Manage user roles and permissions</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h2>
+              <p className="text-sm text-muted-foreground">Manage user roles and permissions</p>
+            </div>
+            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New User</DialogTitle>
+                  <DialogDescription>
+                    Add a new user to the system and assign them a role.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="user@example.com"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name (Optional)</Label>
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="John Doe"
+                      value={newUser.fullName}
+                      onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select
+                      value={newUser.role}
+                      onValueChange={(value) =>
+                        setNewUser({ ...newUser, role: value as "admin" | "subscriber" })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="subscriber">Subscriber</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddUserOpen(false)}
+                      disabled={isCreating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isCreating}>
+                      {isCreating ? "Creating..." : "Create User"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Stats */}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import { PullToRefreshWrapper } from "@/components/PullToRefresh";
+import { ResponsiveDialog } from "@/components/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -259,6 +261,26 @@ const Quotes = () => {
     fetchTestingTypes();
     fetchTemplates();
     fetchEmailTemplates();
+
+    // Set up realtime subscriptions for quotes
+    const quotesChannel = supabase
+      .channel('quotes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotes'
+        },
+        () => {
+          fetchQuotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quotesChannel);
+    };
   }, []);
 
   // Auto-refresh stale tracking data (older than 4 hours)
@@ -1426,8 +1448,15 @@ const Quotes = () => {
     0
   );
 
+  const handleRefresh = async () => {
+    await fetchQuotes();
+    await fetchProducts();
+    await fetchLabs();
+  };
+
   return (
     <Layout>
+      <PullToRefreshWrapper onRefresh={handleRefresh}>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -3229,6 +3258,7 @@ const Quotes = () => {
           }}
         />
       </div>
+      </PullToRefreshWrapper>
     </Layout>
   );
 };

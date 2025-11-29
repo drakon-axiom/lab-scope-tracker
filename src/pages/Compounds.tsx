@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import { PullToRefreshWrapper } from "@/components/PullToRefresh";
+import { ResponsiveDialog } from "@/components/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,6 +191,26 @@ const Compounds = () => {
   useEffect(() => {
     fetchCompounds();
     fetchLabs();
+
+    // Set up realtime subscription for compounds
+    const channel = supabase
+      .channel('compounds-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products'
+        },
+        () => {
+          fetchCompounds();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const resetForm = () => {
@@ -755,8 +777,14 @@ const Compounds = () => {
     reader.readAsText(file);
   };
 
+  const handleRefresh = async () => {
+    await fetchCompounds();
+    await fetchLabs();
+  };
+
   return (
     <Layout>
+      <PullToRefreshWrapper onRefresh={handleRefresh}>
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div>
@@ -824,21 +852,19 @@ const Compounds = () => {
               <span className="hidden sm:inline">Import JSON</span>
               <span className="sm:hidden">Import</span>
             </Button>
-            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-              <DialogTrigger asChild>
+            <ResponsiveDialog
+              open={open}
+              onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}
+              title={editingCompound ? "Edit Compound" : "Add Compound"}
+              description={editingCompound ? "Update compound entry" : "Create a new compound entry"}
+              trigger={
                 <Button size="sm" className="text-xs sm:text-sm">
                   <Plus className="mr-1 sm:mr-2 h-4 w-4" />
                   <span className="hidden xs:inline">Add Compound</span>
                   <span className="xs:hidden">Add</span>
                 </Button>
-              </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingCompound ? "Edit" : "Add"} Compound</DialogTitle>
-                <DialogDescription>
-                  {editingCompound ? "Update" : "Create a new"} compound entry
-                </DialogDescription>
-              </DialogHeader>
+              }
+            >
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Compound Name</Label>
@@ -959,8 +985,7 @@ const Compounds = () => {
                   {editingCompound ? "Update" : "Create"} Compound
                 </Button>
               </form>
-            </DialogContent>
-          </Dialog>
+            </ResponsiveDialog>
           </div>
         </div>
 
@@ -1506,6 +1531,7 @@ const Compounds = () => {
           </div>
         </DialogContent>
       </Dialog>
+      </PullToRefreshWrapper>
     </Layout>
   );
 };

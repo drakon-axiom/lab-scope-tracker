@@ -12,25 +12,40 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    console.log('Authorization header:', authHeader ? 'Present' : 'Missing')
+
+    if (!authHeader) {
+      console.error('No authorization header provided')
+      return new Response(JSON.stringify({ error: 'Unauthorized - No auth header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
 
     // Check if user is authenticated and is an admin
+    console.log('Attempting to get user...')
     const {
       data: { user },
       error: userError,
     } = await supabaseClient.auth.getUser()
 
+    console.log('User:', user ? user.id : 'null', 'Error:', userError?.message || 'none')
+
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      console.error('User authentication failed:', userError?.message)
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError?.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

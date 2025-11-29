@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { ResponsiveDialog } from "@/components/ResponsiveDialog";
@@ -146,6 +147,7 @@ interface TrackingHistory {
 }
 
 const Quotes = () => {
+  const { role, isSubscriber } = useUserRole();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
@@ -2444,14 +2446,14 @@ const Quotes = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Product *</Label>
+                    <Label>{isSubscriber ? "Compound" : "Product"} *</Label>
                     <Select
                       value={itemFormData.product_id}
                       onValueChange={handleProductChange}
                       required
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
+                        <SelectValue placeholder={isSubscriber ? "Select compound" : "Select product"} />
                       </SelectTrigger>
                       <SelectContent>
                         {products.map((product) => (
@@ -2512,17 +2514,19 @@ const Quotes = () => {
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Sample *</Label>
-                    <Input
-                      value={itemFormData.sample}
-                      onChange={(e) =>
-                        setItemFormData({ ...itemFormData, sample: e.target.value })
-                      }
-                      placeholder="Sample identifier"
-                      required
-                    />
-                  </div>
+                  {!isSubscriber && (
+                    <div className="space-y-2">
+                      <Label>Sample *</Label>
+                      <Input
+                        value={itemFormData.sample}
+                        onChange={(e) =>
+                          setItemFormData({ ...itemFormData, sample: e.target.value })
+                        }
+                        placeholder="Sample identifier"
+                        required
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Manufacturer *</Label>
                     <Popover open={manufacturerOpen} onOpenChange={setManufacturerOpen}>

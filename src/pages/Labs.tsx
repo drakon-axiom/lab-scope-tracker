@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import { PullToRefreshWrapper } from "@/components/PullToRefresh";
+import { ResponsiveDialog } from "@/components/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +53,7 @@ const Labs = () => {
   const fetchLabs = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    if (!user) return;
 
     const { data, error } = await supabase
       .from("labs")
@@ -71,6 +74,26 @@ const Labs = () => {
 
   useEffect(() => {
     fetchLabs();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('labs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'labs'
+        },
+        () => {
+          fetchLabs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const resetForm = () => {
@@ -156,28 +179,31 @@ const Labs = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    await fetchLabs();
+  };
+
   return (
     <Layout>
+      <PullToRefreshWrapper onRefresh={handleRefresh}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Labs</h2>
             <p className="text-muted-foreground">Manage testing laboratories</p>
           </div>
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-            <DialogTrigger asChild>
+          <ResponsiveDialog 
+            open={open} 
+            onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}
+            title={editingLab ? "Edit Lab" : "Add Lab"}
+            description={editingLab ? "Update laboratory entry" : "Create a new laboratory entry"}
+            trigger={
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Lab
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingLab ? "Edit" : "Add"} Lab</DialogTitle>
-                <DialogDescription>
-                  {editingLab ? "Update" : "Create a new"} laboratory entry
-                </DialogDescription>
-              </DialogHeader>
+            }
+          >
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Lab Name</Label>
@@ -242,8 +268,7 @@ const Labs = () => {
                   {editingLab ? "Update" : "Create"} Lab
                 </Button>
               </form>
-            </DialogContent>
-          </Dialog>
+          </ResponsiveDialog>
         </div>
 
         <div className="rounded-md border overflow-x-auto">
@@ -308,6 +333,7 @@ const Labs = () => {
           </Table>
         </div>
       </div>
+      </PullToRefreshWrapper>
     </Layout>
   );
 };

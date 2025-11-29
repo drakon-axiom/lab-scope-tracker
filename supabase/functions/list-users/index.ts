@@ -1,6 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
   try {
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
@@ -22,7 +32,7 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -36,7 +46,7 @@ Deno.serve(async (req) => {
     if (roleError || roleData?.role !== 'admin') {
       return new Response(JSON.stringify({ error: 'Forbidden - Admin access required' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -87,13 +97,13 @@ Deno.serve(async (req) => {
     })
 
     return new Response(JSON.stringify({ users: usersWithRoles }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
     console.error('Error listing users:', error)
     return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })

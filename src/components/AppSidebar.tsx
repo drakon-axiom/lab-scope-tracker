@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUserRole } from "@/hooks/useUserRole";
 
 import {
   Sidebar,
@@ -46,10 +47,24 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
+  const { role, isAdmin } = useUserRole();
 
   const getInitials = (email: string) => {
     return email.charAt(0).toUpperCase();
   };
+
+  // Filter nav items based on role
+  const visibleMainNavItems = mainNavItems.filter(item => {
+    if (isAdmin) return true; // Admins see everything
+    // Subscribers can only see Dashboard and Quotes
+    return item.url === "/" || item.url === "/quotes";
+  });
+
+  const visibleUtilityNavItems = utilityNavItems.filter(item => {
+    if (isAdmin) return true; // Admins see everything
+    // Subscribers don't see Bulk Import or Notifications
+    return false;
+  });
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
@@ -65,7 +80,7 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavItems.map((item) => {
+              {visibleMainNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -87,30 +102,32 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Utilities</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {utilityNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink 
-                        to={item.url} 
-                        className="hover:bg-muted/50" 
-                        activeClassName="bg-muted text-primary font-medium"
-                      >
-                        <Icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleUtilityNavItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Utilities</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleUtilityNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink 
+                          to={item.url} 
+                          className="hover:bg-muted/50" 
+                          activeClassName="bg-muted text-primary font-medium"
+                        >
+                          <Icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       {user && (

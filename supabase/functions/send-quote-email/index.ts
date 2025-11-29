@@ -170,17 +170,86 @@ Deno.serve(async (req) => {
         .replace(/\{\{quote_number\}\}/g, quoteNumber || 'Pending')
         .replace(/\{\{lab_name\}\}/g, labName);
 
-      const itemsForTemplate = items.map((item, index) => `
-        <div style="margin-bottom: 15px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
-          <strong>${index + 1}. ${item.productName}</strong> - $${(item.price || 0).toFixed(2)}<br/>
-          <div style="margin-top: 8px; color: #6b7280; font-size: 0.9em;">
-            Client: ${item.client || '—'}<br/>
-            Sample: ${item.sample || '—'}<br/>
-            Manufacturer: ${item.manufacturer || '—'}<br/>
-            Batch: ${item.batch || '—'}
+      const itemsForTemplate = items.map((item, index) => {
+        const productName = item.productName.toLowerCase();
+        const qualifiesForAdditionalSamplePricing = 
+          productName.includes('tirzepatide') || 
+          productName.includes('semaglutide') || 
+          productName.includes('retatrutide');
+        
+        let itemHtml = `
+        <div style="margin-bottom: 20px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #ffffff;">
+          <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 12px; color: #111827;">
+            ${index + 1}. ${item.productName}
           </div>
-        </div>
-      `).join('');
+          <div style="padding: 12px; background-color: #f9fafb; border-radius: 6px; margin-bottom: 12px;">
+            <div style="color: #374151; font-size: 0.95em; line-height: 1.6;">
+              <strong>Client:</strong> ${item.client || '—'}<br/>
+              <strong>Sample:</strong> ${item.sample || '—'}<br/>
+              <strong>Manufacturer:</strong> ${item.manufacturer || '—'}<br/>
+              <strong>Batch:</strong> ${item.batch || '—'}
+            </div>
+          </div>
+          <div style="text-align: right; font-size: 1.1em; font-weight: 600; color: #059669;">
+            Base Price: $${(item.price || 0).toFixed(2)}
+          </div>`;
+
+        // Add additional samples if present
+        if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+          itemHtml += `
+          <div style="margin-top: 12px; padding: 12px; background-color: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px;">
+            <div style="color: #065f46; font-size: 0.95em;">
+              <strong>Additional Samples:</strong> ${item.additional_samples} × $60.00 = <strong>$${((item.additional_samples || 0) * 60).toFixed(2)}</strong>
+            </div>
+          </div>`;
+        }
+
+        // Add additional headers if present
+        if ((item.additional_report_headers || 0) > 0) {
+          itemHtml += `
+          <div style="margin-top: 12px; padding: 12px; background-color: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px;">
+            <div style="color: #92400e; font-size: 0.95em; margin-bottom: 8px;">
+              <strong>Additional Report Headers:</strong> ${item.additional_report_headers} × $30.00 = <strong>$${((item.additional_report_headers || 0) * 30).toFixed(2)}</strong>
+            </div>`;
+          
+          if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+            item.additional_headers_data.forEach((header, headerIndex) => {
+              itemHtml += `
+            <div style="margin-top: 8px; padding: 10px; background-color: #fffbeb; border-radius: 4px; border: 1px solid #fcd34d;">
+              <div style="font-weight: 600; color: #78350f; margin-bottom: 4px;">Header #${headerIndex + 1}:</div>
+              <div style="color: #78350f; font-size: 0.9em; line-height: 1.5;">
+                <strong>Client:</strong> ${header.client || '—'}<br/>
+                <strong>Sample:</strong> ${header.sample || '—'}<br/>
+                <strong>Manufacturer:</strong> ${header.manufacturer || '—'}<br/>
+                <strong>Batch:</strong> ${header.batch || '—'}
+              </div>
+            </div>`;
+            });
+          }
+          
+          itemHtml += `
+          </div>`;
+        }
+
+        // Calculate and show item total
+        let itemTotal = item.price || 0;
+        if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+          itemTotal += (item.additional_samples || 0) * 60;
+        }
+        if ((item.additional_report_headers || 0) > 0) {
+          itemTotal += (item.additional_report_headers || 0) * 30;
+        }
+
+        itemHtml += `
+          <div style="margin-top: 12px; padding: 12px; background-color: #f3f4f6; border-radius: 6px; text-align: right;">
+            <div style="font-size: 1.15em; font-weight: bold; color: #111827;">
+              Item Total: $${itemTotal.toFixed(2)}
+            </div>
+          </div>
+        </div>`;
+
+        return itemHtml;
+      }).join('');
 
       htmlContent = `
         <!DOCTYPE html>

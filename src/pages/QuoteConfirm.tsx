@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,97 +26,93 @@ const QuoteConfirm = () => {
     const fetchQuote = async () => {
       if (!quoteId) return;
 
-      const { data, error } = await supabase
-        .from("quotes")
-        .select(`
-          *,
-          labs (name, contact_email)
-        `)
-        .eq("id", quoteId)
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Quote not found or invalid link.",
-          variant: "destructive",
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quoteId,
+            action: 'get',
+          }),
         });
-        setLoading(false);
-        return;
-      }
 
-      // Fetch quote items
-      const { data: items, error: itemsError } = await supabase
-        .from("quote_items")
-        .select(`
-          *,
-          products (name)
-        `)
-        .eq("quote_id", quoteId);
+        if (!response.ok) {
+          toast({
+            title: "Error",
+            description: "Quote not found or invalid link.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
 
-      if (itemsError) {
-        toast({
-          title: "Error",
-          description: "Failed to load quote items.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
+        const { quote: data, items } = await response.json();
 
-      setQuote(data);
-      setQuoteItems(items || []);
-      
-      // Calculate automatic discount based on subtotal
-      if (items && items.length > 0) {
-        const subtotal = items.reduce((sum, item) => {
-          const basePrice = parseFloat(String(item.price || "0"));
-          const additionalSamples = item.additional_samples || 0;
-          const additionalHeaders = item.additional_report_headers || 0;
-          
-          let itemTotal = basePrice;
-          
-          if (additionalSamples > 0) {
-            const productName = item.products?.name || "";
-            if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
-              itemTotal += additionalSamples * 60;
+        setQuote(data);
+        setQuoteItems(items || []);
+        
+        // Calculate automatic discount based on subtotal
+        if (items && items.length > 0) {
+          const subtotal = items.reduce((sum: number, item: any) => {
+            const basePrice = parseFloat(String(item.price || "0"));
+            const additionalSamples = item.additional_samples || 0;
+            const additionalHeaders = item.additional_report_headers || 0;
+            
+            let itemTotal = basePrice;
+            
+            if (additionalSamples > 0) {
+              const productName = item.products?.name || "";
+              if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
+                itemTotal += additionalSamples * 60;
+              }
+            }
+            
+            if (additionalHeaders > 0) {
+              itemTotal += additionalHeaders * 30;
+            }
+            
+            return sum + itemTotal;
+          }, 0);
+
+          // Apply automatic discount if not already set
+          if (!data.discount_amount) {
+            if (subtotal < 1200) {
+              setDiscountType("percentage");
+              setDiscountAmount("5");
+            } else {
+              setDiscountType("percentage");
+              setDiscountAmount("10");
+            }
+          } else {
+            const dbDiscountType = data.discount_type;
+            if (dbDiscountType === "percentage" || dbDiscountType === "fixed") {
+              setDiscountType(dbDiscountType);
+            }
+            const discountValue = data.discount_amount;
+            if (typeof discountValue === 'number') {
+              setDiscountAmount(String(discountValue));
+            } else {
+              setDiscountAmount("");
             }
           }
-          
-          if (additionalHeaders > 0) {
-            itemTotal += additionalHeaders * 30;
-          }
-          
-          return sum + itemTotal;
-        }, 0);
-
-        // Apply automatic discount if not already set
-        if (!data.discount_amount) {
-          if (subtotal < 1200) {
-            setDiscountType("percentage");
-            setDiscountAmount("5");
-          } else {
-            setDiscountType("percentage");
-            setDiscountAmount("10");
-          }
-        } else {
-          const dbDiscountType = data.discount_type;
-          if (dbDiscountType === "percentage" || dbDiscountType === "fixed") {
-            setDiscountType(dbDiscountType);
-          }
-          const discountValue = data.discount_amount;
-          if (typeof discountValue === 'number') {
-            setDiscountAmount(String(discountValue));
-          } else {
-            setDiscountAmount("");
-          }
         }
+        
+        if (data.status === "approved") {
+          setConfirmed(true);
+        }
+      } catch (error) {
+        console.error('Error fetching quote:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load quote details.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      if (data.status === "approved") {
-        setConfirmed(true);
-      }
-      setLoading(false);
     };
 
     fetchQuote();
@@ -177,52 +172,49 @@ const QuoteConfirm = () => {
 
     setConfirming(true);
 
-    // Update quote items with new prices
-    for (const item of quoteItems) {
-      const { error: itemError } = await supabase
-        .from("quote_items")
-        .update({ price: parseFloat(item.price || "0") })
-        .eq("id", item.id);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId,
+          action: 'update',
+          updates: {
+            status: 'approved',
+            lab_quote_number: quoteNumber || null,
+            lab_response: labResponse,
+            discount_type: discountAmount ? discountType : null,
+            discount_amount: discountAmount ? parseFloat(discountAmount) : null,
+            items: quoteItems.map(item => ({
+              id: item.id,
+              price: parseFloat(item.price || "0"),
+            })),
+          },
+        }),
+      });
 
-      if (itemError) {
-        toast({
-          title: "Error",
-          description: "Failed to update quote items.",
-          variant: "destructive",
-        });
-        setConfirming(false);
-        return;
+      if (!response.ok) {
+        throw new Error('Failed to confirm quote');
       }
-    }
 
-    // Update quote
-    const { error } = await supabase
-      .from("quotes")
-      .update({
-        status: "approved",
-        quote_number: quoteNumber || null,
-        lab_response: labResponse,
-        discount_amount: discountAmount ? parseFloat(discountAmount) : null,
-        discount_type: discountAmount ? discountType : null,
-      })
-      .eq("id", quoteId);
-
-    if (error) {
+      toast({
+        title: "Quote Confirmed",
+        description: "The quote has been approved successfully.",
+      });
+      setConfirmed(true);
+    } catch (error) {
+      console.error('Error confirming quote:', error);
       toast({
         title: "Error",
         description: "Failed to confirm quote. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setConfirming(false);
-      return;
     }
-
-    toast({
-      title: "Quote Confirmed",
-      description: "The quote has been approved successfully.",
-    });
-    setConfirmed(true);
-    setConfirming(false);
   };
 
   if (loading) {

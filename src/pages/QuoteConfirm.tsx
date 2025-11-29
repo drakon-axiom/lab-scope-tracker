@@ -302,42 +302,90 @@ const QuoteConfirm = () => {
 
           <div className="space-y-4">
             <Label className="text-sm font-medium">Quote Items</Label>
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Product</th>
-                    <th className="text-left p-3 font-medium">Details</th>
-                    <th className="text-right p-3 font-medium">Price ($)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quoteItems.map((item) => (
-                    <tr key={item.id} className="border-t">
-                      <td className="p-3">{item.products?.name}</td>
-                      <td className="p-3 text-muted-foreground">
-                        {item.client && <div>Client: {item.client}</div>}
-                        {item.sample && <div>Sample: {item.sample}</div>}
-                        {item.additional_samples > 0 && (
-                          <div>+{item.additional_samples} samples (${item.additional_samples * 60})</div>
-                        )}
-                        {item.additional_report_headers > 0 && (
-                          <div>+{item.additional_report_headers} headers (${item.additional_report_headers * 30})</div>
-                        )}
-                      </td>
-                      <td className="p-3">
+            <div className="space-y-4">
+              {quoteItems.map((item, index) => {
+                const productName = item.products?.name || "";
+                const qualifiesForAdditionalSamplePricing = 
+                  productName.toLowerCase().includes("tirzepatide") || 
+                  productName.toLowerCase().includes("semaglutide") || 
+                  productName.toLowerCase().includes("retatrutide");
+
+                let itemTotal = parseFloat(item.price || "0");
+                if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
+                  itemTotal += (item.additional_samples || 0) * 60;
+                }
+                if ((item.additional_report_headers || 0) > 0) {
+                  itemTotal += (item.additional_report_headers || 0) * 30;
+                }
+
+                return (
+                  <Card key={item.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="font-semibold text-base">
+                          {index + 1}. {productName}
+                        </div>
+                      </div>
+
+                      <div className="bg-muted p-3 rounded-md space-y-1 text-sm">
+                        <div><strong>Client:</strong> {item.client || "—"}</div>
+                        <div><strong>Sample:</strong> {item.sample || "—"}</div>
+                        <div><strong>Manufacturer:</strong> {item.manufacturer || "—"}</div>
+                        <div><strong>Batch:</strong> {item.batch || "—"}</div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`price-${item.id}`} className="text-sm">Base Price ($)</Label>
                         <Input
+                          id={`price-${item.id}`}
                           type="number"
                           step="0.01"
                           value={item.price || ""}
                           onChange={(e) => handleItemPriceChange(item.id, e.target.value)}
-                          className="w-24 ml-auto text-right"
+                          className="w-32 text-right"
                         />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+
+                      {(item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing && (
+                        <div className="bg-green-50 dark:bg-green-950/20 border-l-2 border-green-500 p-3 rounded text-sm">
+                          <strong>Additional Samples:</strong> {item.additional_samples} × $60.00 = <strong>${((item.additional_samples || 0) * 60).toFixed(2)}</strong>
+                        </div>
+                      )}
+
+                      {(item.additional_report_headers || 0) > 0 && (
+                        <div className="bg-amber-50 dark:bg-amber-950/20 border-l-2 border-amber-500 p-3 rounded space-y-2">
+                          <div className="text-sm">
+                            <strong>Additional Report Headers:</strong> {item.additional_report_headers} × $30.00 = <strong>${((item.additional_report_headers || 0) * 30).toFixed(2)}</strong>
+                          </div>
+                          
+                          {item.additional_headers_data && item.additional_headers_data.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                              {item.additional_headers_data.map((header: any, headerIndex: number) => (
+                                <Card key={headerIndex} className="bg-amber-100/50 dark:bg-amber-900/20">
+                                  <CardContent className="p-3">
+                                    <div className="font-semibold text-xs mb-2">Header #{headerIndex + 1}:</div>
+                                    <div className="text-xs space-y-0.5">
+                                      <div><strong>Client:</strong> {header.client || "—"}</div>
+                                      <div><strong>Sample:</strong> {header.sample || "—"}</div>
+                                      <div><strong>Manufacturer:</strong> {header.manufacturer || "—"}</div>
+                                      <div><strong>Batch:</strong> {header.batch || "—"}</div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="bg-muted p-3 rounded-md flex justify-between items-center font-semibold">
+                        <span>Item Total:</span>
+                        <span>${itemTotal.toFixed(2)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 

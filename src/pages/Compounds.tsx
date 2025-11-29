@@ -757,62 +757,78 @@ const Compounds = () => {
   return (
     <Layout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Compounds</h2>
-            <p className="text-muted-foreground">Manage compounds for testing</p>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Compounds</h2>
+            <p className="text-sm text-muted-foreground">Manage compounds for testing</p>
             {selectedIds.size > 0 && (
               <Badge variant="secondary" className="mt-2">
                 {selectedIds.size} selected
               </Badge>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {selectedIds.size > 0 && (
               <>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setBulkUpdateOpen(true)}
+                  className="text-xs sm:text-sm"
                 >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Bulk Update
+                  <Edit className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden xs:inline">Bulk Update</span>
+                  <span className="xs:hidden">Update</span>
                 </Button>
                 <Button
                   variant="destructive"
+                  size="sm"
                   onClick={handleBulkDelete}
+                  className="text-xs sm:text-sm"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
+                  <Trash2 className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden xs:inline">Delete Selected</span>
+                  <span className="xs:hidden">Delete</span>
                 </Button>
               </>
             )}
             <Button
               variant="outline"
+              size="sm"
               onClick={handleExport}
               disabled={compounds.length === 0}
+              className="text-xs sm:text-sm"
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export JSON
+              <Download className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Export JSON</span>
+              <span className="sm:hidden">Export</span>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setBulkPricingWizardOpen(true)}
+              className="text-xs sm:text-sm"
             >
-              <Wand2 className="mr-2 h-4 w-4" />
-              Bulk Pricing Setup
+              <Wand2 className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden md:inline">Bulk Pricing Setup</span>
+              <span className="md:hidden">Pricing</span>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setImportDialogOpen(true)}
+              className="text-xs sm:text-sm"
             >
-              <Upload className="mr-2 h-4 w-4" />
-              Import JSON
+              <Upload className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Import JSON</span>
+              <span className="sm:hidden">Import</span>
             </Button>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Compound
+                <Button size="sm" className="text-xs sm:text-sm">
+                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden xs:inline">Add Compound</span>
+                  <span className="xs:hidden">Add</span>
                 </Button>
               </DialogTrigger>
             <DialogContent>

@@ -51,7 +51,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Overview of your testing management system</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {statCards.map((stat) => (
             <Link key={stat.title} to={stat.link}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -68,7 +68,7 @@ const Dashboard = () => {
         </div>
 
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>

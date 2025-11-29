@@ -169,7 +169,7 @@ const Labs = () => {
                 Add Lab
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingLab ? "Edit" : "Add"} Lab</DialogTitle>
                 <DialogDescription>
@@ -228,21 +228,21 @@ const Labs = () => {
           </Dialog>
         </div>
 
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Accreditations</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="min-w-[150px]">Name</TableHead>
+                <TableHead className="hidden md:table-cell min-w-[120px]">Location</TableHead>
+                <TableHead className="hidden sm:table-cell min-w-[150px]">Contact</TableHead>
+                <TableHead className="hidden lg:table-cell min-w-[200px]">Accreditations</TableHead>
+                <TableHead className="text-right min-w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {labs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No labs found. Add your first lab to get started.
                   </TableCell>
                 </TableRow>
@@ -250,28 +250,34 @@ const Labs = () => {
                 labs.map((lab) => (
                   <TableRow key={lab.id}>
                     <TableCell className="font-medium">{lab.name}</TableCell>
-                    <TableCell>{lab.location || "—"}</TableCell>
-                    <TableCell>
-                      {lab.contact_email || lab.contact_phone || "—"}
+                    <TableCell className="hidden md:table-cell">{lab.location || "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="max-w-[150px] truncate">
+                        {lab.contact_email || lab.contact_phone || "—"}
+                      </div>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {lab.accreditations || "—"}
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="max-w-[200px] truncate">
+                        {lab.accreditations || "—"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(lab)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(lab.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(lab)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(lab.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

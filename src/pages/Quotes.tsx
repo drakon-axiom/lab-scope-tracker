@@ -1429,29 +1429,33 @@ const Quotes = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Quotes</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Quotes</h1>
+            <p className="text-sm text-muted-foreground">
               Manage testing quotes and generate test records
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setBulkPricingWizardOpen(true)}
+              className="text-xs sm:text-sm"
             >
-              <Wand2 className="mr-2 h-4 w-4" />
-              Bulk Pricing Setup
+              <Wand2 className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Bulk Pricing Setup</span>
+              <span className="sm:hidden">Pricing</span>
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Quote
+                <Button onClick={resetForm} size="sm" className="text-xs sm:text-sm">
+                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden xs:inline">New Quote</span>
+                  <span className="xs:hidden">New</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingId ? "Edit Quote" : "New Quote"}
@@ -1483,7 +1487,7 @@ const Quotes = () => {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quote_number">Internal Quote Number</Label>
                     <Input
@@ -1526,7 +1530,7 @@ const Quotes = () => {
                   <>
                     <div className="border-t pt-4 space-y-4">
                       <h3 className="font-medium text-sm">Fulfillment Details</h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="status">Status *</Label>
                           <Select
@@ -1594,7 +1598,7 @@ const Quotes = () => {
                       {/* Payment Information */}
                       <div className="border-t pt-4 space-y-4">
                         <h3 className="font-medium text-sm">Payment Information</h3>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="payment_status">Payment Status</Label>
                             <Select
@@ -1625,7 +1629,7 @@ const Quotes = () => {
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="payment_amount_usd">Amount (USD)</Label>
                             <Input
@@ -1695,28 +1699,30 @@ const Quotes = () => {
 
         {/* View Mode Toggle and Search/Filter Controls */}
         <div className="mb-6 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex gap-2">
                   <Button
                     variant={viewMode === "table" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setViewMode("table")}
+                    className="text-xs sm:text-sm"
                   >
-                    <TableIcon className="h-4 w-4 mr-2" />
-                    Table View
+                    <TableIcon className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Table View</span>
                   </Button>
                   <Button
                     variant={viewMode === "kanban" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setViewMode("kanban")}
+                    className="text-xs sm:text-sm"
                   >
-                    <LayoutGrid className="h-4 w-4 mr-2" />
-                    Kanban View
+                    <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Kanban View</span>
                   </Button>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 md:flex-row md:items-end">
+              <div className="flex flex-col gap-3">
                 <div className="flex-1">
                   <Label htmlFor="search">Search Quotes</Label>
                   <div className="relative">
@@ -1731,11 +1737,11 @@ const Quotes = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 md:w-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                   <div className="space-y-2">
-                    <Label>Status</Label>
+                    <Label className="text-xs sm:text-sm">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1754,9 +1760,9 @@ const Quotes = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Lab</Label>
+                    <Label className="text-xs sm:text-sm">Lab</Label>
                     <Select value={filterLab} onValueChange={setFilterLab}>
-                      <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1770,9 +1776,9 @@ const Quotes = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Product</Label>
+                    <Label className="text-xs sm:text-sm">Product</Label>
                     <Select value={filterProduct} onValueChange={setFilterProduct}>
-                      <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1786,9 +1792,9 @@ const Quotes = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Lock Status</Label>
+                    <Label className="text-xs sm:text-sm">Lock Status</Label>
                     <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
-                      <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1802,6 +1808,7 @@ const Quotes = () => {
                 {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
                   <Button
                     variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setSearchQuery("");
                       setFilterStatus("all");
@@ -1818,11 +1825,11 @@ const Quotes = () => {
             </div>
 
             {viewMode === "table" ? (
-              <div className="border rounded-lg">
+              <div className="border rounded-lg overflow-x-auto">
                 <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Quote #</TableHead>
+                <TableHead className="min-w-[100px]">Quote #</TableHead>
                 <TableHead>Lab</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tracking</TableHead>
@@ -1885,7 +1892,7 @@ const Quotes = () => {
                   </TableRow>
                 ) : (
                   filteredQuotes.map((quote) => (
-                  <TableRow key={quote.id}>
+                   <TableRow key={quote.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {isQuoteLocked(quote.status) && (
@@ -1898,13 +1905,13 @@ const Quotes = () => {
                     <TableCell>
                       <StatusBadge status={quote.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col">
-                          <span>{quote.tracking_number || "—"}</span>
+                          <span className="truncate max-w-[120px]">{quote.tracking_number || "—"}</span>
                           {quote.tracking_number && quote.tracking_updated_at && (
                             <span className="text-xs text-muted-foreground">
-                              Updated: {new Date(quote.tracking_updated_at).toLocaleString()}
+                              Updated: {new Date(quote.tracking_updated_at).toLocaleDateString()}
                             </span>
                           )}
                         </div>
@@ -1912,7 +1919,7 @@ const Quotes = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-6 w-6 flex-shrink-0"
                             onClick={() => handleRefreshTracking(quote.tracking_number!)}
                             title="Refresh UPS tracking"
                           >
@@ -1921,21 +1928,24 @@ const Quotes = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {new Date(quote.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleView(quote)}
+                          title="View quote"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 hidden sm:inline-flex"
                           onClick={() => handleManageItems(quote)}
                           disabled={isQuoteLocked(quote.status)}
                           title={isQuoteLocked(quote.status) ? "Cannot modify items in paid quotes" : "Manage items"}
@@ -1945,6 +1955,7 @@ const Quotes = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 hidden md:inline-flex"
                           onClick={() => handleEdit(quote)}
                           disabled={isQuoteLocked(quote.status)}
                           title={isQuoteLocked(quote.status) ? "Cannot edit paid quotes" : "Edit quote"}
@@ -1954,23 +1965,9 @@ const Quotes = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleExportPDF(quote)}
-                          title="Export as PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleExportExcel(quote)}
-                          title="Export as Excel"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="h-8 w-8 hidden lg:inline-flex"
                           onClick={() => handleDelete(quote.id)}
+                          title="Delete quote"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -54,8 +54,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import {
@@ -876,12 +877,10 @@ const Compounds = () => {
                               className="w-full justify-start"
                               onClick={() => {
                                 if (formData.category.trim()) {
-                                  // Check if category already exists
                                   if (uniqueCategories.includes(formData.category.trim())) {
                                     setCategoryComboOpen(false);
                                     return;
                                   }
-                                  // Show confirmation for new category
                                   setPendingCategory(formData.category.trim());
                                   setNewCategoryDialogOpen(true);
                                   setCategoryComboOpen(false);
@@ -918,32 +917,41 @@ const Compounds = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="standard">Standard / Specification</Label>
-                  <Input
-                    id="standard"
-                    value={formData.standard}
-                    onChange={(e) => setFormData({ ...formData, standard: e.target.value })}
-                    placeholder="e.g., HPLC-MS, HPLC-UV, LC-MS"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration_days">Duration (days)</Label>
-                  <Input
-                    id="duration_days"
-                    type="number"
-                    value={formData.duration_days}
-                    onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </div>
+                
+                <Collapsible defaultOpen className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 font-medium text-sm hover:text-primary transition-colors">
+                    <span>Testing Details</span>
+                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="standard">Standard / Specification</Label>
+                      <Input
+                        id="standard"
+                        value={formData.standard}
+                        onChange={(e) => setFormData({ ...formData, standard: e.target.value })}
+                        placeholder="e.g., HPLC-MS, HPLC-UV, LC-MS"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="duration_days">Duration (days)</Label>
+                      <Input
+                        id="duration_days"
+                        type="number"
+                        value={formData.duration_days}
+                        onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
                 <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
                   <p>💡 Vendor and pricing are managed through the "Manage" button in the Vendor Pricing column</p>
                 </div>

@@ -352,7 +352,7 @@ const QuoteConfirm = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p><strong>Quote Number:</strong> {quote.quote_number || "Not assigned"}</p>
+              <p><strong>Quote Number:</strong> {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</p>
               <p><strong>Lab:</strong> {quote.labs.name}</p>
               <p><strong>Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
             </div>

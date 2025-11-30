@@ -2831,7 +2831,7 @@ const Quotes = () => {
                         {isQuoteLocked(quote.status) && (
                           <Lock className="h-3 w-3 text-muted-foreground" />
                         )}
-                        {quote.quote_number || "—"}
+                        {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}
                       </div>
                     </TableCell>
                     <TableCell>{quote.labs.name}</TableCell>

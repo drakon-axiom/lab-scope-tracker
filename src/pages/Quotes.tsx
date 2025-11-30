@@ -2546,15 +2546,17 @@ const Quotes = () => {
                         {quote.tracking_number && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 flex-shrink-0"
-                                onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                                disabled={!canRefreshTracking()}
-                              >
-                                <RefreshCw className="h-3 w-3" />
-                              </Button>
+                              <span className="inline-flex">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 flex-shrink-0"
+                                  onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                                  disabled={!canRefreshTracking()}
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                </Button>
+                              </span>
                             </TooltipTrigger>
                             <TooltipContent>
                               {canRefreshTracking() ? "Refresh UPS tracking" : timeUntilNextRefresh}
@@ -2680,15 +2682,17 @@ const Quotes = () => {
                             {actions.refreshTracking && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 hidden sm:inline-flex"
-                                    onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                                    disabled={!canRefreshTracking()}
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                  </Button>
+                                  <span className="inline-flex">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 hidden sm:inline-flex"
+                                      onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                                      disabled={!canRefreshTracking()}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                  </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   {canRefreshTracking() ? "Refresh tracking information" : timeUntilNextRefresh}

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Shield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -159,9 +160,12 @@ const Auth = () => {
 
   if (showMfaChallenge) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+        <Card className="w-full max-w-md border-primary/20 shadow-lg">
           <CardHeader>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <img src={logo} alt="Testing Tracker" className="h-10 w-10" />
+            </div>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
               <CardTitle className="text-2xl">Two-Factor Authentication</CardTitle>
@@ -169,8 +173,8 @@ const Auth = () => {
             <CardDescription>Enter the code from your authenticator app</CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert className="mb-4">
-              <Shield className="h-4 w-4" />
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <Shield className="h-4 w-4 text-primary" />
               <AlertDescription>
                 Your account has 2FA enabled. Please enter your verification code to continue.
               </AlertDescription>
@@ -222,11 +226,14 @@ const Auth = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Testing Tracker</CardTitle>
-          <CardDescription>Sign in to manage your product testing</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+      <Card className="w-full max-w-md border-primary/20 shadow-lg">
+        <CardHeader className="space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <img src={logo} alt="Testing Tracker" className="h-12 w-12" />
+          </div>
+          <CardTitle className="text-2xl text-center">Testing Tracker</CardTitle>
+          <CardDescription className="text-center">Sign in to manage your product testing</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin">

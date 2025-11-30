@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import logo from "@/assets/logo.png";
 
 declare global {
   interface Window {
@@ -292,9 +293,13 @@ const AdminAuth = () => {
 
   if (showMfaChallenge) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
         <Card className="w-full max-w-md border-primary/20 shadow-lg">
           <CardHeader>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <img src={logo} alt="Testing Tracker" className="h-10 w-10" />
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
               <CardTitle className="text-2xl">Two-Factor Authentication</CardTitle>
@@ -355,12 +360,15 @@ const AdminAuth = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
       <Card className="w-full max-w-md border-primary/20 shadow-lg">
         <CardHeader className="space-y-3">
-          <div className="flex items-center justify-center gap-2 text-primary">
-            <Shield className="h-8 w-8" />
-            <Lock className="h-6 w-6" />
+          <div className="flex items-center justify-center gap-3">
+            <img src={logo} alt="Testing Tracker" className="h-12 w-12" />
+            <div className="flex items-center gap-2 text-primary">
+              <Shield className="h-8 w-8" />
+              <Lock className="h-6 w-6" />
+            </div>
           </div>
           <CardTitle className="text-2xl text-center">Admin Portal</CardTitle>
           <CardDescription className="text-center">

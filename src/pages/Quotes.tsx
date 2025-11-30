@@ -171,6 +171,68 @@ const Quotes = () => {
     if (role === 'admin') return false; // Admins can always edit
     return isQuoteLocked(status);
   };
+
+  // Helper function to determine which actions are available for a quote based on its status
+  const getAvailableActions = (quote: Quote) => {
+    const actions = {
+      view: true, // Always available
+      edit: false,
+      delete: false,
+      manageItems: false,
+      sendToVendor: false,
+      approveReject: false,
+      addPayment: false,
+      addTracking: false,
+      refreshTracking: false,
+      exportPDF: false,
+    };
+
+    switch (quote.status) {
+      case 'draft':
+        actions.edit = true;
+        actions.delete = true;
+        actions.manageItems = true;
+        actions.sendToVendor = true;
+        break;
+      case 'sent_to_vendor':
+        // Just view while waiting for vendor response
+        break;
+      case 'awaiting_customer_approval':
+        actions.approveReject = true;
+        break;
+      case 'approved_payment_pending':
+        actions.edit = true; // To record payment
+        actions.addPayment = true;
+        break;
+      case 'paid':
+        actions.edit = !isEditingDisabled(quote.status);
+        actions.addTracking = !quote.tracking_number;
+        actions.exportPDF = true;
+        break;
+      case 'shipped':
+      case 'in_transit':
+        actions.refreshTracking = !!quote.tracking_number;
+        actions.exportPDF = true;
+        break;
+      case 'delivered':
+      case 'testing_in_progress':
+        actions.manageItems = true; // To add/update test results
+        actions.exportPDF = true;
+        break;
+      case 'completed':
+        actions.exportPDF = true;
+        break;
+    }
+
+    // Admins can always edit and delete (except sent to vendor)
+    if (role === 'admin' && quote.status !== 'sent_to_vendor' && quote.status !== 'awaiting_customer_approval') {
+      actions.edit = true;
+      actions.delete = true;
+      actions.manageItems = true;
+    }
+
+    return actions;
+  };
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
@@ -1056,49 +1118,71 @@ const Quotes = () => {
     });
   };
 
-  const handleExportPDF = (quote: any) => {
-    const doc = new jsPDF();
-    
-    // Add header
-    doc.setFontSize(18);
-    doc.text("Quote Details", 14, 20);
-    
-    doc.setFontSize(11);
-    doc.text(`Quote Number: ${quote.quote_number || 'N/A'}`, 14, 30);
-    doc.text(`Status: ${quote.status}`, 14, 37);
-    doc.text(`Lab: ${quote.labs?.name || 'N/A'}`, 14, 44);
-    
-    if (quote.notes) {
-      doc.text(`Notes: ${quote.notes}`, 14, 51);
+  const handleExportPDF = async (quote: any) => {
+    try {
+      // Fetch quote items if not already loaded
+      let quoteWithItems = quote;
+      if (!quote.quote_items || quote.quote_items.length === 0) {
+        const { data: items, error } = await supabase
+          .from('quote_items')
+          .select('*, products(name)')
+          .eq('quote_id', quote.id);
+        
+        if (error) throw error;
+        quoteWithItems = { ...quote, quote_items: items };
+      }
+
+      const doc = new jsPDF();
+      
+      // Add header
+      doc.setFontSize(18);
+      doc.text("Quote Details", 14, 20);
+      
+      doc.setFontSize(11);
+      doc.text(`Quote Number: ${quoteWithItems.quote_number || 'N/A'}`, 14, 30);
+      doc.text(`Status: ${quoteWithItems.status}`, 14, 37);
+      doc.text(`Lab: ${quoteWithItems.labs?.name || 'N/A'}`, 14, 44);
+      
+      if (quoteWithItems.notes) {
+        doc.text(`Notes: ${quoteWithItems.notes}`, 14, 51);
+      }
+      
+      // Add items table
+      const tableData = quoteWithItems.quote_items?.map((item: any) => [
+        item.products?.name || 'N/A',
+        item.client || '-',
+        item.sample || '-',
+        item.manufacturer || '-',
+        item.batch || '-',
+        `$${(item.price || 0).toFixed(2)}`,
+        item.additional_samples || 0,
+        item.additional_report_headers || 0,
+      ]) || [];
+      
+      autoTable(doc, {
+        startY: 60,
+        head: [['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Add. Samples', 'Add. Headers']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 139, 202] },
+      });
+      
+      doc.save(`quote-${quoteWithItems.quote_number || quoteWithItems.id}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Quote exported as PDF",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to export quote",
+        variant: "destructive",
+        duration: 4000,
+      });
     }
-    
-    // Add items table
-    const tableData = quote.quote_items?.map((item: any) => [
-      item.products?.name || 'N/A',
-      item.client || '-',
-      item.sample || '-',
-      item.manufacturer || '-',
-      item.batch || '-',
-      `$${(item.price || 0).toFixed(2)}`,
-      item.additional_samples || 0,
-      item.additional_report_headers || 0,
-    ]) || [];
-    
-    autoTable(doc, {
-      startY: 60,
-      head: [['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Add. Samples', 'Add. Headers']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 139, 202] },
-    });
-    
-    doc.save(`quote-${quote.quote_number || quote.id}.pdf`);
-    
-    toast({
-      title: "Success",
-      description: "Quote exported as PDF",
-    });
   };
 
   const handleExportExcel = (quote: any) => {
@@ -2266,61 +2350,153 @@ const Quotes = () => {
                       {new Date(quote.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleView(quote)}
-                          title="View quote"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hidden sm:inline-flex"
-                          onClick={() => handleManageItems(quote)}
-                          disabled={isQuoteLocked(quote.status)}
-                          title={isQuoteLocked(quote.status) ? "Cannot modify items in paid quotes" : "Manage items"}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hidden md:inline-flex"
-                          onClick={() => {
-                            if (quote.status === 'awaiting_customer_approval') {
-                              fetchQuoteItems(quote.id).then(() => {
-                                setSelectedQuoteForApproval(quote);
-                                setApprovalDialogOpen(true);
-                              });
-                            } else {
-                              handleEdit(quote);
-                            }
-                          }}
-                          disabled={isEditingDisabled(quote.status) && quote.status !== 'awaiting_customer_approval'}
-                          title={
-                            quote.status === 'awaiting_customer_approval' 
-                              ? "Review vendor changes" 
-                              : isEditingDisabled(quote.status) 
-                                ? "Cannot edit paid quotes" 
-                                : "Edit quote"
-                          }
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hidden lg:inline-flex"
-                          onClick={() => handleDelete(quote.id)}
-                          title="Delete quote"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {(() => {
+                        const actions = getAvailableActions(quote);
+                        return (
+                          <div className="flex justify-end gap-1">
+                            {/* View - Always available */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleView(quote)}
+                              title="View quote details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            {/* Approve/Reject - For awaiting_customer_approval */}
+                            {actions.approveReject && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="h-8 hidden sm:inline-flex"
+                                onClick={() => {
+                                  fetchQuoteItems(quote.id).then(() => {
+                                    setSelectedQuoteForApproval(quote);
+                                    setApprovalDialogOpen(true);
+                                  });
+                                }}
+                                title="Review and approve/reject vendor changes"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Review
+                              </Button>
+                            )}
+
+                            {/* Add Payment - For approved_payment_pending */}
+                            {actions.addPayment && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="h-8 hidden sm:inline-flex"
+                                onClick={() => handleEdit(quote)}
+                                title="Record payment information"
+                              >
+                                💳 Pay
+                              </Button>
+                            )}
+
+                            {/* Manage Items - For draft, delivered, testing_in_progress */}
+                            {actions.manageItems && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden sm:inline-flex"
+                                onClick={() => handleManageItems(quote)}
+                                title={quote.status === 'draft' ? "Manage quote items" : "Update test results"}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Send to Vendor - For draft */}
+                            {actions.sendToVendor && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="h-8 hidden md:inline-flex"
+                                onClick={() => handleView(quote)}
+                                title="Send quote to vendor"
+                              >
+                                <Mail className="h-4 w-4 mr-1" />
+                                Send
+                              </Button>
+                            )}
+
+                            {/* Add Tracking - For paid without tracking */}
+                            {actions.addTracking && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 hidden sm:inline-flex"
+                                onClick={() => handleEdit(quote)}
+                                title="Add tracking information"
+                              >
+                                Add Tracking
+                              </Button>
+                            )}
+
+                            {/* Refresh Tracking - For shipped/in_transit */}
+                            {actions.refreshTracking && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden sm:inline-flex"
+                                onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                                title="Refresh tracking information"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Export PDF - For completed workflow stages */}
+                            {actions.exportPDF && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden lg:inline-flex"
+                                onClick={() => {
+                                  const quoteWithItems = {
+                                    ...quote,
+                                    quote_items: [] // Will be fetched in export
+                                  };
+                                  handleExportPDF(quoteWithItems);
+                                }}
+                                title="Export as PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Edit - Context-dependent */}
+                            {actions.edit && !actions.addPayment && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden md:inline-flex"
+                                onClick={() => handleEdit(quote)}
+                                title="Edit quote"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Delete - For draft and admins */}
+                            {actions.delete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hidden lg:inline-flex"
+                                onClick={() => handleDelete(quote.id)}
+                                title="Delete quote"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                     ))

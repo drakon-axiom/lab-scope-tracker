@@ -2876,7 +2876,7 @@ const Quotes = () => {
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Quote Details</DialogTitle>
               <DialogDescription>
@@ -2884,13 +2884,13 @@ const Quotes = () => {
               </DialogDescription>
             </DialogHeader>
             {selectedQuote && (
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs defaultValue="details" className="w-full flex flex-col flex-1 min-h-0">
+                <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="details" className="space-y-6 mt-4">
+                <TabsContent value="details" className="space-y-6 mt-4 overflow-y-auto flex-1">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Quote Number</Label>
@@ -3165,7 +3165,7 @@ const Quotes = () => {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="notifications" className="space-y-6 mt-4">
+                <TabsContent value="notifications" className="space-y-6 mt-4 overflow-y-auto flex-1">
                   {/* Activity Log Section */}
                   <div>
                     <Label className="text-lg font-semibold mb-3 block">Activity Log</Label>

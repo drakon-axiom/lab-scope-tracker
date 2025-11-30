@@ -274,6 +274,17 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Log quote number generation if it was auto-generated
+      if (quoteUpdates.quote_number) {
+        await supabase.from('quote_activity_log').insert({
+          quote_id: quoteId,
+          user_id: userId,
+          activity_type: 'quote_number_generated',
+          description: `Auto-generated quote number: ${quoteUpdates.quote_number}`,
+          metadata: { quote_number: quoteUpdates.quote_number, auto_generated: true }
+        });
+      }
+
       // Log customer approval
       await supabase.from('quote_activity_log').insert({
         quote_id: quoteId,

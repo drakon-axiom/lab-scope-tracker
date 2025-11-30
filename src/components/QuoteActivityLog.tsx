@@ -114,6 +114,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
         return <span className="text-lg">✎</span>;
       case 'email_sent':
         return <span className="text-lg">✉</span>;
+      case 'quote_number_generated':
+        return <span className="text-lg">#</span>;
       default:
         return <Activity className="h-4 w-4" />;
     }
@@ -137,6 +139,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400';
       case 'email_sent':
         return 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400';
+      case 'quote_number_generated':
+        return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400';
       default:
         return 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400';
     }

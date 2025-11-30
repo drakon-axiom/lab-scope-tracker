@@ -236,9 +236,34 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Fetch current quote to check lab_quote_number
+      const { data: currentQuote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('lab_quote_number, quote_number')
+        .eq('id', quoteId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching quote for approval:', fetchError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch quote details' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Generate quote_number if lab didn't provide lab_quote_number
+      const quoteUpdates: any = { status: 'approved_payment_pending' };
+      if (!currentQuote.lab_quote_number && !currentQuote.quote_number) {
+        const date = new Date();
+        const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+        const randomPart = quoteId.slice(0, 6).toUpperCase();
+        quoteUpdates.quote_number = `QT-${dateStr}-${randomPart}`;
+        console.log('Generated quote number:', quoteUpdates.quote_number);
+      }
+
       const { error: approveError } = await supabase
         .from('quotes')
-        .update({ status: 'approved_payment_pending' })
+        .update(quoteUpdates)
         .eq('id', quoteId);
 
       if (approveError) {

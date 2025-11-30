@@ -61,6 +61,7 @@ import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
 import { PaymentDetailsDialog, PaymentFormData } from "@/components/PaymentDetailsDialog";
 import { ShippingDetailsDialog, ShippingFormData } from "@/components/ShippingDetailsDialog";
+import { ShippingLabelDialog, ShippingLabelFormData } from "@/components/ShippingLabelDialog";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -268,8 +269,11 @@ const Quotes = () => {
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
+  const [shippingLabelDialogOpen, setShippingLabelDialogOpen] = useState(false);
   const [selectedQuoteForPayment, setSelectedQuoteForPayment] = useState<Quote | null>(null);
   const [selectedQuoteForShipping, setSelectedQuoteForShipping] = useState<Quote | null>(null);
+  const [selectedQuoteForLabel, setSelectedQuoteForLabel] = useState<Quote | null>(null);
+  const [hasValidatedCreditCard, setHasValidatedCreditCard] = useState(false);
   const { toast } = useToast();
 
   // Input validation schema
@@ -339,6 +343,7 @@ const Quotes = () => {
     fetchTestingTypes();
     fetchTemplates();
     fetchEmailTemplates();
+    checkValidatedCreditCard();
 
     // Set up realtime subscriptions for quotes
     const quotesChannel = supabase
@@ -1958,6 +1963,68 @@ const Quotes = () => {
     }
   };
 
+  const checkValidatedCreditCard = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("payment_methods")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("method_type", "credit_card")
+        .eq("is_validated", true)
+        .limit(1);
+
+      if (error) throw error;
+      setHasValidatedCreditCard((data || []).length > 0);
+    } catch (error: any) {
+      console.error("Error checking credit card:", error);
+    }
+  };
+
+  const handleShippingLabelSubmit = async (labelData: ShippingLabelFormData) => {
+    if (!selectedQuoteForLabel) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-ups-shipping-label', {
+        body: {
+          quoteId: selectedQuoteForLabel.id,
+          ...labelData,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Shipping Label Generated",
+          description: `Tracking number: ${data.trackingNumber}`,
+          duration: 5000,
+        });
+
+        // Download label if provided
+        if (data.labelImage) {
+          const link = document.createElement('a');
+          link.href = `data:image/gif;base64,${data.labelImage}`;
+          link.download = `shipping-label-${selectedQuoteForLabel.quote_number || selectedQuoteForLabel.id}.gif`;
+          link.click();
+        }
+
+        setShippingLabelDialogOpen(false);
+        setSelectedQuoteForLabel(null);
+        fetchQuotes();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate shipping label",
+        variant: "destructive",
+        duration: 4000,
+      });
+    }
+  };
+
   // Helper function to calculate item total including additional samples and headers
   const calculateItemTotal = (item: QuoteItem): number => {
     const basePrice = item.price || 0;
@@ -2511,18 +2578,34 @@ const Quotes = () => {
 
                             {/* Add Shipping - For paid_awaiting_shipping without tracking */}
                             {actions.addShipping && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 hidden sm:inline-flex"
-                                onClick={() => {
-                                  setSelectedQuoteForShipping(quote);
-                                  setShippingDialogOpen(true);
-                                }}
-                                title="Add shipping information"
-                              >
-                                Add Shipping
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 hidden sm:inline-flex"
+                                  onClick={() => {
+                                    setSelectedQuoteForShipping(quote);
+                                    setShippingDialogOpen(true);
+                                  }}
+                                  title="Add shipping information manually"
+                                >
+                                  Add Shipping
+                                </Button>
+                                {hasValidatedCreditCard && (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="h-8 hidden sm:inline-flex"
+                                    onClick={() => {
+                                      setSelectedQuoteForLabel(quote);
+                                      setShippingLabelDialogOpen(true);
+                                    }}
+                                    title="Generate UPS shipping label (requires validated credit card)"
+                                  >
+                                    📦 Generate Label
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             {/* Refresh Tracking - For shipped/in_transit */}
@@ -3933,6 +4016,16 @@ const Quotes = () => {
               tracking_number: selectedQuoteForShipping.tracking_number || "",
               shipped_date: selectedQuoteForShipping.shipped_date || "",
             }}
+          />
+        )}
+
+        {/* Shipping Label Generation Dialog */}
+        {selectedQuoteForLabel && (
+          <ShippingLabelDialog
+            open={shippingLabelDialogOpen}
+            onOpenChange={setShippingLabelDialogOpen}
+            onSubmit={handleShippingLabelSubmit}
+            quoteId={selectedQuoteForLabel.id}
           />
         )}
       </div>

@@ -104,6 +104,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
         return <span className="text-lg">✗</span>;
       case 'payment_recorded':
         return <span className="text-lg">💳</span>;
+      case 'payment_reminder':
+        return <span className="text-lg">⏰</span>;
       case 'quote_created':
         return <span className="text-lg">+</span>;
       case 'quote_updated':
@@ -125,6 +127,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
         return 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400';
       case 'payment_recorded':
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400';
+      case 'payment_reminder':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400';
       case 'status_change':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400';
       case 'email_sent':
@@ -242,6 +246,26 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
                             <Badge variant="outline" className="ml-1">
                               {activity.metadata.payment_status}
                             </Badge>
+                          </div>
+                        )}
+                        {activity.metadata.days_since_approval && (
+                          <div>
+                            <span className="font-medium">Days Since Approval:</span>{" "}
+                            <span className="text-amber-600 dark:text-amber-400">{activity.metadata.days_since_approval}</span>
+                          </div>
+                        )}
+                        {activity.metadata.amount_due && (
+                          <div>
+                            <span className="font-medium">Amount Due:</span>{" "}
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                              ${Number(activity.metadata.amount_due).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {activity.metadata.email && (
+                          <div>
+                            <span className="font-medium">Sent to:</span>{" "}
+                            <span className="font-mono text-xs">{activity.metadata.email}</span>
                           </div>
                         )}
                         {activity.metadata.message && (

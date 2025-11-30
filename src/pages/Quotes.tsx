@@ -55,7 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, BookmarkIcon, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
@@ -265,6 +265,7 @@ const Quotes = () => {
   const [filterLockStatus, setFilterLockStatus] = useState("all");
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [activeView, setActiveView] = useState<string>("all"); // "all" or saved view id
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
@@ -277,7 +278,6 @@ const Quotes = () => {
   const [hasValidatedCreditCard, setHasValidatedCreditCard] = useState(false);
   const [lastTrackingRefresh, setLastTrackingRefresh] = useState<number | null>(null);
   const [timeUntilNextRefresh, setTimeUntilNextRefresh] = useState("");
-  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
   const [savedViews, setSavedViews] = useState<Array<{
     id: string;
     name: string;
@@ -349,7 +349,19 @@ const Quotes = () => {
     setFilterLab(view.filters.filterLab);
     setFilterProduct(view.filters.filterProduct);
     setFilterLockStatus(view.filters.filterLockStatus);
-    setSavedViewsOpen(false);
+    setActiveView(view.id);
+  };
+
+  const handleSelectStatusTab = (status: string) => {
+    setFilterStatus(status);
+    setActiveView(status);
+    // Reset other filters when clicking a status tab
+    if (status !== "all") {
+      setSearchQuery("");
+      setFilterLab("all");
+      setFilterProduct("all");
+      setFilterLockStatus("all");
+    }
   };
 
   const handleDeleteView = (id: string, name: string, e: React.MouseEvent) => {
@@ -2409,142 +2421,122 @@ const Quotes = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("all")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10",
-                  filterStatus === "all"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("all")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10",
+                    activeView === "all"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                All
+                  All
                 </Button>
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("draft")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10",
-                  filterStatus === "draft"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("draft")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10",
+                    activeView === "draft"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                Draft
+                  Draft
                 </Button>
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("approved_payment_pending")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
-                  filterStatus === "approved_payment_pending"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("approved_payment_pending")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
+                    activeView === "approved_payment_pending"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                Payment Pending
+                  Payment Pending
                 </Button>
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("in_transit")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10",
-                  filterStatus === "in_transit"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("in_transit")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10",
+                    activeView === "in_transit"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                In Transit
+                  In Transit
                 </Button>
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("testing_in_progress")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
-                  filterStatus === "testing_in_progress"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("testing_in_progress")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
+                    activeView === "testing_in_progress"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                Testing
+                  Testing
                 </Button>
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilterStatus("completed")}
-                className={cn(
-                  "rounded-none border-b-2 px-4 h-10",
-                  filterStatus === "completed"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSelectStatusTab("completed")}
+                  className={cn(
+                    "rounded-none border-b-2 px-4 h-10",
+                    activeView === "completed"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                Completed
+                  Completed
                 </Button>
-              
-                <Popover open={savedViewsOpen} onOpenChange={setSavedViewsOpen}>
-                  <PopoverTrigger asChild>
+
+                {/* Saved Views as Tabs */}
+                {savedViews.map((view) => (
+                  <div key={view.id} className="relative group">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-none border-b-2 border-transparent text-muted-foreground hover:text-foreground px-4 h-10 gap-1"
+                      onClick={() => handleLoadView(view)}
+                      className={cn(
+                        "rounded-none border-b-2 px-4 h-10 pr-8",
+                        activeView === view.id
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      )}
                     >
-                      <BookmarkIcon className="h-4 w-4" />
-                      Saved
-                      <ChevronDown className="h-3 w-3" />
+                      {view.name}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-0 z-50 bg-background" align="start">
-                    <div className="p-2">
-                      <div className="text-sm font-semibold px-2 py-1.5">Saved Views</div>
-                      <div className="space-y-1">
-                        {savedViews.length === 0 ? (
-                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No saved views yet
-                          </div>
-                        ) : (
-                          savedViews.map((view) => (
-                            <div
-                              key={view.id}
-                              className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-accent cursor-pointer group"
-                              onClick={() => handleLoadView(view)}
-                            >
-                              <span className="flex-1 text-sm">{view.name}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
-                                onClick={(e) => handleDeleteView(view.id, view.name, e)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div className="border-t mt-2 pt-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start text-sm"
-                          disabled={!hasActiveFilters()}
-                          onClick={() => {
-                            setSavedViewsOpen(false);
-                            setSaveViewDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="h-3 w-3 mr-2" />
-                          Save current view
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={(e) => handleDeleteView(view.id, view.name, e)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+
+                {/* Save Current View Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSaveViewDialogOpen(true)}
+                  disabled={!hasActiveFilters()}
+                  className="rounded-none border-b-2 border-transparent text-muted-foreground hover:text-foreground px-4 h-10 gap-1"
+                  title="Save current filters as a new view"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             </div>
             

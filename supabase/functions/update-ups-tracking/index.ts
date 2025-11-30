@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,6 +107,93 @@ function determineStatus(trackingData: UPSTrackingResponse): string {
   return 'in_transit'; // Default
 }
 
+async function sendDeliveryNotification(quote: any, supabase: any): Promise<void> {
+  try {
+    // Get user profile for customer email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', quote.user_id)
+      .single();
+
+    if (!profile) {
+      console.error(`No profile found for user ${quote.user_id}`);
+      return;
+    }
+
+    // Get user email from auth
+    const { data: { user } } = await supabase.auth.admin.getUserById(quote.user_id);
+    
+    if (!user?.email) {
+      console.error(`No email found for user ${quote.user_id}`);
+      return;
+    }
+
+    // Get lab details
+    const { data: lab } = await supabase
+      .from('labs')
+      .select('name')
+      .eq('id', quote.lab_id)
+      .single();
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: Deno.env.get('SMTP_HOST')!,
+        port: Number(Deno.env.get('SMTP_PORT')),
+        tls: true,
+        auth: {
+          username: Deno.env.get('SMTP_USER')!,
+          password: Deno.env.get('SMTP_PASSWORD')!,
+        },
+      },
+    });
+
+    const emailSubject = `Package Delivered - Quote ${quote.quote_number}`;
+    const emailBody = `
+      <h2>Package Delivered</h2>
+      <p>Your package for Quote #${quote.quote_number} has been delivered!</p>
+      
+      <h3>Delivery Details:</h3>
+      <ul>
+        <li><strong>Quote Number:</strong> ${quote.quote_number}</li>
+        <li><strong>Lab:</strong> ${lab?.name || 'Unknown'}</li>
+        <li><strong>Tracking Number:</strong> ${quote.tracking_number}</li>
+        <li><strong>Shipped Date:</strong> ${quote.shipped_date ? new Date(quote.shipped_date).toLocaleDateString() : 'N/A'}</li>
+      </ul>
+
+      <p>The testing process should begin shortly. You'll be notified when results are available.</p>
+    `;
+
+    await client.send({
+      from: Deno.env.get('SMTP_USER')!,
+      to: user.email,
+      subject: emailSubject,
+      content: emailBody,
+      html: emailBody,
+    });
+
+    await client.close();
+
+    // Log email to history
+    await supabase.from('email_history').insert({
+      quote_id: quote.id,
+      lab_id: quote.lab_id,
+      user_id: quote.user_id,
+      recipient_email: user.email,
+      subject: emailSubject,
+      body: emailBody,
+      status: 'sent',
+      delivery_status: 'delivered',
+      sent_at: new Date().toISOString(),
+      delivered_at: new Date().toISOString(),
+    });
+
+    console.log(`Delivery notification sent to ${user.email} for quote ${quote.quote_number}`);
+  } catch (error) {
+    console.error(`Failed to send delivery notification for quote ${quote.id}:`, error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -187,6 +275,11 @@ serve(async (req) => {
                   tracking_data: trackingData 
                 }
               });
+
+            // Send email notification if delivered
+            if (newStatus === 'delivered' && quote.status === 'in_transit') {
+              await sendDeliveryNotification(quote, supabase);
+            }
 
             console.log(`Updated quote ${quote.id} to ${newStatus}`);
             results.push({ 

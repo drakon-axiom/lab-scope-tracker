@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, Wallet, RefreshCw, Package } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentMethodsManager } from "@/components/PaymentMethodsManager";
 import { z } from "zod";
@@ -66,6 +67,8 @@ const Settings = () => {
   const [disabling, setDisabling] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
   const [updatingTracking, setUpdatingTracking] = useState(false);
+  const [lastTrackingRefresh, setLastTrackingRefresh] = useState<number | null>(null);
+  const [timeUntilNextRefresh, setTimeUntilNextRefresh] = useState<string>("");
 
   useEffect(() => {
     loadProfile();
@@ -437,6 +440,16 @@ const Settings = () => {
   };
 
   const handleUpdateTracking = async () => {
+    // Check if 60 minutes have passed since last manual refresh
+    const now = Date.now();
+    if (lastTrackingRefresh) {
+      const elapsed = now - lastTrackingRefresh;
+      const sixtyMinutes = 60 * 60 * 1000;
+      if (elapsed < sixtyMinutes) {
+        return; // Button should be disabled
+      }
+    }
+
     try {
       setUpdatingTracking(true);
       
@@ -450,6 +463,10 @@ const Settings = () => {
       const updated = results.filter((r: any) => r.success && r.newStatus).length;
       const unchanged = results.filter((r: any) => r.success && !r.newStatus).length;
       const failed = results.filter((r: any) => !r.success).length;
+
+      // Store the refresh timestamp
+      localStorage.setItem('lastTrackingRefresh', now.toString());
+      setLastTrackingRefresh(now);
 
       toast({
         title: "Tracking Updated",
@@ -467,6 +484,13 @@ const Settings = () => {
     } finally {
       setUpdatingTracking(false);
     }
+  };
+
+  const canRefreshTracking = () => {
+    if (!lastTrackingRefresh) return true;
+    const now = Date.now();
+    const elapsed = now - lastTrackingRefresh;
+    return elapsed >= 60 * 60 * 1000; // 60 minutes
   };
 
   if (loading) {
@@ -751,14 +775,27 @@ const Settings = () => {
                   <p className="text-sm text-muted-foreground">
                     Manually update tracking information for all quotes with tracking numbers:
                   </p>
-                  <Button 
-                    onClick={handleUpdateTracking}
-                    disabled={updatingTracking}
-                  >
-                    {updatingTracking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Update Tracking Now
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">
+                          <Button 
+                            onClick={handleUpdateTracking}
+                            disabled={updatingTracking || !canRefreshTracking()}
+                          >
+                            {updatingTracking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Update Tracking Now
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!canRefreshTracking() && (
+                        <TooltipContent>
+                          <p>{timeUntilNextRefresh}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </CardContent>
             </Card>

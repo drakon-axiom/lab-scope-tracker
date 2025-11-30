@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { User } from "@supabase/supabase-js";
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { Badge } from "@/components/ui/badge";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,6 +25,7 @@ const Layout = ({ children }: LayoutProps) => {
     const saved = localStorage.getItem('sidebar-state');
     return saved !== 'collapsed';
   });
+  const { isAdmin } = useUserRole();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -76,6 +79,12 @@ const Layout = ({ children }: LayoutProps) => {
           <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
             <div className="flex items-center justify-between px-3 md:px-4 py-3">
               <SidebarTrigger />
+              {isAdmin && (
+                <Badge variant="default" className="flex items-center gap-1">
+                  <Shield className="h-3 w-3" />
+                  Admin
+                </Badge>
+              )}
             </div>
           </header>
           

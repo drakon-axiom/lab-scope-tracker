@@ -227,6 +227,16 @@ const Auth = () => {
         <CardHeader>
           <CardTitle className="text-2xl">Testing Tracker</CardTitle>
           <CardDescription>Sign in to manage your product testing</CardDescription>
+          <div className="pt-2">
+            <Button
+              variant="link"
+              className="h-auto p-0 text-sm text-muted-foreground hover:text-primary"
+              onClick={() => navigate("/admin-auth")}
+            >
+              <Shield className="mr-1 h-3 w-3" />
+              Admin Portal
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin">

@@ -2070,8 +2070,10 @@ const Quotes = () => {
                           {quote.status === 'awaiting_customer_approval' ? (
                             <button
                               onClick={() => {
-                                setSelectedQuote(quote);
-                                setApprovalDialogOpen(true);
+                                fetchQuoteItems(quote.id).then(() => {
+                                  setSelectedQuoteForApproval(quote);
+                                  setApprovalDialogOpen(true);
+                                });
                               }}
                               className="hover:opacity-80 transition-opacity"
                             >
@@ -2134,8 +2136,10 @@ const Quotes = () => {
                           className="h-8 w-8 hidden md:inline-flex"
                           onClick={() => {
                             if (quote.status === 'awaiting_customer_approval') {
-                              setSelectedQuoteForApproval(quote);
-                              setApprovalDialogOpen(true);
+                              fetchQuoteItems(quote.id).then(() => {
+                                setSelectedQuoteForApproval(quote);
+                                setApprovalDialogOpen(true);
+                              });
                             } else {
                               handleEdit(quote);
                             }

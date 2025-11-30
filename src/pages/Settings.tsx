@@ -75,6 +75,43 @@ const Settings = () => {
     checkMfaStatus();
   }, []);
 
+  // Load last tracking refresh timestamp from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('lastTrackingRefresh');
+    if (stored) {
+      setLastTrackingRefresh(parseInt(stored, 10));
+    }
+  }, []);
+
+  // Update countdown timer every second
+  useEffect(() => {
+    if (!lastTrackingRefresh) {
+      setTimeUntilNextRefresh("");
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const elapsed = now - lastTrackingRefresh;
+      const sixtyMinutes = 60 * 60 * 1000;
+      const remaining = sixtyMinutes - elapsed;
+
+      if (remaining <= 0) {
+        setTimeUntilNextRefresh("");
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setTimeUntilNextRefresh(`Next refresh available in ${minutes}m ${seconds}s`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastTrackingRefresh]);
+
   const loadProfile = async () => {
     try {
       setLoading(true);

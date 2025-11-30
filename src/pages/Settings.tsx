@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldOff, Bell } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, Wallet } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PaymentMethodsManager } from "@/components/PaymentMethodsManager";
 import { z } from "zod";
 import {
   Dialog,
@@ -448,7 +450,15 @@ const Settings = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold">Settings</h1>
 
-        <Card>
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="space-y-6 mt-6">
+            <Card>
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
             <CardDescription>
@@ -628,40 +638,64 @@ const Settings = () => {
                 <Shield className="mr-2 h-4 w-4" />
                 Enable 2FA
               </Button>
-            )}
+             )}
           </CardContent>
         </Card>
+          </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Reminders</CardTitle>
-            <CardDescription>
-              Send automated reminders for quotes pending payment
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <Bell className="h-4 w-4" />
-              <AlertDescription>
-                The system automatically sends payment reminders daily at 9:00 AM for quotes that have been approved but pending payment for more than 3 days. You can also manually trigger reminders below.
-              </AlertDescription>
-            </Alert>
+          <TabsContent value="payments" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5" />
+                  <CardTitle>Payment Methods</CardTitle>
+                </div>
+                <CardDescription>
+                  Manage your saved payment options for faster checkout
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PaymentMethodsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Manually send reminders to all customers with approved quotes pending payment:
-              </p>
-              <Button 
-                onClick={handleSendPaymentReminders}
-                disabled={sendingReminders}
-              >
-                {sendingReminders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Bell className="mr-2 h-4 w-4" />
-                Send Payment Reminders Now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <TabsContent value="notifications" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  <CardTitle>Payment Reminders</CardTitle>
+                </div>
+                <CardDescription>
+                  Send automated reminders for quotes pending payment
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <Bell className="h-4 w-4" />
+                  <AlertDescription>
+                    The system automatically sends payment reminders daily at 9:00 AM for quotes that have been approved but pending payment for more than 3 days. You can also manually trigger reminders below.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Manually send reminders to all customers with approved quotes pending payment:
+                  </p>
+                  <Button 
+                    onClick={handleSendPaymentReminders}
+                    disabled={sendingReminders}
+                  >
+                    {sendingReminders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Bell className="mr-2 h-4 w-4" />
+                    Send Payment Reminders Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={showMfaSetup} onOpenChange={setShowMfaSetup}>
           <DialogContent className="sm:max-w-md">

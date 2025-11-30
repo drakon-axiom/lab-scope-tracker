@@ -2066,9 +2066,21 @@ const Quotes = () => {
                       </div>
                     </TableCell>
                     <TableCell>{quote.labs.name}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={quote.status} />
-                    </TableCell>
+                        <TableCell>
+                          {quote.status === 'awaiting_customer_approval' ? (
+                            <button
+                              onClick={() => {
+                                setSelectedQuote(quote);
+                                setApprovalDialogOpen(true);
+                              }}
+                              className="hover:opacity-80 transition-opacity"
+                            >
+                              <StatusBadge status={quote.status} />
+                            </button>
+                          ) : (
+                            <StatusBadge status={quote.status} />
+                          )}
+                        </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col">

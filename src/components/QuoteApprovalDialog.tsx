@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface QuoteApprovalDialogProps {
@@ -25,6 +28,8 @@ export const QuoteApprovalDialog = ({
 }: QuoteApprovalDialogProps) => {
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectionNotes, setRejectionNotes] = useState("");
 
   const handleApprove = async () => {
     setProcessing(true);
@@ -69,6 +74,15 @@ export const QuoteApprovalDialog = ({
   };
 
   const handleReject = async () => {
+    if (!rejectionNotes.trim()) {
+      toast({
+        title: "Notes Required",
+        description: "Please provide notes explaining what needs modification.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setProcessing(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -85,6 +99,7 @@ export const QuoteApprovalDialog = ({
         body: JSON.stringify({
           quoteId: quote.id,
           action: 'customer_reject',
+          notes: rejectionNotes,
         }),
       });
 
@@ -161,6 +176,20 @@ export const QuoteApprovalDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Vendor Changes Summary:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Updated pricing for {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}</li>
+                {quote.discount_amount && (
+                  <li>Applied {quote.discount_type === "percentage" ? `${quote.discount_amount}%` : `$${quote.discount_amount}`} discount</li>
+                )}
+                <li>Final total: ${totals.total.toFixed(2)}</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
           <div className="space-y-2 text-sm">
             <p><strong>Lab:</strong> {quote.labs?.name}</p>
             <p><strong>Lab Quote Number:</strong> {quote.lab_quote_number || "Not provided"}</p>
@@ -242,25 +271,62 @@ export const QuoteApprovalDialog = ({
             </div>
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button
-              onClick={handleReject}
-              disabled={processing}
-              variant="destructive"
-              className="flex-1"
-            >
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reject Changes
-            </Button>
-            <Button
-              onClick={handleApprove}
-              disabled={processing}
-              className="flex-1"
-            >
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Approve Changes
-            </Button>
-          </div>
+          {!showRejectForm ? (
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={() => setShowRejectForm(true)}
+                disabled={processing}
+                variant="destructive"
+                className="flex-1"
+              >
+                Reject Changes
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={processing}
+                className="flex-1"
+              >
+                {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Approve Changes
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="rejection-notes">Rejection Notes *</Label>
+                <Textarea
+                  id="rejection-notes"
+                  placeholder="Explain what needs to be modified..."
+                  value={rejectionNotes}
+                  onChange={(e) => setRejectionNotes(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setShowRejectForm(false);
+                    setRejectionNotes("");
+                  }}
+                  disabled={processing}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleReject}
+                  disabled={processing || !rejectionNotes.trim()}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Submit Rejection
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

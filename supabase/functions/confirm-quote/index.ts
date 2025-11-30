@@ -25,6 +25,7 @@ interface QuoteItem {
 interface ConfirmQuoteRequest {
   quoteId: string;
   action: 'get' | 'update' | 'customer_approve' | 'customer_reject';
+  notes?: string;
   updates?: {
     status?: string;
     lab_quote_number?: string;
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { quoteId, action, updates }: ConfirmQuoteRequest = await req.json();
+    const { quoteId, action, updates, notes }: ConfirmQuoteRequest = await req.json();
 
     if (!quoteId) {
       console.error('Missing quoteId in request');
@@ -272,9 +273,14 @@ Deno.serve(async (req) => {
         }
       }
 
+      const rejectionNotes = notes || '';
+      
       const { error: rejectError } = await supabase
         .from('quotes')
-        .update({ status: 'rejected' })
+        .update({ 
+          status: 'rejected',
+          notes: rejectionNotes
+        })
         .eq('id', quoteId);
 
       if (rejectError) {
@@ -285,13 +291,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Log customer rejection
+      // Log customer rejection with notes
       await supabase.from('quote_activity_log').insert({
         quote_id: quoteId,
         user_id: userId,
         activity_type: 'customer_rejection',
-        description: 'Customer rejected vendor changes',
-        metadata: {}
+        description: `Customer rejected vendor changes: ${rejectionNotes}`,
+        metadata: { notes: rejectionNotes }
       });
 
       return new Response(

@@ -23,6 +23,7 @@ const QuoteConfirm = () => {
   const [discountAmount, setDiscountAmount] = useState("");
   const [additionalSamplePrices, setAdditionalSamplePrices] = useState<Record<string, string>>({});
   const [additionalHeaderPrices, setAdditionalHeaderPrices] = useState<Record<string, string>>({});
+  const [originalQuoteData, setOriginalQuoteData] = useState<any>(null);
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -55,6 +56,13 @@ const QuoteConfirm = () => {
 
         setQuote(data);
         setQuoteItems(items || []);
+        
+        // Store original data for comparison
+        setOriginalQuoteData({
+          items: items?.map((item: any) => ({ id: item.id, price: item.price })),
+          discount_type: data.discount_type,
+          discount_amount: data.discount_amount,
+        });
         
         // Initialize additional pricing defaults
         const samplePrices: Record<string, string> = {};
@@ -112,7 +120,7 @@ const QuoteConfirm = () => {
           }
         }
         
-        const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+        const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
         if (lockedStatuses.includes(data.status)) {
           setConfirmed(true);
         }
@@ -182,12 +190,28 @@ const QuoteConfirm = () => {
     };
   };
 
+  const checkIfChangesWereMade = () => {
+    // Check if prices changed
+    const pricesChanged = quoteItems.some(item => {
+      const original = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
+      return original && parseFloat(item.price) !== parseFloat(original.price);
+    });
+
+    // Check if discount changed
+    const discountChanged = 
+      discountAmount !== String(originalQuoteData?.discount_amount || "") ||
+      (discountAmount && discountType !== originalQuoteData?.discount_type);
+
+    return pricesChanged || discountChanged;
+  };
+
   const handleConfirm = async () => {
     if (!quoteId) return;
 
     setConfirming(true);
 
     try {
+      const changesWereMade = checkIfChangesWereMade();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
         method: 'POST',
@@ -198,7 +222,7 @@ const QuoteConfirm = () => {
           quoteId,
           action: 'update',
           updates: {
-            status: 'approved',
+            status: changesWereMade ? 'awaiting_customer_approval' : 'approved',
             lab_quote_number: quoteNumber || null,
             lab_response: labResponse,
             discount_type: discountAmount ? discountType : null,
@@ -218,8 +242,10 @@ const QuoteConfirm = () => {
       }
 
       toast({
-        title: "Quote Confirmed",
-        description: "The quote has been approved successfully.",
+        title: changesWereMade ? "Quote Updated" : "Quote Confirmed",
+        description: changesWereMade 
+          ? "The quote has been updated and sent to customer for approval."
+          : "The quote has been approved successfully.",
       });
       setConfirmed(true);
     } catch (error) {
@@ -227,6 +253,49 @@ const QuoteConfirm = () => {
       toast({
         title: "Error",
         description: "Failed to confirm quote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!quoteId) return;
+
+    setConfirming(true);
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId,
+          action: 'update',
+          updates: {
+            status: 'rejected',
+            lab_response: labResponse || 'Quote rejected by vendor',
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject quote');
+      }
+
+      toast({
+        title: "Quote Rejected",
+        description: "The quote has been rejected.",
+      });
+      setConfirmed(true);
+    } catch (error) {
+      console.error('Error rejecting quote:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject quote. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -258,23 +327,32 @@ const QuoteConfirm = () => {
   }
 
   if (confirmed) {
+    const isRejected = quote.status === 'rejected';
+    const isAwaitingCustomerApproval = quote.status === 'awaiting_customer_approval';
+    
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <div className="flex items-center gap-2 text-success">
+            <div className={`flex items-center gap-2 ${isRejected ? 'text-destructive' : 'text-success'}`}>
               <CheckCircle2 className="h-6 w-6" />
-              <CardTitle>Quote Confirmed</CardTitle>
+              <CardTitle>
+                {isRejected ? 'Quote Rejected' : isAwaitingCustomerApproval ? 'Quote Updated' : 'Quote Confirmed'}
+              </CardTitle>
             </div>
             <CardDescription>
-              Thank you for confirming the quote. The customer has been notified.
+              {isRejected 
+                ? "This quote has been rejected."
+                : isAwaitingCustomerApproval
+                ? "The quote has been updated with changes and sent to the customer for approval."
+                : "Thank you for confirming the quote. The customer has been notified."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
               <p><strong>Quote Number:</strong> {quote.quote_number || "Not assigned"}</p>
               <p><strong>Lab:</strong> {quote.labs.name}</p>
-              <p><strong>Status:</strong> Approved</p>
+              <p><strong>Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
             </div>
           </CardContent>
         </Card>
@@ -489,14 +567,25 @@ const QuoteConfirm = () => {
             />
           </div>
 
-          <Button
-            onClick={handleConfirm}
-            disabled={confirming}
-            className="w-full"
-          >
-            {confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm Quote with Updates
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleReject}
+              disabled={confirming}
+              variant="destructive"
+              className="flex-1"
+            >
+              {confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reject Quote
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={confirming}
+              className="flex-1"
+            >
+              {confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Approve Quote
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

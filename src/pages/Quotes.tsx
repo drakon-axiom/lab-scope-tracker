@@ -57,6 +57,7 @@ import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy,
 import StatusBadge from "@/components/StatusBadge";
 import { QuoteKanbanBoard } from "@/components/QuoteKanbanBoard";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
+import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -200,6 +201,8 @@ const Quotes = () => {
   const [filterLockStatus, setFilterLockStatus] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
   const { toast } = useToast();
 
   // Input validation schema
@@ -684,6 +687,15 @@ const Quotes = () => {
   };
 
   const handleEdit = (quote: Quote) => {
+    // Check if quote needs customer approval first
+    if (quote.status === 'awaiting_customer_approval') {
+      fetchQuoteItems(quote.id).then(() => {
+        setSelectedQuoteForApproval(quote);
+        setApprovalDialogOpen(true);
+      });
+      return;
+    }
+    
     if (isEditingDisabled(quote.status)) {
       toast({
         title: "Cannot Edit",
@@ -1648,7 +1660,9 @@ const Quotes = () => {
                             <SelectContent>
                               <SelectItem value="draft">Draft</SelectItem>
                               <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                              <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
                               <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
                               <SelectItem value="payment_pending">Payment Pending</SelectItem>
                               <SelectItem value="paid">Paid</SelectItem>
                               <SelectItem value="shipped">Shipped</SelectItem>
@@ -1850,7 +1864,9 @@ const Quotes = () => {
                         <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="draft">Draft</SelectItem>
                         <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                        <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="payment_pending">Payment Pending</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
@@ -1994,7 +2010,10 @@ const Quotes = () => {
                   </TableRow>
                 ) : (
                   filteredQuotes.map((quote) => (
-                   <TableRow key={quote.id}>
+                  <TableRow 
+                    key={quote.id}
+                    className={`${isQuoteLocked(quote.status) ? "opacity-75" : ""} ${quote.status === 'awaiting_customer_approval' ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {isQuoteLocked(quote.status) && (
@@ -2058,9 +2077,22 @@ const Quotes = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hidden md:inline-flex"
-                          onClick={() => handleEdit(quote)}
-                          disabled={isEditingDisabled(quote.status)}
-                          title={isEditingDisabled(quote.status) ? "Cannot edit paid quotes" : "Edit quote"}
+                          onClick={() => {
+                            if (quote.status === 'awaiting_customer_approval') {
+                              setSelectedQuoteForApproval(quote);
+                              setApprovalDialogOpen(true);
+                            } else {
+                              handleEdit(quote);
+                            }
+                          }}
+                          disabled={isEditingDisabled(quote.status) && quote.status !== 'awaiting_customer_approval'}
+                          title={
+                            quote.status === 'awaiting_customer_approval' 
+                              ? "Review vendor changes" 
+                              : isEditingDisabled(quote.status) 
+                                ? "Cannot edit paid quotes" 
+                                : "Edit quote"
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -3353,6 +3385,18 @@ const Quotes = () => {
             });
           }}
         />
+
+        {/* Quote Approval Dialog */}
+        {selectedQuoteForApproval && quoteItems.length > 0 && (
+          <QuoteApprovalDialog
+            open={approvalDialogOpen}
+            onOpenChange={setApprovalDialogOpen}
+            quote={selectedQuoteForApproval}
+            quoteItems={quoteItems}
+            onApprove={() => fetchQuotes()}
+            onReject={() => fetchQuotes()}
+          />
+        )}
       </div>
       </PullToRefreshWrapper>
     </Layout>

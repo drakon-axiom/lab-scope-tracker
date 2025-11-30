@@ -24,7 +24,7 @@ interface QuoteItem {
 
 interface ConfirmQuoteRequest {
   quoteId: string;
-  action: 'get' | 'update';
+  action: 'get' | 'update' | 'customer_approve' | 'customer_reject';
   updates?: {
     status?: string;
     lab_quote_number?: string;
@@ -119,11 +119,11 @@ Deno.serve(async (req) => {
         );
       }
 
-      const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+      const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
       if (existingQuote && lockedStatuses.includes(existingQuote.status)) {
-        console.warn('Attempted to update paid/locked quote:', quoteId);
+        console.warn('Attempted to update locked quote:', quoteId);
         return new Response(
-          JSON.stringify({ error: 'Quote has been paid and cannot be modified' }),
+          JSON.stringify({ error: 'Quote has been locked and cannot be modified by vendor' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -171,6 +171,50 @@ Deno.serve(async (req) => {
       console.log('Successfully updated quote');
       return new Response(
         JSON.stringify({ success: true, message: 'Quote updated successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'customer_approve') {
+      console.log('Customer approving quote:', quoteId);
+
+      const { error: approveError } = await supabase
+        .from('quotes')
+        .update({ status: 'approved' })
+        .eq('id', quoteId);
+
+      if (approveError) {
+        console.error('Error approving quote:', approveError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to approve quote' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Quote approved by customer' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'customer_reject') {
+      console.log('Customer rejecting quote:', quoteId);
+
+      const { error: rejectError } = await supabase
+        .from('quotes')
+        .update({ status: 'rejected' })
+        .eq('id', quoteId);
+
+      if (rejectError) {
+        console.error('Error rejecting quote:', rejectError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to reject quote' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Quote rejected by customer' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -18,8 +18,12 @@ const getStatusColor = (status: string) => {
         return "bg-warning text-white";
       case "sent_to_vendor":
         return "bg-purple-500 text-white";
+      case "awaiting_customer_approval":
+        return "bg-amber-500 text-white";
       case "approved":
         return "bg-green-500 text-white";
+      case "rejected":
+        return "bg-red-500 text-white";
       case "payment_pending":
         return "bg-orange-500 text-white";
       case "paid":

@@ -69,6 +69,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Error fetching vendor pricing",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setLoading(false);
@@ -89,6 +90,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Error fetching labs",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -99,6 +101,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Missing fields",
         description: "Please select a vendor and enter a price",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -123,6 +126,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
       toast({
         title: "Success",
         description: "Vendor pricing added",
+        duration: 3000,
       });
 
       setNewPricing({ lab_id: "", price: "", notes: "", is_active: true });
@@ -133,6 +137,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Error adding vendor pricing",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -149,6 +154,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
       toast({
         title: "Success",
         description: "Vendor pricing updated",
+        duration: 3000,
       });
 
       fetchPricings();
@@ -157,6 +163,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Error updating vendor pricing",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -175,6 +182,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
       toast({
         title: "Success",
         description: "Vendor pricing deleted",
+        duration: 3000,
       });
 
       fetchPricings();
@@ -183,6 +191,7 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
         title: "Error deleting vendor pricing",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };

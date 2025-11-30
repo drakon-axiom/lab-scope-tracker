@@ -158,6 +158,7 @@ const Compounds = () => {
         title: "Error fetching compounds",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
       setCompounds(data || []);
@@ -179,6 +180,7 @@ const Compounds = () => {
         title: "Error fetching labs",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
       setLabs(data || []);
@@ -246,9 +248,10 @@ const Compounds = () => {
           title: "Error updating compound",
           description: error.message,
           variant: "destructive",
+          duration: 4000,
         });
       } else {
-        toast({ title: "Compound updated successfully" });
+        toast({ title: "Compound updated successfully", duration: 3000 });
         setOpen(false);
         resetForm();
         fetchCompounds();
@@ -263,9 +266,10 @@ const Compounds = () => {
           title: "Error creating compound",
           description: error.message,
           variant: "destructive",
+          duration: 4000,
         });
       } else {
-        toast({ title: "Compound created successfully" });
+        toast({ title: "Compound created successfully", duration: 3000 });
         setOpen(false);
         resetForm();
         fetchCompounds();
@@ -300,6 +304,7 @@ const Compounds = () => {
         title: "Error checking compound usage",
         description: checkError.message,
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -309,6 +314,7 @@ const Compounds = () => {
         title: "Cannot delete compound",
         description: "This compound is currently used in existing quotes and cannot be deleted. Remove it from all quotes first.",
         variant: "destructive",
+        duration: 5000,
       });
       return;
     }
@@ -320,9 +326,10 @@ const Compounds = () => {
         title: "Error deleting compound",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
-      toast({ title: "Compound deleted successfully" });
+      toast({ title: "Compound deleted successfully", duration: 3000 });
       fetchCompounds();
     }
   };
@@ -361,6 +368,7 @@ const Compounds = () => {
         title: "Error checking compound usage",
         description: checkError.message,
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -374,6 +382,7 @@ const Compounds = () => {
           title: "Cannot delete compounds",
           description: "All selected compounds are currently used in existing quotes and cannot be deleted.",
           variant: "destructive",
+          duration: 5000,
         });
         return;
       }
@@ -389,11 +398,13 @@ const Compounds = () => {
           title: "Error deleting compounds",
           description: error.message,
           variant: "destructive",
+          duration: 4000,
         });
       } else {
         toast({
           title: "Partial deletion completed",
           description: `${unusedIds.length} of ${selectedIds.size} compound(s) deleted. ${usedIds.size} compound(s) are used in quotes and were skipped.`,
+          duration: 4000,
         });
         setSelectedIds(new Set());
         fetchCompounds();
@@ -411,9 +422,10 @@ const Compounds = () => {
         title: "Error deleting compounds",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
-      toast({ title: `${selectedIds.size} compound(s) deleted successfully` });
+      toast({ title: `${selectedIds.size} compound(s) deleted successfully`, duration: 3000 });
       setSelectedIds(new Set());
       fetchCompounds();
     }
@@ -433,6 +445,7 @@ const Compounds = () => {
         title: "No updates",
         description: "Please enter at least one field to update",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -447,9 +460,10 @@ const Compounds = () => {
         title: "Error updating compounds",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
-      toast({ title: `${selectedIds.size} compound(s) updated successfully` });
+      toast({ title: `${selectedIds.size} compound(s) updated successfully`, duration: 3000 });
       setBulkUpdateOpen(false);
       setBulkUpdateData({ standard: "", duration_days: "", description: "", category: "" });
       setSelectedIds(new Set());
@@ -603,12 +617,14 @@ const Compounds = () => {
       toast({
         title: "Export successful",
         description: `Exported ${exportData.length} compound(s) to JSON file`,
+        duration: 3000,
       });
     } catch (error) {
       toast({
         title: "Export failed",
         description: error instanceof Error ? error.message : "Failed to export compounds",
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -622,6 +638,7 @@ const Compounds = () => {
           title: "Error",
           description: "You must be logged in to import compounds",
           variant: "destructive",
+          duration: 4000,
         });
         return;
       }
@@ -631,6 +648,7 @@ const Compounds = () => {
           title: "Error",
           description: "Please select a lab",
           variant: "destructive",
+          duration: 4000,
         });
         return;
       }
@@ -735,6 +753,7 @@ const Compounds = () => {
       toast({
         title: "Import completed",
         description: `Successfully imported ${successCount} compounds. ${errorCount > 0 ? `${errorCount} errors.` : ""}`,
+        duration: 3000,
       });
 
       setImportDialogOpen(false);
@@ -749,6 +768,7 @@ const Compounds = () => {
         title: "Import failed",
         description: error instanceof Error ? error.message : "Invalid JSON format",
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -765,12 +785,14 @@ const Compounds = () => {
         toast({
           title: "File loaded",
           description: "JSON file loaded successfully",
+          duration: 3000,
         });
       } catch (error) {
         toast({
           title: "Error reading file",
           description: "Failed to read the file",
           variant: "destructive",
+          duration: 4000,
         });
       }
     };

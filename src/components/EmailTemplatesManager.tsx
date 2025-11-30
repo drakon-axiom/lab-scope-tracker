@@ -68,7 +68,7 @@ export function EmailTemplatesManager() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast({ title: "Error fetching templates", description: error.message, variant: "destructive" });
+      toast({ title: "Error fetching templates", description: error.message, variant: "destructive", duration: 4000 });
     } else {
       setTemplates(data || []);
     }
@@ -81,7 +81,7 @@ export function EmailTemplatesManager() {
       .order("name");
 
     if (error) {
-      toast({ title: "Error fetching labs", description: error.message, variant: "destructive" });
+      toast({ title: "Error fetching labs", description: error.message, variant: "destructive", duration: 4000 });
     } else {
       setLabs(data || []);
     }
@@ -122,7 +122,7 @@ Best regards`,
 
   const handleSaveTemplate = async () => {
     if (!formData.name || !formData.subject || !formData.body) {
-      toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive" });
+      toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive", duration: 4000 });
       return;
     }
 
@@ -177,9 +177,9 @@ Best regards`,
         .eq("id", editingTemplate.id);
 
       if (error) {
-        toast({ title: "Error updating template", description: error.message, variant: "destructive" });
+        toast({ title: "Error updating template", description: error.message, variant: "destructive", duration: 4000 });
       } else {
-        toast({ title: "Template updated successfully" });
+        toast({ title: "Template updated successfully", duration: 3000 });
         fetchTemplates();
         setDialogOpen(false);
       }
@@ -189,9 +189,9 @@ Best regards`,
         .insert(templateData);
 
       if (error) {
-        toast({ title: "Error creating template", description: error.message, variant: "destructive" });
+        toast({ title: "Error creating template", description: error.message, variant: "destructive", duration: 4000 });
       } else {
-        toast({ title: "Template created successfully" });
+        toast({ title: "Template created successfully", duration: 3000 });
         fetchTemplates();
         setDialogOpen(false);
       }
@@ -207,9 +207,9 @@ Best regards`,
       .eq("id", id);
 
     if (error) {
-      toast({ title: "Error deleting template", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting template", description: error.message, variant: "destructive", duration: 4000 });
     } else {
-      toast({ title: "Template deleted successfully" });
+      toast({ title: "Template deleted successfully", duration: 3000 });
       fetchTemplates();
     }
   };
@@ -265,7 +265,7 @@ Batch: BATCH-002
       .order("version_number", { ascending: false });
 
     if (error) {
-      toast({ title: "Error fetching version history", description: error.message, variant: "destructive" });
+      toast({ title: "Error fetching version history", description: error.message, variant: "destructive", duration: 4000 });
     } else {
       setSelectedTemplateVersions(data || []);
       setVersionHistoryOpen(true);
@@ -322,9 +322,9 @@ Batch: BATCH-002
         .eq("id", version.template_id);
 
       if (error) {
-        toast({ title: "Error reverting version", description: error.message, variant: "destructive" });
+        toast({ title: "Error reverting version", description: error.message, variant: "destructive", duration: 4000 });
       } else {
-        toast({ title: "Reverted to previous version successfully" });
+        toast({ title: "Reverted to previous version successfully", duration: 3000 });
         fetchTemplates();
         setVersionHistoryOpen(false);
       }
@@ -351,7 +351,7 @@ Batch: BATCH-002
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast({ title: "Template exported successfully" });
+    toast({ title: "Template exported successfully", duration: 3000 });
   };
 
   const handleImportTemplate = () => {
@@ -380,13 +380,13 @@ Batch: BATCH-002
           });
 
           if (error) {
-            toast({ title: "Error importing template", description: error.message, variant: "destructive" });
+            toast({ title: "Error importing template", description: error.message, variant: "destructive", duration: 4000 });
           } else {
-            toast({ title: "Template imported successfully" });
+            toast({ title: "Template imported successfully", duration: 3000 });
             fetchTemplates();
           }
         } catch (error) {
-          toast({ title: "Error parsing file", description: "Invalid template file format", variant: "destructive" });
+          toast({ title: "Error parsing file", description: "Invalid template file format", variant: "destructive", duration: 4000 });
         }
       };
       reader.readAsText(file);

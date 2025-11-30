@@ -675,10 +675,11 @@ const Quotes = () => {
         if (updatedStatus === "in_transit" && updatedStatus !== formData.status) {
           toast({ 
             title: "Quote updated successfully",
-            description: "Status automatically changed to 'In Transit'"
+            description: "Status automatically changed to 'In Transit'",
+            duration: 3000,
           });
         } else {
-          toast({ title: "Quote updated successfully" });
+          toast({ title: "Quote updated successfully", duration: 3000 });
         }
       } else {
         const { data: newQuote, error } = await supabase
@@ -702,7 +703,7 @@ const Quotes = () => {
           });
         }
         
-        toast({ title: "Quote created successfully" });
+        toast({ title: "Quote created successfully", duration: 3000 });
       }
 
       setDialogOpen(false);
@@ -713,6 +714,7 @@ const Quotes = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -732,6 +734,7 @@ const Quotes = () => {
         title: "Cannot Edit",
         description: "Quotes cannot be edited after payment",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -759,13 +762,14 @@ const Quotes = () => {
     try {
       const { error } = await supabase.from("quotes").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Quote deleted successfully" });
+      toast({ title: "Quote deleted successfully", duration: 3000 });
       fetchQuotes();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -1057,12 +1061,12 @@ const Quotes = () => {
           .update(payload)
           .eq("id", editingItemId);
         if (error) throw error;
-        toast({ title: "Item updated successfully" });
+        toast({ title: "Item updated successfully", duration: 3000 });
       } else {
         // Add new item
         const { error } = await supabase.from("quote_items").insert([payload]);
         if (error) throw error;
-        toast({ title: "Item added successfully" });
+        toast({ title: "Item added successfully", duration: 3000 });
       }
 
       resetItemForm();
@@ -1072,6 +1076,7 @@ const Quotes = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -1108,13 +1113,14 @@ const Quotes = () => {
         .delete()
         .eq("id", itemId);
       if (error) throw error;
-      toast({ title: "Item deleted successfully" });
+      toast({ title: "Item deleted successfully", duration: 3000 });
       if (selectedQuote) fetchQuoteItems(selectedQuote.id);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -1156,6 +1162,7 @@ const Quotes = () => {
         title: "Error",
         description: "Lab email not found. Please add a contact email for this lab.",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -1440,6 +1447,7 @@ const Quotes = () => {
       toast({
         title: "Email sent successfully",
         description: `Quote has been sent to ${lab.name}`,
+        duration: 3000,
       });
 
       setEmailPreviewOpen(false);
@@ -1458,6 +1466,7 @@ const Quotes = () => {
         title: "Error",
         description: error.message || "Failed to send email. Please try again.",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setIsSendingEmail(false);
@@ -1469,6 +1478,7 @@ const Quotes = () => {
       toast({
         title: "Refreshing tracking...",
         description: "Fetching latest UPS tracking data",
+        duration: 3000,
       });
 
       const { data, error } = await supabase.functions.invoke("update-ups-tracking", {
@@ -1483,11 +1493,13 @@ const Quotes = () => {
           toast({
             title: "Tracking updated",
             description: `Status changed from ${result.oldStatus} to ${result.newStatus}`,
+            duration: 3000,
           });
         } else {
           toast({
             title: "Tracking refreshed",
             description: result.message || "Status unchanged",
+            duration: 3000,
           });
         }
         fetchQuotes();
@@ -1511,6 +1523,7 @@ const Quotes = () => {
         title: "Failed to refresh tracking",
         description: error.message || "Unknown error",
         variant: "destructive",
+        duration: 4000,
       });
     }
   };

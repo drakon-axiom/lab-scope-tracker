@@ -69,6 +69,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
         title: "Error fetching compounds",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -91,6 +92,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
         title: "Error fetching labs",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -101,6 +103,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
         title: "Missing fields",
         description: "Please select a vendor and enter a price",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -135,6 +138,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
         title: "No entries selected",
         description: "Please select at least one compound with a valid price",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -162,6 +166,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
           title: "Already exists",
           description: "All selected compounds already have pricing for this vendor",
           variant: "destructive",
+          duration: 4000,
         });
         setLoading(false);
         return;
@@ -184,6 +189,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
       toast({
         title: "Success",
         description: `Added pricing for ${newEntries.length} compound(s)`,
+        duration: 3000,
       });
 
       onComplete?.();
@@ -196,6 +202,7 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
         title: "Error adding bulk pricing",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setLoading(false);

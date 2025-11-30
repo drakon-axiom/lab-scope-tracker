@@ -317,30 +317,39 @@ export type Database = {
           details: Json
           id: string
           is_default: boolean
+          is_validated: boolean | null
           method_name: string
           method_type: string
           updated_at: string
           user_id: string
+          validated_at: string | null
+          validation_details: Json | null
         }
         Insert: {
           created_at?: string
           details?: Json
           id?: string
           is_default?: boolean
+          is_validated?: boolean | null
           method_name: string
           method_type: string
           updated_at?: string
           user_id: string
+          validated_at?: string | null
+          validation_details?: Json | null
         }
         Update: {
           created_at?: string
           details?: Json
           id?: string
           is_default?: boolean
+          is_validated?: boolean | null
           method_name?: string
           method_type?: string
           updated_at?: string
           user_id?: string
+          validated_at?: string | null
+          validation_details?: Json | null
         }
         Relationships: []
       }

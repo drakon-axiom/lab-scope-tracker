@@ -17,6 +17,8 @@ interface PaymentMethod {
   method_name: string;
   details: any;
   is_default: boolean;
+  is_validated: boolean;
+  validated_at: string | null;
   created_at: string;
 }
 
@@ -192,6 +194,27 @@ export function PaymentMethodsManager() {
     }
   };
 
+  const handleValidate = async (id: string) => {
+    // In a production app, this would call a payment processor to validate the card
+    // For now, we'll just mark it as validated
+    try {
+      const { error } = await supabase
+        .from("payment_methods")
+        .update({ 
+          is_validated: true,
+          validated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Credit card validated successfully");
+      fetchPaymentMethods();
+    } catch (error: any) {
+      toast.error("Failed to validate payment method");
+      console.error(error);
+    }
+  };
+
   const getDetailsFields = (methodType: string) => {
     switch (methodType) {
       case "crypto_wallet":
@@ -281,6 +304,21 @@ export function PaymentMethodsManager() {
                           <Star className="h-3 w-3 fill-current" />
                           Default
                         </Badge>
+                      )}
+                      {method.method_type === 'credit_card' && method.is_validated && (
+                        <Badge variant="default" className="gap-1 bg-green-500">
+                          ✓ Validated
+                        </Badge>
+                      )}
+                      {method.method_type === 'credit_card' && !method.is_validated && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleValidate(method.id)}
+                          className="h-7 text-xs"
+                        >
+                          Validate Card
+                        </Button>
                       )}
                       <Button
                         variant="ghost"

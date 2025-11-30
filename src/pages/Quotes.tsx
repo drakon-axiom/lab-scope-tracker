@@ -263,7 +263,8 @@ const Quotes = () => {
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterLockStatus, setFilterLockStatus] = useState("all");
-  const [searchFilterExpanded, setSearchFilterExpanded] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
@@ -2306,150 +2307,291 @@ const Quotes = () => {
           </div>
         </div>
 
-        {/* Compact Search/Filter Bar */}
-        <div className="mb-6">
-          {!searchFilterExpanded ? (
-            <div className="flex items-center justify-between border rounded-lg p-3 bg-background">
-              <div className="flex items-center gap-2 flex-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchFilterExpanded(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Search className="h-4 w-4" />
-                  <span className="text-sm text-muted-foreground">Search quotes...</span>
-                </Button>
-                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
-                  <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
-                    Active
-                  </span>
-                )}
-              </div>
+        {/* Status Tabs and Search/Filter Bar */}
+        <div className="mb-6 space-y-3">
+          {/* Status Quick Filters Tabs */}
+          <div className="flex items-center justify-between border-b">
+            <div className="flex items-center gap-1 overflow-x-auto">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSearchFilterExpanded(true)}
+                onClick={() => setFilterStatus("all")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10",
+                  filterStatus === "all"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterStatus("draft")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10",
+                  filterStatus === "draft"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Draft
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterStatus("approved_payment_pending")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
+                  filterStatus === "approved_payment_pending"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Payment Pending
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterStatus("in_transit")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10",
+                  filterStatus === "in_transit"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                In Transit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterStatus("testing_in_progress")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10 whitespace-nowrap",
+                  filterStatus === "testing_in_progress"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Testing
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterStatus("completed")}
+                className={cn(
+                  "rounded-none border-b-2 px-4 h-10",
+                  filterStatus === "completed"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Completed
+              </Button>
+            </div>
+            
+            {/* Search and Filter Icons */}
+            <div className="flex items-center gap-2 ml-4 pb-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setSearchExpanded(!searchExpanded);
+                  setFiltersExpanded(false);
+                }}
+                className={cn(searchExpanded && "bg-accent")}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setFiltersExpanded(!filtersExpanded);
+                  setSearchExpanded(false);
+                }}
+                className={cn(filtersExpanded && "bg-accent")}
               >
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <div className="border rounded-lg p-4 bg-background space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Search and Filter</h3>
+          </div>
+
+          {/* Expanded Search Bar */}
+          {searchExpanded && (
+            <div className="flex items-center gap-2 py-2 border-b">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Searching all quotes"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9 border-0 focus-visible:ring-0 shadow-none"
+                  maxLength={200}
+                  autoFocus
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchExpanded(false);
+                  setSearchQuery("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {/* Expanded Filters Section */}
+          {filtersExpanded && (
+            <div className="py-3 border-b space-y-3">
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSearchFilterExpanded(false)}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Show filter options
+                  }}
+                  className="gap-2"
                 >
-                  <X className="h-4 w-4" />
+                  Add filter
+                  <Plus className="h-3 w-3" />
                 </Button>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="search" className="text-xs">Search</Label>
-                  <div className="relative mt-1.5">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search by quote number, notes, or tracking..."
-                      value={searchQuery}
-                      onChange={(e) => handleSearchChange(e.target.value)}
-                      className="pl-8"
-                      maxLength={200}
-                    />
+              
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {filterLab !== "all" && (
+                  <div className="flex items-center gap-2 bg-accent px-3 py-1.5 rounded text-sm">
+                    <span className="text-xs text-muted-foreground">Lab:</span>
+                    <span>{labs.find(l => l.id === filterLab)?.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 ml-auto"
+                      onClick={() => setFilterLab("all")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
-                </div>
+                )}
+                
+                {filterProduct !== "all" && (
+                  <div className="flex items-center gap-2 bg-accent px-3 py-1.5 rounded text-sm">
+                    <span className="text-xs text-muted-foreground">Product:</span>
+                    <span>{products.find(p => p.id === filterProduct)?.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 ml-auto"
+                      onClick={() => setFilterProduct("all")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                
+                {filterLockStatus !== "all" && (
+                  <div className="flex items-center gap-2 bg-accent px-3 py-1.5 rounded text-sm">
+                    <span className="text-xs text-muted-foreground">Lock:</span>
+                    <span>{filterLockStatus === "locked" ? "Locked" : "Unlocked"}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 ml-auto"
+                      onClick={() => setFilterLockStatus("all")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-                <div>
-                  <Label className="text-xs mb-2 block">Filters</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Status</Label>
-                      <Select value={filterStatus} onValueChange={setFilterStatus}>
-                        <SelectTrigger className="w-full h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
-                          <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
-                          <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="in_transit">In Transit</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Lab</Label>
-                      <Select value={filterLab} onValueChange={setFilterLab}>
-                        <SelectTrigger className="w-full h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          <SelectItem value="all">All Labs</SelectItem>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-3 w-3 mr-1" />
+                      Lab
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0 z-50 bg-background" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search labs..." />
+                      <CommandList>
+                        <CommandEmpty>No labs found.</CommandEmpty>
+                        <CommandGroup>
                           {labs.map((lab) => (
-                            <SelectItem key={lab.id} value={lab.id}>
+                            <CommandItem
+                              key={lab.id}
+                              onSelect={() => {
+                                setFilterLab(lab.id);
+                              }}
+                            >
                               {lab.name}
-                            </SelectItem>
+                            </CommandItem>
                           ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Product</Label>
-                      <Select value={filterProduct} onValueChange={setFilterProduct}>
-                        <SelectTrigger className="w-full h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          <SelectItem value="all">All Products</SelectItem>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Lock Status</Label>
-                      <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
-                        <SelectTrigger className="w-full h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          <SelectItem value="all">All Quotes</SelectItem>
-                          <SelectItem value="locked">Locked (Paid+)</SelectItem>
-                          <SelectItem value="unlocked">Unlocked (Pre-Payment)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
-                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-3 w-3 mr-1" />
+                      Product
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0 z-50 bg-background" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search products..." />
+                      <CommandList>
+                        <CommandEmpty>No products found.</CommandEmpty>
+                        <CommandGroup>
+                          {products.map((product) => (
+                            <CommandItem
+                              key={product.id}
+                              onSelect={() => {
+                                setFilterProduct(product.id);
+                              }}
+                            >
+                              {product.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
+                  <SelectTrigger className="w-auto h-9 gap-2">
+                    <Plus className="h-3 w-3" />
+                    <SelectValue placeholder="Lock Status" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-background">
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="locked">Locked (Paid+)</SelectItem>
+                    <SelectItem value="unlocked">Unlocked (Pre-Payment)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setSearchQuery("");
-                      setFilterStatus("all");
                       setFilterLab("all");
                       setFilterProduct("all");
                       setFilterLockStatus("all");
                     }}
                   >
-                    <X className="mr-2 h-4 w-4" />
-                    Clear All Filters
+                    Clear filters
                   </Button>
                 )}
               </div>

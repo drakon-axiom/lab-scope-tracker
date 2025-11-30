@@ -1250,7 +1250,7 @@ const Quotes = () => {
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
     doc.text(`Receipt Date: ${new Date().toLocaleDateString()}`, 14, 35);
-    doc.text(`Quote Number: ${quote.quote_number || 'N/A'}`, 14, 42);
+    doc.text(`Quote Number: ${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}`, 14, 42);
     doc.text(`Lab: ${quote.labs?.name || 'N/A'}`, 14, 49);
     
     // Add payment information box
@@ -1293,7 +1293,7 @@ const Quotes = () => {
     doc.text('Thank you for your business!', 14, finalY);
     doc.text(`This receipt confirms payment for testing services.`, 14, finalY + 7);
     
-    doc.save(`receipt-${quote.quote_number || quote.id}.pdf`);
+    doc.save(`receipt-${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}.pdf`);
     
     toast({
       title: "Receipt Generated",
@@ -1323,7 +1323,7 @@ const Quotes = () => {
       doc.text("Quote Details", 14, 20);
       
       doc.setFontSize(11);
-      doc.text(`Quote Number: ${quoteWithItems.quote_number || 'N/A'}`, 14, 30);
+      doc.text(`Quote Number: ${quoteWithItems.quote_number || `Quote ${quoteWithItems.id.slice(0, 8)}`}`, 14, 30);
       doc.text(`Status: ${quoteWithItems.status}`, 14, 37);
       doc.text(`Lab: ${quoteWithItems.labs?.name || 'N/A'}`, 14, 44);
       
@@ -1352,7 +1352,7 @@ const Quotes = () => {
         headStyles: { fillColor: [66, 139, 202] },
       });
       
-      doc.save(`quote-${quoteWithItems.quote_number || quoteWithItems.id}.pdf`);
+      doc.save(`quote-${quoteWithItems.quote_number || `Quote ${quoteWithItems.id.slice(0, 8)}`}.pdf`);
       
       toast({
         title: "Success",
@@ -1373,7 +1373,7 @@ const Quotes = () => {
     const ws_data = [
       ['Quote Details'],
       [],
-      ['Quote Number', quote.quote_number || 'N/A'],
+      ['Quote Number', quote.quote_number || `Quote ${quote.id.slice(0, 8)}`],
       ['Status', quote.status],
       ['Lab', quote.labs?.name || 'N/A'],
       ['Notes', quote.notes || ''],
@@ -1400,7 +1400,7 @@ const Quotes = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Quote");
     
-    XLSX.writeFile(wb, `quote-${quote.quote_number || quote.id}.xlsx`);
+    XLSX.writeFile(wb, `quote-${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}.xlsx`);
     
     toast({
       title: "Success",
@@ -3090,7 +3090,7 @@ const Quotes = () => {
                     <div>
                       <Label className="text-muted-foreground">Quote Number</Label>
                       <p className="font-medium">
-                        {selectedQuote.quote_number || "Not assigned"}
+                        {selectedQuote.quote_number || `Quote ${selectedQuote.id.slice(0, 8)}`}
                       </p>
                     </div>
                     <div>

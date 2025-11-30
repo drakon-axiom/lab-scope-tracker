@@ -20,6 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -2878,298 +2884,313 @@ const Quotes = () => {
               </DialogDescription>
             </DialogHeader>
             {selectedQuote && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground">Quote Number</Label>
-                    <p className="font-medium">
-                      {selectedQuote.quote_number || "Not assigned"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Lab</Label>
-                    <p className="font-medium">{selectedQuote.labs.name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Status</Label>
-                    <div className="mt-1">
-                      <StatusBadge status={selectedQuote.status} />
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details" className="space-y-6 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Quote Number</Label>
+                      <p className="font-medium">
+                        {selectedQuote.quote_number || "Not assigned"}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Lab</Label>
+                      <p className="font-medium">{selectedQuote.labs.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Status</Label>
+                      <div className="mt-1">
+                        <StatusBadge status={selectedQuote.status} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Tracking Number</Label>
+                      <div className="flex flex-col gap-1">
+                        <p className="font-medium">
+                          {selectedQuote.tracking_number || "—"}
+                        </p>
+                        {selectedQuote.tracking_number && selectedQuote.tracking_updated_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Last updated: {new Date(selectedQuote.tracking_updated_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Tracking Number</Label>
-                    <div className="flex flex-col gap-1">
-                      <p className="font-medium">
-                        {selectedQuote.tracking_number || "—"}
-                      </p>
-                      {selectedQuote.tracking_number && selectedQuote.tracking_updated_at && (
-                        <p className="text-xs text-muted-foreground">
-                          Last updated: {new Date(selectedQuote.tracking_updated_at).toLocaleString()}
-                        </p>
+
+                  {selectedQuote.notes && (
+                    <div>
+                      <Label className="text-muted-foreground">Notes</Label>
+                      <p className="mt-1">{selectedQuote.notes}</p>
+                    </div>
+                  )}
+                  
+                  {/* Payment Information Section */}
+                  <div className="border-t pt-4">
+                    <Label className="text-lg font-semibold mb-3 block">Payment Information</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">Payment Status</Label>
+                        <div className="mt-1">
+                          <StatusBadge status={selectedQuote.payment_status || "pending"} />
+                        </div>
+                      </div>
+                      {selectedQuote.payment_date && (
+                        <div>
+                          <Label className="text-muted-foreground">Payment Date</Label>
+                          <p className="font-medium mt-1">
+                            {new Date(selectedQuote.payment_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedQuote.payment_amount_usd && (
+                        <div>
+                          <Label className="text-muted-foreground">Amount (USD)</Label>
+                          <p className="font-medium mt-1">
+                            ${selectedQuote.payment_amount_usd.toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                      {selectedQuote.payment_amount_crypto && (
+                        <div>
+                          <Label className="text-muted-foreground">Amount (Crypto)</Label>
+                          <p className="font-medium mt-1">
+                            {selectedQuote.payment_amount_crypto}
+                          </p>
+                        </div>
+                      )}
+                      {selectedQuote.transaction_id && (
+                        <div className="col-span-2">
+                          <Label className="text-muted-foreground">Transaction ID</Label>
+                          <p className="font-mono text-sm mt-1 break-all">
+                            {selectedQuote.transaction_id}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
-                </div>
 
-                {selectedQuote.notes && (
-                  <div>
-                    <Label className="text-muted-foreground">Notes</Label>
-                    <p className="mt-1">{selectedQuote.notes}</p>
-                  </div>
-                )}
-                
-                {/* Payment Information Section */}
-                <div className="border-t pt-4">
-                  <Label className="text-lg font-semibold mb-3 block">Payment Information</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">Payment Status</Label>
-                      <div className="mt-1">
-                        <StatusBadge status={selectedQuote.payment_status || "pending"} />
-                      </div>
-                    </div>
-                    {selectedQuote.payment_date && (
-                      <div>
-                        <Label className="text-muted-foreground">Payment Date</Label>
-                        <p className="font-medium mt-1">
-                          {new Date(selectedQuote.payment_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                    )}
-                    {selectedQuote.payment_amount_usd && (
-                      <div>
-                        <Label className="text-muted-foreground">Amount (USD)</Label>
-                        <p className="font-medium mt-1">
-                          ${selectedQuote.payment_amount_usd.toFixed(2)}
-                        </p>
-                      </div>
-                    )}
-                    {selectedQuote.payment_amount_crypto && (
-                      <div>
-                        <Label className="text-muted-foreground">Amount (Crypto)</Label>
-                        <p className="font-medium mt-1">
-                          {selectedQuote.payment_amount_crypto}
-                        </p>
-                      </div>
-                    )}
-                    {selectedQuote.transaction_id && (
-                      <div className="col-span-2">
-                        <Label className="text-muted-foreground">Transaction ID</Label>
-                        <p className="font-mono text-sm mt-1 break-all">
-                          {selectedQuote.transaction_id}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tracking History Section */}
-                {selectedQuote.tracking_number && trackingHistory.length > 0 && (
-                  <div className="border-t pt-4">
-                    <Label className="text-lg font-semibold mb-3 block">Tracking History</Label>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {trackingHistory.map((history) => (
-                        <div key={history.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/50">
-                          <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <StatusBadge status={history.status} />
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(history.changed_at).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span className="capitalize">{history.source}</span>
-                              {history.details?.old_status && (
-                                <span>• Changed from: <StatusBadge status={history.details.old_status} /></span>
-                              )}
+                  {/* Tracking History Section */}
+                  {selectedQuote.tracking_number && trackingHistory.length > 0 && (
+                    <div className="border-t pt-4">
+                      <Label className="text-lg font-semibold mb-3 block">Tracking History</Label>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {trackingHistory.map((history) => (
+                          <div key={history.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/50">
+                            <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <StatusBadge status={history.status} />
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(history.changed_at).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span className="capitalize">{history.source}</span>
+                                {history.details?.old_status && (
+                                  <span>• Changed from: <StatusBadge status={history.details.old_status} /></span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>Quote Items</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Total: ${totalQuoteValue.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                         <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Client/Sample</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Report</TableHead>
+                          <TableHead className="text-right">Price</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {quoteItems.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.products.name}</TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  <div>Client: {item.client || "—"}</div>
+                                  <div>Sample: {item.sample || "—"}</div>
+                                  <div>Mfg: {item.manufacturer || "—"}</div>
+                                  <div>Batch: {item.batch || "—"}</div>
+                                  {(item.additional_samples || 0) > 0 && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      +{item.additional_samples} additional samples
+                                    </div>
+                                  )}
+                                  {(item.additional_report_headers || 0) > 0 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      +{item.additional_report_headers} report headers
+                                    </div>
+                                  )}
+                                  {item.additional_headers_data && item.additional_headers_data.length > 0 && (
+                                    <div className="mt-2 pl-2 border-l-2 border-muted space-y-1">
+                                      {item.additional_headers_data.map((header, idx) => (
+                                        <div key={idx} className="text-xs text-muted-foreground">
+                                          <strong>Header #{idx + 1}:</strong> {header.client} / {header.sample} / {header.manufacturer} / {header.batch}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={item.status || "pending"} />
+                                {item.date_submitted && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Submitted: {new Date(item.date_submitted).toLocaleDateString()}
+                                  </div>
+                                )}
+                                {item.date_completed && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Completed: {new Date(item.date_completed).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {item.report_url && (
+                                  <a 
+                                    href={item.report_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline text-sm"
+                                  >
+                                    View Report
+                                  </a>
+                                )}
+                                {item.report_file && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    File: {item.report_file}
+                                  </div>
+                                )}
+                                {item.test_results && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {item.test_results}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                ${item.price?.toFixed(2) || "0.00"}
+                                {(item.additional_samples || 0) > 0 && 
+                                 (item.products.name.toLowerCase().includes('tirzepatide') || 
+                                  item.products.name.toLowerCase().includes('semaglutide') || 
+                                  item.products.name.toLowerCase().includes('retatrutide')) && (
+                                  <div className="text-xs text-muted-foreground">
+                                    +${((item.additional_samples || 0) * 60).toFixed(2)} (additional samples)
+                                  </div>
+                                )}
+                                <div className="text-sm font-medium mt-1">
+                                  Total: ${calculateItemTotal(item).toFixed(2)}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
-                )}
 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <Label>Quote Items</Label>
+                  <div className="flex justify-end gap-2">
+                    {selectedQuote.status === 'paid_awaiting_shipping' && (
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          const quoteWithItems = {
+                            ...selectedQuote,
+                            quote_items: quoteItems
+                          };
+                          generatePaymentReceipt(quoteWithItems);
+                        }}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Receipt
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => setViewDialogOpen(false)}
+                    >
+                      Close
+                    </Button>
+                    {emailTemplates.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Email Template:</Label>
+                        <Select
+                          value={selectedEmailTemplate}
+                          onValueChange={setSelectedEmailTemplate}
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Select template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {emailTemplates.map((template: any) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    {selectedQuote && 
+                     !isQuoteLocked(selectedQuote.status) && 
+                     !['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status) && (
+                      <Button
+                        variant="outline"
+                        onClick={handleSendEmail}
+                        title="Send quote to vendor"
+                      >
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send to Vendor
+                      </Button>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="notifications" className="space-y-6 mt-4">
+                  {/* Activity Log Section */}
+                  <div>
+                    <Label className="text-lg font-semibold mb-3 block">Activity Log</Label>
+                    <QuoteActivityLog quoteId={selectedQuote.id} />
+                  </div>
+
+                  {/* Email History Section */}
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-lg font-semibold">Email History</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEmailHistoryOpen(true)}
+                      >
+                        <History className="mr-2 h-4 w-4" />
+                        View Full History
+                      </Button>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Total: ${totalQuoteValue.toFixed(2)}
+                      View email history for this quote in the full history dialog.
                     </p>
                   </div>
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                       <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Client/Sample</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Report</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {quoteItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.products.name}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                <div>Client: {item.client || "—"}</div>
-                                <div>Sample: {item.sample || "—"}</div>
-                                <div>Mfg: {item.manufacturer || "—"}</div>
-                                <div>Batch: {item.batch || "—"}</div>
-                                {(item.additional_samples || 0) > 0 && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    +{item.additional_samples} additional samples
-                                  </div>
-                                )}
-                                {(item.additional_report_headers || 0) > 0 && (
-                                  <div className="text-xs text-muted-foreground">
-                                    +{item.additional_report_headers} report headers
-                                  </div>
-                                )}
-                                {item.additional_headers_data && item.additional_headers_data.length > 0 && (
-                                  <div className="mt-2 pl-2 border-l-2 border-muted space-y-1">
-                                    {item.additional_headers_data.map((header, idx) => (
-                                      <div key={idx} className="text-xs text-muted-foreground">
-                                        <strong>Header #{idx + 1}:</strong> {header.client} / {header.sample} / {header.manufacturer} / {header.batch}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge status={item.status || "pending"} />
-                              {item.date_submitted && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Submitted: {new Date(item.date_submitted).toLocaleDateString()}
-                                </div>
-                              )}
-                              {item.date_completed && (
-                                <div className="text-xs text-muted-foreground">
-                                  Completed: {new Date(item.date_completed).toLocaleDateString()}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {item.report_url && (
-                                <a 
-                                  href={item.report_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline text-sm"
-                                >
-                                  View Report
-                                </a>
-                              )}
-                              {item.report_file && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  File: {item.report_file}
-                                </div>
-                              )}
-                              {item.test_results && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {item.test_results}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              ${item.price?.toFixed(2) || "0.00"}
-                              {(item.additional_samples || 0) > 0 && 
-                               (item.products.name.toLowerCase().includes('tirzepatide') || 
-                                item.products.name.toLowerCase().includes('semaglutide') || 
-                                item.products.name.toLowerCase().includes('retatrutide')) && (
-                                <div className="text-xs text-muted-foreground">
-                                  +${((item.additional_samples || 0) * 60).toFixed(2)} (additional samples)
-                                </div>
-                              )}
-                              <div className="text-sm font-medium mt-1">
-                                Total: ${calculateItemTotal(item).toFixed(2)}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                {/* Activity Log Section */}
-                <div className="border-t pt-4">
-                  <QuoteActivityLog quoteId={selectedQuote.id} />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setEmailHistoryOpen(true)}
-                  >
-                    <History className="mr-2 h-4 w-4" />
-                    Email History
-                  </Button>
-                  {selectedQuote.status === 'paid_awaiting_shipping' && (
-                    <Button
-                      variant="default"
-                      onClick={() => {
-                        const quoteWithItems = {
-                          ...selectedQuote,
-                          quote_items: quoteItems
-                        };
-                        generatePaymentReceipt(quoteWithItems);
-                      }}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Receipt
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={() => setViewDialogOpen(false)}
-                  >
-                    Close
-                  </Button>
-                  {emailTemplates.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm">Email Template:</Label>
-                      <Select
-                        value={selectedEmailTemplate}
-                        onValueChange={setSelectedEmailTemplate}
-                      >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select template" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {emailTemplates.map((template: any) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={handleSendEmail}
-                    disabled={
-                      selectedQuote && 
-                      (isQuoteLocked(selectedQuote.status) || 
-                       ['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status))
-                    }
-                    title={
-                      selectedQuote && 
-                      ['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status)
-                        ? "Quote has already been sent to vendor"
-                        : "Send quote to vendor"
-                    }
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Send to Vendor
-                  </Button>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             )}
           </DialogContent>
         </Dialog>

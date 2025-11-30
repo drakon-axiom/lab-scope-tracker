@@ -82,6 +82,7 @@ export const QuoteApprovalDialog = ({
       toast({
         title: "Changes Approved",
         description: "The vendor's changes have been approved.",
+        duration: 3000,
       });
       onApprove();
       onOpenChange(false);
@@ -91,6 +92,7 @@ export const QuoteApprovalDialog = ({
         title: "Error",
         description: "Failed to approve changes. Please try again.",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setProcessing(false);
@@ -103,6 +105,7 @@ export const QuoteApprovalDialog = ({
         title: "Notes Required",
         description: "Please provide notes explaining what needs modification.",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -134,6 +137,7 @@ export const QuoteApprovalDialog = ({
       toast({
         title: "Changes Rejected",
         description: "The vendor's changes have been rejected. Quote has been closed.",
+        duration: 3000,
       });
       onReject();
       onOpenChange(false);
@@ -143,6 +147,7 @@ export const QuoteApprovalDialog = ({
         title: "Error",
         description: "Failed to reject changes. Please try again.",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setProcessing(false);

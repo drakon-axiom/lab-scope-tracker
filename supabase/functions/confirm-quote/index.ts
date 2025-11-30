@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     if (action === 'update' && updates) {
       console.log('Updating quote:', quoteId, 'with updates:', updates);
 
-      // Check if quote is already approved
+      // Check if quote is already paid or beyond
       const { data: existingQuote, error: checkError } = await supabase
         .from('quotes')
         .select('status')
@@ -119,10 +119,11 @@ Deno.serve(async (req) => {
         );
       }
 
-      if (existingQuote?.status === 'approved') {
-        console.warn('Attempted to update already approved quote:', quoteId);
+      const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+      if (existingQuote && lockedStatuses.includes(existingQuote.status)) {
+        console.warn('Attempted to update paid/locked quote:', quoteId);
         return new Response(
-          JSON.stringify({ error: 'Quote has already been approved and cannot be modified' }),
+          JSON.stringify({ error: 'Quote has been paid and cannot be modified' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

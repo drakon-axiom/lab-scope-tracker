@@ -63,6 +63,7 @@ interface QuoteKanbanBoardProps {
   onViewQuote: (quote: Quote) => void;
   onEditQuote: (quote: Quote) => void;
   onManageItems: (quote: Quote) => void;
+  isEditingDisabled?: (status: string) => boolean;
 }
 
 // Helper function to check if quote is locked (paid or later status)
@@ -77,6 +78,7 @@ export function QuoteKanbanBoard({
   onViewQuote,
   onEditQuote,
   onManageItems,
+  isEditingDisabled,
 }: QuoteKanbanBoardProps) {
   const [activeQuote, setActiveQuote] = useState<Quote | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -147,6 +149,7 @@ export function QuoteKanbanBoard({
               onViewQuote={onViewQuote}
               onEditQuote={onEditQuote}
               onManageItems={onManageItems}
+              isEditingDisabled={isEditingDisabled}
             />
           );
         })}
@@ -174,6 +177,7 @@ interface KanbanColumnProps {
   onViewQuote: (quote: Quote) => void;
   onEditQuote: (quote: Quote) => void;
   onManageItems: (quote: Quote) => void;
+  isEditingDisabled?: (status: string) => boolean;
 }
 
 function KanbanColumn({
@@ -183,6 +187,7 @@ function KanbanColumn({
   onViewQuote,
   onEditQuote,
   onManageItems,
+  isEditingDisabled,
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id: column.id,
@@ -217,6 +222,7 @@ function KanbanColumn({
             onEditQuote={onEditQuote}
             onManageItems={onManageItems}
             isLocked={isQuoteLocked(quote.status)}
+            isEditingDisabled={isEditingDisabled ? isEditingDisabled(quote.status) : isQuoteLocked(quote.status)}
           />
         ))}
 
@@ -234,6 +240,7 @@ interface QuoteCardProps {
   quote: Quote;
   isDragging?: boolean;
   isLocked?: boolean;
+  isEditingDisabled?: boolean;
   onViewQuote: (quote: Quote) => void;
   onEditQuote: (quote: Quote) => void;
   onManageItems: (quote: Quote) => void;
@@ -243,6 +250,7 @@ function QuoteCard({
   quote,
   isDragging = false,
   isLocked = false,
+  isEditingDisabled = false,
   onViewQuote,
   onEditQuote,
   onManageItems,
@@ -327,8 +335,8 @@ function QuoteCard({
             size="sm"
             className="h-8 flex-1 text-xs"
             onClick={() => onEditQuote(quote)}
-            disabled={isLocked}
-            title={isLocked ? "Cannot edit paid quotes" : "Edit quote"}
+            disabled={isEditingDisabled}
+            title={isEditingDisabled ? "Cannot edit paid quotes" : "Edit quote"}
           >
             <Pencil className="h-3 w-3 mr-1" />
             Edit
@@ -338,8 +346,8 @@ function QuoteCard({
             size="sm"
             className="h-8 flex-1 text-xs"
             onClick={() => onManageItems(quote)}
-            disabled={isLocked}
-            title={isLocked ? "Cannot modify items in paid quotes" : "Manage items"}
+            disabled={isEditingDisabled}
+            title={isEditingDisabled ? "Cannot modify items in paid quotes" : "Manage items"}
           >
             <Package className="h-3 w-3 mr-1" />
             Items

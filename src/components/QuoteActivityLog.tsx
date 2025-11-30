@@ -102,6 +102,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
       case 'vendor_rejection':
       case 'customer_rejection':
         return <span className="text-lg">✗</span>;
+      case 'payment_recorded':
+        return <span className="text-lg">💳</span>;
       case 'quote_created':
         return <span className="text-lg">+</span>;
       case 'quote_updated':
@@ -121,6 +123,8 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
       case 'vendor_rejection':
       case 'customer_rejection':
         return 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400';
+      case 'payment_recorded':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400';
       case 'status_change':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400';
       case 'email_sent':
@@ -210,6 +214,34 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
                             <span className="capitalize">{activity.metadata.old_status.replace(/_/g, ' ')}</span>
                             {" → "}
                             <span className="capitalize">{activity.metadata.new_status.replace(/_/g, ' ')}</span>
+                          </div>
+                        )}
+                        {activity.metadata.payment_amount_usd && (
+                          <div>
+                            <span className="font-medium">Amount:</span>{" "}
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              ${Number(activity.metadata.payment_amount_usd).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {activity.metadata.payment_date && (
+                          <div>
+                            <span className="font-medium">Payment Date:</span>{" "}
+                            <span>{new Date(activity.metadata.payment_date).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {activity.metadata.transaction_id && (
+                          <div>
+                            <span className="font-medium">Transaction ID:</span>{" "}
+                            <span className="font-mono">{activity.metadata.transaction_id}</span>
+                          </div>
+                        )}
+                        {activity.metadata.payment_status && (
+                          <div>
+                            <span className="font-medium">Status:</span>{" "}
+                            <Badge variant="outline" className="ml-1">
+                              {activity.metadata.payment_status}
+                            </Badge>
                           </div>
                         )}
                         {activity.metadata.message && (

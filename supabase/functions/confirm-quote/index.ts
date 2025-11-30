@@ -34,6 +34,8 @@ interface ConfirmQuoteRequest {
     items?: Array<{
       id: string;
       price: number;
+      additional_sample_price?: number;
+      additional_header_price?: number;
     }>;
   };
 }

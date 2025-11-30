@@ -21,6 +21,8 @@ const QuoteConfirm = () => {
   const [labResponse, setLabResponse] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountAmount, setDiscountAmount] = useState("");
+  const [additionalSamplePrices, setAdditionalSamplePrices] = useState<Record<string, string>>({});
+  const [additionalHeaderPrices, setAdditionalHeaderPrices] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -53,6 +55,16 @@ const QuoteConfirm = () => {
 
         setQuote(data);
         setQuoteItems(items || []);
+        
+        // Initialize additional pricing defaults
+        const samplePrices: Record<string, string> = {};
+        const headerPrices: Record<string, string> = {};
+        items?.forEach((item: any) => {
+          samplePrices[item.id] = "60";
+          headerPrices[item.id] = "30";
+        });
+        setAdditionalSamplePrices(samplePrices);
+        setAdditionalHeaderPrices(headerPrices);
         
         // Calculate automatic discount based on subtotal
         if (items && items.length > 0) {
@@ -138,13 +150,15 @@ const QuoteConfirm = () => {
       if (additionalSamples > 0) {
         const productName = item.products?.name || "";
         if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
-          itemTotal += additionalSamples * 60;
+          const samplePrice = parseFloat(additionalSamplePrices[item.id] || "60");
+          itemTotal += additionalSamples * samplePrice;
         }
       }
       
       // Add additional headers cost
       if (additionalHeaders > 0) {
-        itemTotal += additionalHeaders * 30;
+        const headerPrice = parseFloat(additionalHeaderPrices[item.id] || "30");
+        itemTotal += additionalHeaders * headerPrice;
       }
       
       return sum + itemTotal;
@@ -191,6 +205,8 @@ const QuoteConfirm = () => {
             items: quoteItems.map(item => ({
               id: item.id,
               price: parseFloat(item.price || "0"),
+              additional_sample_price: parseFloat(additionalSamplePrices[item.id] || "60"),
+              additional_header_price: parseFloat(additionalHeaderPrices[item.id] || "30"),
             })),
           },
         }),
@@ -304,10 +320,12 @@ const QuoteConfirm = () => {
 
                 let itemTotal = parseFloat(item.price || "0");
                 if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
-                  itemTotal += (item.additional_samples || 0) * 60;
+                  const samplePrice = parseFloat(additionalSamplePrices[item.id] || "60");
+                  itemTotal += (item.additional_samples || 0) * samplePrice;
                 }
                 if ((item.additional_report_headers || 0) > 0) {
-                  itemTotal += (item.additional_report_headers || 0) * 30;
+                  const headerPrice = parseFloat(additionalHeaderPrices[item.id] || "30");
+                  itemTotal += (item.additional_report_headers || 0) * headerPrice;
                 }
 
                 return (
@@ -339,15 +357,49 @@ const QuoteConfirm = () => {
                       </div>
 
                       {(item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing && (
-                        <div className="bg-green-50 dark:bg-green-950/20 border-l-2 border-green-500 p-3 rounded text-sm">
-                          <strong>Additional Samples:</strong> {item.additional_samples} × $60.00 = <strong>${((item.additional_samples || 0) * 60).toFixed(2)}</strong>
+                        <div className="bg-green-50 dark:bg-green-950/20 border-l-2 border-green-500 p-3 rounded space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <Label htmlFor={`sample-price-${item.id}`} className="text-sm">
+                              Price per Additional Sample ($)
+                            </Label>
+                            <Input
+                              id={`sample-price-${item.id}`}
+                              type="number"
+                              step="0.01"
+                              value={additionalSamplePrices[item.id] || "60"}
+                              onChange={(e) => setAdditionalSamplePrices(prev => ({
+                                ...prev,
+                                [item.id]: e.target.value
+                              }))}
+                              className="w-24 text-right"
+                            />
+                          </div>
+                          <div className="text-sm">
+                            <strong>Additional Samples:</strong> {item.additional_samples} × ${parseFloat(additionalSamplePrices[item.id] || "60").toFixed(2)} = <strong>${((item.additional_samples || 0) * parseFloat(additionalSamplePrices[item.id] || "60")).toFixed(2)}</strong>
+                          </div>
                         </div>
                       )}
 
                       {(item.additional_report_headers || 0) > 0 && (
                         <div className="bg-amber-50 dark:bg-amber-950/20 border-l-2 border-amber-500 p-3 rounded space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <Label htmlFor={`header-price-${item.id}`} className="text-sm">
+                              Price per Additional Header ($)
+                            </Label>
+                            <Input
+                              id={`header-price-${item.id}`}
+                              type="number"
+                              step="0.01"
+                              value={additionalHeaderPrices[item.id] || "30"}
+                              onChange={(e) => setAdditionalHeaderPrices(prev => ({
+                                ...prev,
+                                [item.id]: e.target.value
+                              }))}
+                              className="w-24 text-right"
+                            />
+                          </div>
                           <div className="text-sm">
-                            <strong>Additional Report Headers:</strong> {item.additional_report_headers} × $30.00 = <strong>${((item.additional_report_headers || 0) * 30).toFixed(2)}</strong>
+                            <strong>Additional Report Headers:</strong> {item.additional_report_headers} × ${parseFloat(additionalHeaderPrices[item.id] || "30").toFixed(2)} = <strong>${((item.additional_report_headers || 0) * parseFloat(additionalHeaderPrices[item.id] || "30")).toFixed(2)}</strong>
                           </div>
                           
                           {item.additional_headers_data && item.additional_headers_data.length > 0 && (

@@ -6,10 +6,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Code, Mail, ChevronDown, History } from "lucide-react";
 import { useState } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Notifications = () => {
   const [isVariablesOpen, setIsVariablesOpen] = useState(true);
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
+  const { isAdmin } = useUserRole();
 
   return (
     <Layout>
@@ -21,8 +23,9 @@ const Notifications = () => {
           </p>
         </div>
 
-        {/* Template Variables Documentation - Collapsible */}
-        <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
+        {/* Template Variables Documentation - Collapsible - Admin Only */}
+        {isAdmin && (
+          <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
           <Card>
             <CollapsibleTrigger className="w-full">
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -110,6 +113,7 @@ const Notifications = () => {
             </CollapsibleContent>
           </Card>
         </Collapsible>
+        )}
 
         {/* Email History Section */}
         <Card>
@@ -130,7 +134,8 @@ const Notifications = () => {
           </CardContent>
         </Card>
         
-        <EmailTemplatesManager />
+        {/* Email Templates Manager - Admin Only */}
+        {isAdmin && <EmailTemplatesManager />}
 
         {/* Email History Dialog */}
         <EmailHistoryDialog

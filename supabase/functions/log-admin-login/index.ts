@@ -42,6 +42,70 @@ const handler = async (req: Request): Promise<Response> => {
       errorMessage: errorMessage?.substring(0, 100), // Log first 100 chars
     });
 
+    // Fetch security settings for rate limiting
+    const { data: settingsData, error: settingsError } = await supabase
+      .from("security_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", ["max_login_attempts", "lockout_duration_minutes"]);
+
+    if (settingsError) {
+      console.error("Error fetching security settings:", settingsError);
+    }
+
+    const maxAttempts = settingsData?.find(s => s.setting_key === "max_login_attempts")?.setting_value?.value || 5;
+    const lockoutDuration = settingsData?.find(s => s.setting_key === "lockout_duration_minutes")?.setting_value?.value || 30;
+
+    console.log("Rate limiting settings:", { maxAttempts, lockoutDuration });
+
+    // Check for recent failed attempts within lockout window
+    const lockoutWindowStart = new Date(Date.now() - lockoutDuration * 60 * 1000).toISOString();
+    
+    const { data: recentAttempts, error: attemptsError } = await supabase
+      .from("admin_login_audit")
+      .select("id")
+      .eq("email", email)
+      .eq("success", false)
+      .gte("created_at", lockoutWindowStart)
+      .order("created_at", { ascending: false });
+
+    if (attemptsError) {
+      console.error("Error fetching recent attempts:", attemptsError);
+    }
+
+    const failedAttemptsCount = recentAttempts?.length || 0;
+    console.log("Recent failed attempts:", failedAttemptsCount);
+
+    // If failed attempts exceed limit, reject the login attempt
+    if (!success && failedAttemptsCount >= maxAttempts) {
+      console.log("Account locked due to too many failed attempts");
+      
+      // Still log this attempt
+      await supabase.from("admin_login_audit").insert({
+        user_id: userId || null,
+        email,
+        success: false,
+        error_message: "Account locked due to too many failed login attempts",
+        ip_address: ipAddress,
+        user_agent: userAgent || null,
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          error: "Account temporarily locked due to too many failed login attempts",
+          locked: true,
+          lockoutMinutes: lockoutDuration,
+          attemptsRemaining: 0
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
     // Insert audit log
     const { error: auditError } = await supabase
       .from("admin_login_audit")
@@ -58,6 +122,9 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error inserting audit log:", auditError);
       throw auditError;
     }
+
+    // Calculate attempts remaining
+    const attemptsRemaining = Math.max(0, maxAttempts - (failedAttemptsCount + (success ? 0 : 1)));
 
     // If login failed, check if we should send email alert
     if (!success) {
@@ -148,7 +215,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, ipAddress }),
+      JSON.stringify({ 
+        success: true, 
+        ipAddress,
+        attemptsRemaining: success ? maxAttempts : attemptsRemaining
+      }),
       {
         status: 200,
         headers: {

@@ -1717,9 +1717,8 @@ const Quotes = () => {
                               <SelectItem value="draft">Draft</SelectItem>
                               <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
                               <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
                               <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="payment_pending">Payment Pending</SelectItem>
                               <SelectItem value="paid">Paid</SelectItem>
                               <SelectItem value="shipped">Shipped</SelectItem>
                               <SelectItem value="in_transit">In Transit</SelectItem>
@@ -1921,9 +1920,8 @@ const Quotes = () => {
                         <SelectItem value="draft">Draft</SelectItem>
                         <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
                         <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="payment_pending">Payment Pending</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="shipped">Shipped</SelectItem>
                         <SelectItem value="in_transit">In Transit</SelectItem>
@@ -2572,11 +2570,11 @@ const Quotes = () => {
                     disabled={
                       selectedQuote && 
                       (isQuoteLocked(selectedQuote.status) || 
-                       ['sent_to_vendor', 'approved', 'awaiting_customer_approval', 'rejected', 'payment_pending', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status))
+                       ['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status))
                     }
                     title={
                       selectedQuote && 
-                      ['sent_to_vendor', 'approved', 'awaiting_customer_approval', 'rejected', 'payment_pending', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status)
+                      ['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status)
                         ? "Quote has already been sent to vendor"
                         : "Send quote to vendor"
                     }

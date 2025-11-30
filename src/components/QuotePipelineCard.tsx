@@ -6,8 +6,7 @@ import { Loader2 } from "lucide-react";
 interface PipelineStats {
   draft: number;
   sent_to_vendor: number;
-  approved: number;
-  payment_pending: number;
+  approved_payment_pending: number;
   paid: number;
   shipped: number;
   in_transit: number;
@@ -19,8 +18,7 @@ interface PipelineStats {
 const statusLabels: Record<keyof PipelineStats, string> = {
   draft: "Draft",
   sent_to_vendor: "Sent to Vendor",
-  approved: "Approved",
-  payment_pending: "Payment Pending",
+  approved_payment_pending: "Approved - Payment Pending",
   paid: "Paid",
   shipped: "Shipped",
   in_transit: "In Transit",
@@ -65,8 +63,7 @@ export const QuotePipelineCard = () => {
       const stats: PipelineStats = {
         draft: 0,
         sent_to_vendor: 0,
-        approved: 0,
-        payment_pending: 0,
+        approved_payment_pending: 0,
         paid: 0,
         shipped: 0,
         in_transit: 0,

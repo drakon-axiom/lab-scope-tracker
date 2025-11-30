@@ -67,6 +67,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
 
 interface Quote {
   id: string;
@@ -1002,6 +1003,7 @@ const Quotes = () => {
             description: "Receipt generated and confirmation email sent",
             duration: 3000,
           });
+          triggerSuccessConfetti();
         } else {
           toast({ title: "Quote updated successfully", duration: 3000 });
         }
@@ -1028,6 +1030,7 @@ const Quotes = () => {
         }
         
         toast({ title: "Quote created successfully", duration: 3000 });
+        triggerSuccessConfetti();
       }
 
       setDialogOpen(false);

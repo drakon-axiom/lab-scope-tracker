@@ -104,6 +104,29 @@ Deno.serve(async (req) => {
     if (action === 'update' && updates) {
       console.log('Updating quote:', quoteId, 'with updates:', updates);
 
+      // Check if quote is already approved
+      const { data: existingQuote, error: checkError } = await supabase
+        .from('quotes')
+        .select('status')
+        .eq('id', quoteId)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking quote status:', checkError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify quote status' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (existingQuote?.status === 'approved') {
+        console.warn('Attempted to update already approved quote:', quoteId);
+        return new Response(
+          JSON.stringify({ error: 'Quote has already been approved and cannot be modified' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Update quote items if provided
       if (updates.items && updates.items.length > 0) {
         for (const item of updates.items) {

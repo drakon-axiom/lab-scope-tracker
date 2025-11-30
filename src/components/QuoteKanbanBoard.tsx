@@ -47,7 +47,9 @@ interface KanbanColumn {
 const KANBAN_COLUMNS: KanbanColumn[] = [
   { id: "draft", title: "Draft", status: "draft", color: "bg-muted" },
   { id: "sent_to_vendor", title: "Sent to Vendor", status: "sent_to_vendor", color: "bg-blue-100" },
+  { id: "awaiting_customer_approval", title: "Awaiting Approval", status: "awaiting_customer_approval", color: "bg-amber-100" },
   { id: "approved", title: "Approved", status: "approved", color: "bg-green-100" },
+  { id: "rejected", title: "Rejected", status: "rejected", color: "bg-red-100" },
   { id: "payment_pending", title: "Payment Pending", status: "payment_pending", color: "bg-yellow-100" },
   { id: "paid", title: "Paid", status: "paid", color: "bg-emerald-100" },
   { id: "shipped", title: "Shipped", status: "shipped", color: "bg-purple-100" },
@@ -68,7 +70,7 @@ interface QuoteKanbanBoardProps {
 
 // Helper function to check if quote is locked (paid or later status)
 const isQuoteLocked = (status: string) => {
-  const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+  const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
   return lockedStatuses.includes(status);
 };
 
@@ -276,6 +278,7 @@ function QuoteCard({
         "transition-all hover:shadow-md animate-fade-in",
         !isLocked && "cursor-grab active:cursor-grabbing",
         isLocked && "opacity-75",
+        quote.status === 'awaiting_customer_approval' && "ring-2 ring-amber-500 bg-amber-50/50 dark:bg-amber-950/20",
         isDragging && "opacity-50 rotate-2 shadow-xl scale-105"
       )}
     >
@@ -335,11 +338,17 @@ function QuoteCard({
             size="sm"
             className="h-8 flex-1 text-xs"
             onClick={() => onEditQuote(quote)}
-            disabled={isEditingDisabled}
-            title={isEditingDisabled ? "Cannot edit paid quotes" : "Edit quote"}
+            disabled={isEditingDisabled && quote.status !== 'awaiting_customer_approval'}
+            title={
+              quote.status === 'awaiting_customer_approval'
+                ? "Review vendor changes"
+                : isEditingDisabled
+                ? "Cannot edit paid quotes"
+                : "Edit quote"
+            }
           >
             <Pencil className="h-3 w-3 mr-1" />
-            Edit
+            {quote.status === 'awaiting_customer_approval' ? 'Review' : 'Edit'}
           </Button>
           <Button
             variant="ghost"

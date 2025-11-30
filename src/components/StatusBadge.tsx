@@ -24,9 +24,8 @@ const getStatusColor = (status: string) => {
         return "bg-green-500 text-white";
       case "rejected":
         return "bg-red-500 text-white";
-      case "paid":
+      case "paid_awaiting_shipping":
         return "bg-emerald-500 text-white";
-      case "shipped":
       case "in_transit":
         return "bg-blue-500 text-white";
       case "delivered":

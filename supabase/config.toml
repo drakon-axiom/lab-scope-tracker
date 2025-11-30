@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.update-ups-tracking]
 verify_jwt = false
+
+[functions.log-admin-login]
+verify_jwt = true
+
+[functions.send-security-alert]
+verify_jwt = true

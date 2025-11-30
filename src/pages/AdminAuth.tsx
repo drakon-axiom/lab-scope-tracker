@@ -31,14 +31,20 @@ const AdminAuth = () => {
 
   const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
     try {
-      await supabase.from("admin_login_audit").insert({
-        user_id: userId || null,
-        email,
-        success,
-        error_message: errorMessage || null,
-        ip_address: null, // Can be populated from request headers if needed
-        user_agent: navigator.userAgent,
+      // Call edge function to log with IP address tracking and email alerts
+      const { error: logError } = await supabase.functions.invoke("log-admin-login", {
+        body: {
+          email,
+          success,
+          userId,
+          errorMessage,
+          userAgent: navigator.userAgent,
+        },
       });
+
+      if (logError) {
+        console.error("Failed to log admin login attempt:", logError);
+      }
     } catch (err) {
       console.error("Failed to log admin login attempt:", err);
     }

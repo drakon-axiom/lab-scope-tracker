@@ -55,7 +55,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, BookmarkIcon } from "lucide-react";
+import { SavedViewsDropdown } from "@/components/SavedViewsDropdown";
 import StatusBadge from "@/components/StatusBadge";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
@@ -2311,7 +2312,8 @@ const Quotes = () => {
         <div className="mb-6 space-y-3">
           {/* Status Quick Filters Tabs */}
           <div className="flex items-center justify-between border-b">
-            <div className="flex items-center gap-1 overflow-x-auto">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 overflow-x-auto">
               <Button
                 variant="ghost"
                 size="sm"
@@ -2390,10 +2392,31 @@ const Quotes = () => {
               >
                 Completed
               </Button>
+              </div>
+              
+              {/* Saved Views Dropdown */}
+              <div className="pb-2">
+                <SavedViewsDropdown
+                  currentFilters={{
+                    searchQuery,
+                    filterStatus,
+                    filterLab,
+                    filterProduct,
+                    filterLockStatus,
+                  }}
+                  onLoadView={(filters) => {
+                    setSearchQuery(filters.searchQuery);
+                    setFilterStatus(filters.filterStatus);
+                    setFilterLab(filters.filterLab);
+                    setFilterProduct(filters.filterProduct);
+                    setFilterLockStatus(filters.filterLockStatus);
+                  }}
+                />
+              </div>
             </div>
             
             {/* Search and Filter Icons */}
-            <div className="flex items-center gap-2 ml-4 pb-2">
+            <div className="flex items-center gap-2 pb-2">
               <Button
                 variant="ghost"
                 size="icon"

@@ -29,6 +29,21 @@ const AdminAuth = () => {
     checkUser();
   }, [navigate]);
 
+  const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
+    try {
+      await supabase.from("admin_login_audit").insert({
+        user_id: userId || null,
+        email,
+        success,
+        error_message: errorMessage || null,
+        ip_address: null, // Can be populated from request headers if needed
+        user_agent: navigator.userAgent,
+      });
+    } catch (err) {
+      console.error("Failed to log admin login attempt:", err);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -38,9 +53,11 @@ const AdminAuth = () => {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      // Log failed attempt
+      await logAdminLoginAttempt(email, false, undefined, error.message);
+      
+      setLoading(false);
       toast({
         title: "Sign in failed",
         description: error.message,
@@ -49,6 +66,35 @@ const AdminAuth = () => {
       });
       return;
     }
+
+    // Check if user has admin role
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id)
+      .single();
+
+    if (roleData?.role !== "admin") {
+      // Log unauthorized attempt
+      await logAdminLoginAttempt(email, false, data.user.id, "User is not an admin");
+      
+      // Sign out the user
+      await supabase.auth.signOut();
+      
+      setLoading(false);
+      toast({
+        title: "Access Denied",
+        description: "You do not have administrator privileges. Please use the regular sign-in portal.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Log successful admin login
+    await logAdminLoginAttempt(email, true, data.user.id);
+
+    setLoading(false);
 
     // Check if MFA is required for this user
     const { data: factors } = await supabase.auth.mfa.listFactors();

@@ -167,12 +167,32 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
       </SidebarContent>
 
       {user && (
-        <SidebarFooter className="border-t p-3 space-y-3">
+        <SidebarFooter className="border-t p-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-start">
-                <Settings className="h-4 w-4" />
-                {!collapsed && <span className="ml-2">Settings</span>}
+              <Button variant="ghost" className="w-full justify-start p-2 h-auto hover:bg-muted/50">
+                <div className="flex items-center gap-3 w-full">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getInitials(user.email || "U")}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collapsed && (
+                    <div className="flex-1 overflow-hidden text-left">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{user.email}</p>
+                      </div>
+                      {role && (
+                        <Badge 
+                          variant={role === "admin" ? "default" : "secondary"} 
+                          className="mt-1 text-xs"
+                        >
+                          {role === "admin" ? "Admin" : "Subscriber"}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -188,29 +208,6 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(user.email || "U")}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="flex-1 overflow-hidden">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium truncate">{user.email}</p>
-                </div>
-                {role && (
-                  <Badge 
-                    variant={role === "admin" ? "default" : "secondary"} 
-                    className="mt-1 text-xs"
-                  >
-                    {role === "admin" ? "Admin" : "Subscriber"}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
         </SidebarFooter>
       )}
     </Sidebar>

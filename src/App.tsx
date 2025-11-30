@@ -32,7 +32,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/admin-auth" element={<AdminAuth />} />
+          <Route path="/overseer-alpha/auth" element={<AdminAuth />} />
           <Route path="/mfa-setup" element={<MFASetup />} />
           <Route path="/compounds" element={<Compounds />} />
           <Route path="/compounds/:id" element={<CompoundDetails />} />

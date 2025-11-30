@@ -32,7 +32,7 @@ const AdminAuth = () => {
   const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
     try {
       // Call edge function to log with IP address tracking and email alerts
-      const { error: logError } = await supabase.functions.invoke("log-admin-login", {
+      const { data, error: logError } = await supabase.functions.invoke("log-admin-login", {
         body: {
           email,
           success,
@@ -44,9 +44,18 @@ const AdminAuth = () => {
 
       if (logError) {
         console.error("Failed to log admin login attempt:", logError);
+        
+        // Check if this is a rate limit error
+        if (logError.message?.includes("locked") || data?.locked) {
+          throw new Error(`Account temporarily locked. Please try again in ${data?.lockoutMinutes || 30} minutes.`);
+        }
       }
-    } catch (err) {
+
+      // Return data for rate limiting info
+      return data;
+    } catch (err: any) {
       console.error("Failed to log admin login attempt:", err);
+      throw err;
     }
   };
 
@@ -60,16 +69,32 @@ const AdminAuth = () => {
     });
 
     if (error) {
-      // Log failed attempt
-      await logAdminLoginAttempt(email, false, undefined, error.message);
-      
-      setLoading(false);
-      toast({
-        title: "Sign in failed",
-        description: error.message,
-        variant: "destructive",
-        duration: 4000,
-      });
+      // Log failed attempt and check for rate limiting
+      try {
+        const logData = await logAdminLoginAttempt(email, false, undefined, error.message);
+        
+        setLoading(false);
+        
+        // Show attempts remaining if available
+        const attemptsMsg = logData?.attemptsRemaining !== undefined 
+          ? ` (${logData.attemptsRemaining} attempts remaining)` 
+          : '';
+        
+        toast({
+          title: "Sign in failed",
+          description: error.message + attemptsMsg,
+          variant: "destructive",
+          duration: 4000,
+        });
+      } catch (lockError: any) {
+        setLoading(false);
+        toast({
+          title: "Account Locked",
+          description: lockError.message,
+          variant: "destructive",
+          duration: 6000,
+        });
+      }
       return;
     }
 

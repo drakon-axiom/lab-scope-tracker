@@ -795,6 +795,18 @@ const Quotes = () => {
               console.error('Failed to send payment confirmation email:', emailError);
               // Don't fail the whole operation if email fails
             }
+
+            // Notify lab about payment
+            try {
+              await supabase.functions.invoke('notify-lab-payment', {
+                body: {
+                  quoteId: editingId
+                }
+              });
+            } catch (labEmailError) {
+              console.error('Failed to notify lab about payment:', labEmailError);
+              // Don't fail the whole operation if lab notification fails
+            }
           }
         } else {
           // Log regular quote update

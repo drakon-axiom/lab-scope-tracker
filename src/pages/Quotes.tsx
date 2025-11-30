@@ -2552,8 +2552,17 @@ const Quotes = () => {
                   <Button
                     variant="outline"
                     onClick={handleSendEmail}
-                    disabled={selectedQuote && isQuoteLocked(selectedQuote.status)}
-                    title={selectedQuote && isQuoteLocked(selectedQuote.status) ? "Cannot send paid quotes to vendor" : "Send quote to vendor"}
+                    disabled={
+                      selectedQuote && 
+                      (isQuoteLocked(selectedQuote.status) || 
+                       ['sent_to_vendor', 'approved', 'awaiting_customer_approval', 'rejected', 'payment_pending', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status))
+                    }
+                    title={
+                      selectedQuote && 
+                      ['sent_to_vendor', 'approved', 'awaiting_customer_approval', 'rejected', 'payment_pending', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status)
+                        ? "Quote has already been sent to vendor"
+                        : "Send quote to vendor"
+                    }
                   >
                     <Mail className="mr-2 h-4 w-4" />
                     Send to Vendor

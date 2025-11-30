@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface QuoteApprovalDialogProps {
@@ -30,6 +30,30 @@ export const QuoteApprovalDialog = ({
   const [processing, setProcessing] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionNotes, setRejectionNotes] = useState("");
+  const [oldPrices, setOldPrices] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchOldPrices = async () => {
+      const { data: activities } = await supabase
+        .from('quote_activity_log')
+        .select('*')
+        .eq('quote_id', quote.id)
+        .eq('activity_type', 'vendor_approval')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (activities && activities.length > 0 && activities[0].metadata) {
+        const metadata = activities[0].metadata as any;
+        if (metadata.old_prices) {
+          setOldPrices(metadata.old_prices);
+        }
+      }
+    };
+
+    if (open && quote?.id) {
+      fetchOldPrices();
+    }
+  }, [open, quote?.id]);
 
   const handleApprove = async () => {
     setProcessing(true);
@@ -208,7 +232,11 @@ export const QuoteApprovalDialog = ({
               const qualifiesForAdditionalSamplePricing = 
                 ["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName);
 
-              let itemTotal = parseFloat(item.price || "0");
+              const oldPrice = oldPrices[item.id];
+              const newPrice = parseFloat(item.price || "0");
+              const priceChanged = oldPrice !== undefined && oldPrice !== newPrice;
+
+              let itemTotal = newPrice;
               if ((item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing) {
                 itemTotal += (item.additional_samples || 0) * 60;
               }
@@ -217,7 +245,7 @@ export const QuoteApprovalDialog = ({
               }
 
               return (
-                <Card key={item.id}>
+                <Card key={item.id} className={priceChanged ? "border-primary" : ""}>
                   <CardContent className="p-4 space-y-2">
                     <div className="font-semibold">
                       {index + 1}. {productName}
@@ -230,7 +258,17 @@ export const QuoteApprovalDialog = ({
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span>Base Price:</span>
-                      <span className="font-semibold">${parseFloat(item.price || "0").toFixed(2)}</span>
+                      <div className="flex items-center gap-2">
+                        {priceChanged && oldPrice !== undefined && (
+                          <>
+                            <span className="line-through text-muted-foreground">${oldPrice.toFixed(2)}</span>
+                            <ArrowRight className="h-4 w-4 text-primary" />
+                          </>
+                        )}
+                        <span className={`font-semibold ${priceChanged ? 'text-primary' : ''}`}>
+                          ${newPrice.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                     {(item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing && (
                       <div className="flex justify-between items-center text-sm text-muted-foreground">

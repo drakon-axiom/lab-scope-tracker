@@ -55,8 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, BookmarkIcon } from "lucide-react";
-import { SavedViewsDropdown } from "@/components/SavedViewsDropdown";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, BookmarkIcon, ChevronDown } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
@@ -278,7 +277,102 @@ const Quotes = () => {
   const [hasValidatedCreditCard, setHasValidatedCreditCard] = useState(false);
   const [lastTrackingRefresh, setLastTrackingRefresh] = useState<number | null>(null);
   const [timeUntilNextRefresh, setTimeUntilNextRefresh] = useState("");
+  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
+  const [savedViews, setSavedViews] = useState<Array<{
+    id: string;
+    name: string;
+    filters: {
+      searchQuery: string;
+      filterStatus: string;
+      filterLab: string;
+      filterProduct: string;
+      filterLockStatus: string;
+    };
+    createdAt: number;
+  }>>([]);
+  const [saveViewDialogOpen, setSaveViewDialogOpen] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
   const { toast } = useToast();
+
+  const SAVED_VIEWS_KEY = "quotes_saved_views";
+
+  // Load saved views from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SAVED_VIEWS_KEY);
+      if (stored) {
+        setSavedViews(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error("Failed to load saved views:", error);
+    }
+  }, []);
+
+  const handleSaveCurrentView = () => {
+    if (!newViewName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a name for this view",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newView = {
+      id: Date.now().toString(),
+      name: newViewName.trim(),
+      filters: {
+        searchQuery,
+        filterStatus,
+        filterLab,
+        filterProduct,
+        filterLockStatus,
+      },
+      createdAt: Date.now(),
+    };
+
+    const updatedViews = [...savedViews, newView];
+    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(updatedViews));
+    setSavedViews(updatedViews);
+    setSaveViewDialogOpen(false);
+    setNewViewName("");
+
+    toast({
+      title: "View saved",
+      description: `"${newView.name}" has been saved`,
+    });
+  };
+
+  const handleLoadView = (view: typeof savedViews[0]) => {
+    setSearchQuery(view.filters.searchQuery);
+    setFilterStatus(view.filters.filterStatus);
+    setFilterLab(view.filters.filterLab);
+    setFilterProduct(view.filters.filterProduct);
+    setFilterLockStatus(view.filters.filterLockStatus);
+    setSavedViewsOpen(false);
+  };
+
+  const handleDeleteView = (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedViews = savedViews.filter(v => v.id !== id);
+    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(updatedViews));
+    setSavedViews(updatedViews);
+
+    toast({
+      title: "View deleted",
+      description: `"${name}" has been removed`,
+    });
+  };
+
+  const hasActiveFilters = () => {
+    return (
+      searchQuery !== "" ||
+      filterStatus !== "all" ||
+      filterLab !== "all" ||
+      filterProduct !== "all" ||
+      filterLockStatus !== "all"
+    );
+  };
 
   // Input validation schema
   const searchSchema = z.string().max(200, "Search query too long").trim();
@@ -2314,7 +2408,7 @@ const Quotes = () => {
           <div className="flex items-center justify-between border-b">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 overflow-x-auto">
-              <Button
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("all")}
@@ -2324,10 +2418,10 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 All
-              </Button>
-              <Button
+                </Button>
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("draft")}
@@ -2337,10 +2431,10 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 Draft
-              </Button>
-              <Button
+                </Button>
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("approved_payment_pending")}
@@ -2350,10 +2444,10 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 Payment Pending
-              </Button>
-              <Button
+                </Button>
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("in_transit")}
@@ -2363,10 +2457,10 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 In Transit
-              </Button>
-              <Button
+                </Button>
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("testing_in_progress")}
@@ -2376,10 +2470,10 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 Testing
-              </Button>
-              <Button
+                </Button>
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilterStatus("completed")}
@@ -2389,29 +2483,68 @@ const Quotes = () => {
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
-              >
+                >
                 Completed
-              </Button>
-              </div>
+                </Button>
               
-              {/* Saved Views Dropdown */}
-              <div className="pb-2">
-                <SavedViewsDropdown
-                  currentFilters={{
-                    searchQuery,
-                    filterStatus,
-                    filterLab,
-                    filterProduct,
-                    filterLockStatus,
-                  }}
-                  onLoadView={(filters) => {
-                    setSearchQuery(filters.searchQuery);
-                    setFilterStatus(filters.filterStatus);
-                    setFilterLab(filters.filterLab);
-                    setFilterProduct(filters.filterProduct);
-                    setFilterLockStatus(filters.filterLockStatus);
-                  }}
-                />
+                <Popover open={savedViewsOpen} onOpenChange={setSavedViewsOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-none border-b-2 border-transparent text-muted-foreground hover:text-foreground px-4 h-10 gap-1"
+                    >
+                      <BookmarkIcon className="h-4 w-4" />
+                      Saved
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0 z-50 bg-background" align="start">
+                    <div className="p-2">
+                      <div className="text-sm font-semibold px-2 py-1.5">Saved Views</div>
+                      <div className="space-y-1">
+                        {savedViews.length === 0 ? (
+                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            No saved views yet
+                          </div>
+                        ) : (
+                          savedViews.map((view) => (
+                            <div
+                              key={view.id}
+                              className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-accent cursor-pointer group"
+                              onClick={() => handleLoadView(view)}
+                            >
+                              <span className="flex-1 text-sm">{view.name}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={(e) => handleDeleteView(view.id, view.name, e)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="border-t mt-2 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-sm"
+                          disabled={!hasActiveFilters()}
+                          onClick={() => {
+                            setSavedViewsOpen(false);
+                            setSaveViewDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-2" />
+                          Save current view
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             
@@ -4163,6 +4296,42 @@ const Quotes = () => {
             quoteId={selectedQuoteForLabel.id}
           />
         )}
+
+        {/* Save View Dialog */}
+        <Dialog open={saveViewDialogOpen} onOpenChange={setSaveViewDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Save Current View</DialogTitle>
+              <DialogDescription>
+                Give this filter combination a name to quickly access it later
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Input
+                  placeholder="e.g., Pending Payment"
+                  value={newViewName}
+                  onChange={(e) => setNewViewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSaveCurrentView();
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setSaveViewDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveCurrentView}>
+                  <Check className="h-4 w-4 mr-2" />
+                  Save View
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
       </PullToRefreshWrapper>
       </TooltipProvider>

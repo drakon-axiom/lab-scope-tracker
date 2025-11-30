@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff, Bell } from "lucide-react";
 import { z } from "zod";
 import {
   Dialog,
@@ -62,6 +62,7 @@ const Settings = () => {
   const [disableVerificationCode, setDisableVerificationCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [disabling, setDisabling] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -380,6 +381,7 @@ const Settings = () => {
       toast({
         title: "Success",
         description: "Password changed successfully",
+        duration: 3000,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -395,10 +397,39 @@ const Settings = () => {
           title: "Error",
           description: "Failed to change password",
           variant: "destructive",
+          duration: 4000,
         });
       }
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleSendPaymentReminders = async () => {
+    try {
+      setSendingReminders(true);
+      
+      const { data, error } = await supabase.functions.invoke('send-payment-reminders', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Reminders Sent",
+        description: `Successfully sent ${data.sent || 0} reminder(s). ${data.failed > 0 ? `${data.failed} failed.` : ''}`,
+        duration: 4000,
+      });
+    } catch (error: any) {
+      console.error('Error sending payment reminders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send payment reminders",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setSendingReminders(false);
     }
   };
 
@@ -598,6 +629,37 @@ const Settings = () => {
                 Enable 2FA
               </Button>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment Reminders</CardTitle>
+            <CardDescription>
+              Send automated reminders for quotes pending payment
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <Bell className="h-4 w-4" />
+              <AlertDescription>
+                The system automatically sends payment reminders daily at 9:00 AM for quotes that have been approved but pending payment for more than 3 days. You can also manually trigger reminders below.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Manually send reminders to all customers with approved quotes pending payment:
+              </p>
+              <Button 
+                onClick={handleSendPaymentReminders}
+                disabled={sendingReminders}
+              >
+                {sendingReminders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Bell className="mr-2 h-4 w-4" />
+                Send Payment Reminders Now
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

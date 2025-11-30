@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, Wallet } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, Wallet, RefreshCw, Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentMethodsManager } from "@/components/PaymentMethodsManager";
 import { z } from "zod";
@@ -65,6 +65,7 @@ const Settings = () => {
   const [challengeId, setChallengeId] = useState("");
   const [disabling, setDisabling] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [updatingTracking, setUpdatingTracking] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -435,6 +436,39 @@ const Settings = () => {
     }
   };
 
+  const handleUpdateTracking = async () => {
+    try {
+      setUpdatingTracking(true);
+      
+      const { data, error } = await supabase.functions.invoke('update-ups-tracking', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      const results = data?.results || [];
+      const updated = results.filter((r: any) => r.success && r.newStatus).length;
+      const unchanged = results.filter((r: any) => r.success && !r.newStatus).length;
+      const failed = results.filter((r: any) => !r.success).length;
+
+      toast({
+        title: "Tracking Updated",
+        description: `Updated ${updated} quote(s), ${unchanged} unchanged. ${failed > 0 ? `${failed} failed.` : ''}`,
+        duration: 4000,
+      });
+    } catch (error: any) {
+      console.error('Error updating tracking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update tracking information",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setUpdatingTracking(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -690,6 +724,40 @@ const Settings = () => {
                     {sendingReminders && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <Bell className="mr-2 h-4 w-4" />
                     Send Payment Reminders Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  <CardTitle>Tracking Updates</CardTitle>
+                </div>
+                <CardDescription>
+                  Automatic UPS tracking updates for shipped quotes
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <RefreshCw className="h-4 w-4" />
+                  <AlertDescription>
+                    The system automatically checks UPS tracking every hour for all shipped quotes and updates their status. You can also manually refresh tracking information below.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Manually update tracking information for all quotes with tracking numbers:
+                  </p>
+                  <Button 
+                    onClick={handleUpdateTracking}
+                    disabled={updatingTracking}
+                  >
+                    {updatingTracking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Update Tracking Now
                   </Button>
                 </div>
               </CardContent>

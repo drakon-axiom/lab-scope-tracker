@@ -639,6 +639,19 @@ const Quotes = () => {
         }
       }
 
+      // Auto-progress status from "approved_payment_pending" to "paid" when payment is recorded
+      if (editingId && formData.status === "approved_payment_pending") {
+        const existingQuote = quotes.find(q => q.id === editingId);
+        const isPaymentRecorded = 
+          (formData.payment_status && formData.payment_status !== "pending") ||
+          formData.payment_amount_usd ||
+          formData.payment_date;
+        
+        if (existingQuote && isPaymentRecorded) {
+          updatedStatus = "paid";
+        }
+      }
+
       const payload = {
         ...formData,
         status: updatedStatus,
@@ -676,6 +689,12 @@ const Quotes = () => {
           toast({ 
             title: "Quote updated successfully",
             description: "Status automatically changed to 'In Transit'",
+            duration: 3000,
+          });
+        } else if (updatedStatus === "paid" && formData.status === "approved_payment_pending") {
+          toast({ 
+            title: "Quote updated successfully",
+            description: "Status automatically changed to 'Paid'",
             duration: 3000,
           });
         } else {

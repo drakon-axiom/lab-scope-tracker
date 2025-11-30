@@ -557,11 +557,16 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("quotes")
-        .select("*, labs(name)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .select("*, labs(name)");
+
+      // Subscribers only see their own quotes, admins see all quotes
+      if (role !== 'admin') {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setQuotes(data || []);

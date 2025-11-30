@@ -128,6 +128,22 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Check if prices were changed
+      let pricesChanged = false;
+      if (updates.items && updates.items.length > 0) {
+        const { data: existingItems } = await supabase
+          .from('quote_items')
+          .select('id, price')
+          .eq('quote_id', quoteId);
+
+        pricesChanged = updates.items.some(updatedItem => {
+          const existing = existingItems?.find(ei => ei.id === updatedItem.id);
+          return existing && parseFloat(String(existing.price)) !== updatedItem.price;
+        });
+      }
+
+      const discountChanged = updates.discount_amount !== undefined && updates.discount_type;
+
       // Update quote items if provided
       if (updates.items && updates.items.length > 0) {
         for (const item of updates.items) {
@@ -168,6 +184,27 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Log the vendor action
+      const activityType = updates.status === 'rejected' ? 'vendor_rejection' : 
+                          (pricesChanged || discountChanged) ? 'vendor_approval' : 'vendor_approval';
+      const activityDescription = updates.status === 'rejected' 
+        ? 'Vendor rejected the quote'
+        : (pricesChanged || discountChanged)
+        ? 'Vendor approved quote with changes'
+        : 'Vendor approved quote without changes';
+
+      await supabase.from('quote_activity_log').insert({
+        quote_id: quoteId,
+        user_id: null, // Vendor action, no user_id
+        activity_type: activityType,
+        description: activityDescription,
+        metadata: {
+          changes_made: pricesChanged || discountChanged,
+          lab_quote_number: updates.lab_quote_number,
+          status: updates.status
+        }
+      });
+
       console.log('Successfully updated quote');
       return new Response(
         JSON.stringify({ success: true, message: 'Quote updated successfully' }),
@@ -177,6 +214,19 @@ Deno.serve(async (req) => {
 
     if (action === 'customer_approve') {
       console.log('Customer approving quote:', quoteId);
+
+      // Get user info for activity log
+      const authHeader = req.headers.get('authorization');
+      let userId = null;
+      if (authHeader) {
+        try {
+          const token = authHeader.replace('Bearer ', '');
+          const { data: { user } } = await supabase.auth.getUser(token);
+          userId = user?.id || null;
+        } catch (e) {
+          console.error('Error getting user from token:', e);
+        }
+      }
 
       const { error: approveError } = await supabase
         .from('quotes')
@@ -191,6 +241,15 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Log customer approval
+      await supabase.from('quote_activity_log').insert({
+        quote_id: quoteId,
+        user_id: userId,
+        activity_type: 'customer_approval',
+        description: 'Customer approved vendor changes',
+        metadata: {}
+      });
+
       return new Response(
         JSON.stringify({ success: true, message: 'Quote approved by customer' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -199,6 +258,19 @@ Deno.serve(async (req) => {
 
     if (action === 'customer_reject') {
       console.log('Customer rejecting quote:', quoteId);
+
+      // Get user info for activity log
+      const authHeader = req.headers.get('authorization');
+      let userId = null;
+      if (authHeader) {
+        try {
+          const token = authHeader.replace('Bearer ', '');
+          const { data: { user } } = await supabase.auth.getUser(token);
+          userId = user?.id || null;
+        } catch (e) {
+          console.error('Error getting user from token:', e);
+        }
+      }
 
       const { error: rejectError } = await supabase
         .from('quotes')
@@ -212,6 +284,15 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Log customer rejection
+      await supabase.from('quote_activity_log').insert({
+        quote_id: quoteId,
+        user_id: userId,
+        activity_type: 'customer_rejection',
+        description: 'Customer rejected vendor changes',
+        metadata: {}
+      });
 
       return new Response(
         JSON.stringify({ success: true, message: 'Quote rejected by customer' }),

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmailPreviewDialog } from "@/components/EmailPreviewDialog";
 import { EmailHistoryDialog } from "@/components/EmailHistoryDialog";
+import { QuoteActivityLog } from "@/components/QuoteActivityLog";
 import {
   Select,
   SelectContent,
@@ -660,6 +661,17 @@ const Quotes = () => {
           .eq("id", editingId);
         if (error) throw error;
         
+        // Log quote update
+        await supabase.from('quote_activity_log').insert({
+          quote_id: editingId,
+          user_id: user.id,
+          activity_type: 'quote_updated',
+          description: 'Quote details updated',
+          metadata: {
+            updated_fields: Object.keys(payload).filter(key => payload[key as keyof typeof payload] !== null)
+          }
+        });
+        
         if (updatedStatus === "in_transit" && updatedStatus !== formData.status) {
           toast({ 
             title: "Quote updated successfully",
@@ -669,8 +681,27 @@ const Quotes = () => {
           toast({ title: "Quote updated successfully" });
         }
       } else {
-        const { error } = await supabase.from("quotes").insert([payload]);
+        const { data: newQuote, error } = await supabase
+          .from("quotes")
+          .insert([payload])
+          .select()
+          .single();
         if (error) throw error;
+        
+        // Log quote creation
+        if (newQuote) {
+          await supabase.from('quote_activity_log').insert({
+            quote_id: newQuote.id,
+            user_id: user.id,
+            activity_type: 'quote_created',
+            description: 'Quote created',
+            metadata: {
+              lab_id: payload.lab_id,
+              status: payload.status
+            }
+          });
+        }
+        
         toast({ title: "Quote created successfully" });
       }
 
@@ -1385,6 +1416,18 @@ const Quotes = () => {
           body: emailPreviewData.html,
           template_id: selectedEmailTemplate || null,
           status: "sent",
+        });
+        
+        // Log quote activity
+        await supabase.from('quote_activity_log').insert({
+          quote_id: selectedQuote.id,
+          user_id: user.id,
+          activity_type: 'email_sent',
+          description: `Quote sent to ${lab.name}`,
+          metadata: {
+            recipient: labData.contact_email,
+            lab_name: lab.name
+          }
         });
       }
 
@@ -2453,6 +2496,11 @@ const Quotes = () => {
                       </TableBody>
                     </Table>
                   </div>
+                </div>
+
+                {/* Activity Log Section */}
+                <div className="border-t pt-4">
+                  <QuoteActivityLog quoteId={selectedQuote.id} />
                 </div>
 
                 <div className="flex justify-end gap-2">

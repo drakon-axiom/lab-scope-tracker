@@ -668,22 +668,84 @@ const Quotes = () => {
       };
 
       if (editingId) {
+        const existingQuote = quotes.find(q => q.id === editingId);
+        const isPaidTransition = updatedStatus === "paid" && formData.status === "approved_payment_pending";
+        
         const { error } = await supabase
           .from("quotes")
           .update(payload)
           .eq("id", editingId);
         if (error) throw error;
         
-        // Log quote update
-        await supabase.from('quote_activity_log').insert({
-          quote_id: editingId,
-          user_id: user.id,
-          activity_type: 'quote_updated',
-          description: 'Quote details updated',
-          metadata: {
-            updated_fields: Object.keys(payload).filter(key => payload[key as keyof typeof payload] !== null)
+        // Log payment if transitioning to paid
+        if (isPaidTransition && existingQuote) {
+          await supabase.from('quote_activity_log').insert({
+            quote_id: editingId,
+            user_id: user.id,
+            activity_type: 'payment_recorded',
+            description: 'Payment recorded and quote marked as paid',
+            metadata: {
+              payment_amount_usd: payload.payment_amount_usd,
+              payment_date: payload.payment_date,
+              transaction_id: payload.transaction_id,
+              payment_status: payload.payment_status
+            }
+          });
+
+          // Fetch quote with items for receipt and email
+          const { data: fullQuote } = await supabase
+            .from('quotes')
+            .select('*, labs(name, contact_email), quote_items:quote_items(*, products(name))')
+            .eq('id', editingId)
+            .single();
+
+          if (fullQuote) {
+            // Generate and download receipt
+            setTimeout(() => generatePaymentReceipt(fullQuote), 500);
+
+            // Send payment confirmation email
+            try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser?.email) {
+                await supabase.functions.invoke('send-payment-confirmation', {
+                  body: {
+                    quoteId: editingId,
+                    customerEmail: currentUser.email,
+                    quoteNumber: fullQuote.quote_number,
+                    labName: fullQuote.labs.name,
+                    paymentAmountUsd: fullQuote.payment_amount_usd,
+                    paymentDate: fullQuote.payment_date,
+                    transactionId: fullQuote.transaction_id,
+                    items: fullQuote.quote_items.map((item: any) => ({
+                      productName: item.products.name,
+                      client: item.client,
+                      sample: item.sample,
+                      manufacturer: item.manufacturer,
+                      batch: item.batch,
+                      price: item.price,
+                      additional_samples: item.additional_samples,
+                      additional_report_headers: item.additional_report_headers,
+                    }))
+                  }
+                });
+              }
+            } catch (emailError) {
+              console.error('Failed to send payment confirmation email:', emailError);
+              // Don't fail the whole operation if email fails
+            }
           }
-        });
+        } else {
+          // Log regular quote update
+          await supabase.from('quote_activity_log').insert({
+            quote_id: editingId,
+            user_id: user.id,
+            activity_type: 'quote_updated',
+            description: 'Quote details updated',
+            metadata: {
+              updated_fields: Object.keys(payload).filter(key => payload[key as keyof typeof payload] !== null)
+            }
+          });
+        }
         
         if (updatedStatus === "in_transit" && updatedStatus !== formData.status) {
           toast({ 
@@ -691,10 +753,10 @@ const Quotes = () => {
             description: "Status automatically changed to 'In Transit'",
             duration: 3000,
           });
-        } else if (updatedStatus === "paid" && formData.status === "approved_payment_pending") {
+        } else if (isPaidTransition) {
           toast({ 
-            title: "Quote updated successfully",
-            description: "Status automatically changed to 'Paid'",
+            title: "Payment Confirmed",
+            description: "Receipt generated and confirmation email sent",
             duration: 3000,
           });
         } else {
@@ -928,6 +990,70 @@ const Quotes = () => {
         description: "Failed to delete template",
       });
     }
+  };
+
+  const generatePaymentReceipt = (quote: any) => {
+    const doc = new jsPDF();
+    
+    // Add header with receipt title
+    doc.setFontSize(20);
+    doc.setTextColor(22, 101, 52); // Green color for receipt
+    doc.text("PAYMENT RECEIPT", 14, 20);
+    
+    // Add receipt details
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Receipt Date: ${new Date().toLocaleDateString()}`, 14, 35);
+    doc.text(`Quote Number: ${quote.quote_number || 'N/A'}`, 14, 42);
+    doc.text(`Lab: ${quote.labs?.name || 'N/A'}`, 14, 49);
+    
+    // Add payment information box
+    doc.setFillColor(240, 253, 244); // Light green background
+    doc.rect(14, 58, 182, 35, 'F');
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text("Payment Information", 18, 66);
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    doc.text(`Amount Paid: $${(quote.payment_amount_usd || 0).toFixed(2)}`, 18, 74);
+    doc.text(`Payment Date: ${quote.payment_date ? new Date(quote.payment_date).toLocaleDateString() : 'N/A'}`, 18, 81);
+    if (quote.transaction_id) {
+      doc.text(`Transaction ID: ${quote.transaction_id}`, 18, 88);
+    }
+    
+    // Add items table
+    const tableData = quote.quote_items?.map((item: any) => [
+      item.products?.name || 'N/A',
+      item.client || '-',
+      item.sample || '-',
+      `$${(item.price || 0).toFixed(2)}`,
+    ]) || [];
+    
+    autoTable(doc, {
+      startY: 100,
+      head: [['Product/Test', 'Client', 'Sample', 'Price']],
+      body: tableData,
+      foot: [[{ content: 'Total Paid', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, `$${(quote.payment_amount_usd || 0).toFixed(2)}`]],
+      theme: 'striped',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255] },
+      footStyles: { fillColor: [240, 253, 244], textColor: [0, 0, 0], fontStyle: 'bold' },
+    });
+    
+    // Add footer
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Thank you for your business!', 14, finalY);
+    doc.text(`This receipt confirms payment for testing services.`, 14, finalY + 7);
+    
+    doc.save(`receipt-${quote.quote_number || quote.id}.pdf`);
+    
+    toast({
+      title: "Receipt Generated",
+      description: "Payment receipt downloaded successfully",
+      duration: 3000,
+    });
   };
 
   const handleExportPDF = (quote: any) => {
@@ -2557,6 +2683,21 @@ const Quotes = () => {
                     <History className="mr-2 h-4 w-4" />
                     Email History
                   </Button>
+                  {selectedQuote.status === 'paid' && (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        const quoteWithItems = {
+                          ...selectedQuote,
+                          quote_items: quoteItems
+                        };
+                        generatePaymentReceipt(quoteWithItems);
+                      }}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Receipt
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => setViewDialogOpen(false)}

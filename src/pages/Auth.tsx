@@ -164,7 +164,7 @@ const Auth = () => {
         <Card className="w-full max-w-md border-primary/20 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-center gap-3 mb-2">
-              <img src={logo} alt="Testing Tracker" className="h-10 w-10" />
+              <img src={logo} alt="Testing Tracker" className="h-16 w-16" />
             </div>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
@@ -230,7 +230,7 @@ const Auth = () => {
       <Card className="w-full max-w-md border-primary/20 shadow-lg">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <img src={logo} alt="Testing Tracker" className="h-12 w-12" />
+            <img src={logo} alt="Testing Tracker" className="h-20 w-20" />
           </div>
           <CardTitle className="text-2xl text-center">Testing Tracker</CardTitle>
           <CardDescription className="text-center">Sign in to manage your product testing</CardDescription>

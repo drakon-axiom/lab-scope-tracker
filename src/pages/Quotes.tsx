@@ -274,6 +274,8 @@ const Quotes = () => {
   const [selectedQuoteForShipping, setSelectedQuoteForShipping] = useState<Quote | null>(null);
   const [selectedQuoteForLabel, setSelectedQuoteForLabel] = useState<Quote | null>(null);
   const [hasValidatedCreditCard, setHasValidatedCreditCard] = useState(false);
+  const [lastTrackingRefresh, setLastTrackingRefresh] = useState<number | null>(null);
+  const [timeUntilNextRefresh, setTimeUntilNextRefresh] = useState("");
   const { toast } = useToast();
 
   // Input validation schema
@@ -365,6 +367,43 @@ const Quotes = () => {
       supabase.removeChannel(quotesChannel);
     };
   }, []);
+
+  // Load last tracking refresh timestamp from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('lastTrackingRefresh');
+    if (stored) {
+      setLastTrackingRefresh(parseInt(stored, 10));
+    }
+  }, []);
+
+  // Update countdown timer every second
+  useEffect(() => {
+    if (!lastTrackingRefresh) {
+      setTimeUntilNextRefresh("");
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const elapsed = now - lastTrackingRefresh;
+      const sixtyMinutes = 60 * 60 * 1000;
+      const remaining = sixtyMinutes - elapsed;
+
+      if (remaining <= 0) {
+        setTimeUntilNextRefresh("");
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setTimeUntilNextRefresh(`Next refresh available in ${minutes}m ${seconds}s`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastTrackingRefresh]);
 
   // Auto-refresh stale tracking data (older than 4 hours)
   useEffect(() => {
@@ -1731,7 +1770,22 @@ const Quotes = () => {
     }
   };
 
+  const canRefreshTracking = () => {
+    if (!lastTrackingRefresh) return true;
+    const elapsed = Date.now() - lastTrackingRefresh;
+    return elapsed >= 60 * 60 * 1000; // 60 minutes in milliseconds
+  };
+
   const handleRefreshTracking = async (trackingNumber: string) => {
+    if (!canRefreshTracking()) {
+      toast({
+        title: "Refresh throttled",
+        description: timeUntilNextRefresh,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       toast({
         title: "Refreshing tracking...",
@@ -1742,6 +1796,11 @@ const Quotes = () => {
       const { data, error } = await supabase.functions.invoke("update-ups-tracking", {
         body: { trackingNumber }
       });
+
+      // Store timestamp after successful call
+      const now = Date.now();
+      localStorage.setItem('lastTrackingRefresh', now.toString());
+      setLastTrackingRefresh(now);
 
       if (error) throw error;
 
@@ -2488,7 +2547,8 @@ const Quotes = () => {
                             size="icon"
                             className="h-6 w-6 flex-shrink-0"
                             onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                            title="Refresh UPS tracking"
+                            disabled={!canRefreshTracking()}
+                            title={canRefreshTracking() ? "Refresh UPS tracking" : timeUntilNextRefresh}
                           >
                             <RefreshCw className="h-3 w-3" />
                           </Button>
@@ -2610,15 +2670,22 @@ const Quotes = () => {
 
                             {/* Refresh Tracking - For shipped/in_transit */}
                             {actions.refreshTracking && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hidden sm:inline-flex"
-                                onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                                title="Refresh tracking information"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hidden sm:inline-flex"
+                                    onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                                    disabled={!canRefreshTracking()}
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {canRefreshTracking() ? "Refresh tracking information" : timeUntilNextRefresh}
+                                </TooltipContent>
+                              </Tooltip>
                             )}
 
                             {/* Export PDF - For completed workflow stages */}

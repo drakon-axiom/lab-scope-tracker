@@ -260,7 +260,7 @@ const Dashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-medium truncate">
-                            {quote.quote_number || "Draft Quote"}
+                            {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}
                           </p>
                           <StatusBadge status={quote.status} />
                         </div>

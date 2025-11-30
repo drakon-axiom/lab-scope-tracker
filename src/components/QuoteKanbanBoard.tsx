@@ -48,9 +48,8 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
   { id: "draft", title: "Draft", status: "draft", color: "bg-muted" },
   { id: "sent_to_vendor", title: "Sent to Vendor", status: "sent_to_vendor", color: "bg-blue-100" },
   { id: "awaiting_customer_approval", title: "Awaiting Approval", status: "awaiting_customer_approval", color: "bg-amber-100" },
-  { id: "approved", title: "Approved", status: "approved", color: "bg-green-100" },
+  { id: "approved_payment_pending", title: "Approved - Payment Pending", status: "approved_payment_pending", color: "bg-green-100" },
   { id: "rejected", title: "Rejected", status: "rejected", color: "bg-red-100" },
-  { id: "payment_pending", title: "Payment Pending", status: "payment_pending", color: "bg-yellow-100" },
   { id: "paid", title: "Paid", status: "paid", color: "bg-emerald-100" },
   { id: "shipped", title: "Shipped", status: "shipped", color: "bg-purple-100" },
   { id: "in_transit", title: "In Transit", status: "in_transit", color: "bg-indigo-100" },
@@ -70,7 +69,7 @@ interface QuoteKanbanBoardProps {
 
 // Helper function to check if quote is locked (paid or later status)
 const isQuoteLocked = (status: string) => {
-  const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+  const lockedStatuses = ['approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
   return lockedStatuses.includes(status);
 };
 

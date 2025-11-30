@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+      const lockedStatuses = ['approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
       if (existingQuote && lockedStatuses.includes(existingQuote.status)) {
         console.warn('Attempted to update locked quote:', quoteId);
         return new Response(
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
 
       const { error: approveError } = await supabase
         .from('quotes')
-        .update({ status: 'approved' })
+        .update({ status: 'approved_payment_pending' })
         .eq('id', quoteId);
 
       if (approveError) {

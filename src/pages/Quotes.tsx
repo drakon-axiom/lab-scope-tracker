@@ -2542,16 +2542,22 @@ const Quotes = () => {
                           )}
                         </div>
                         {quote.tracking_number && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 flex-shrink-0"
-                            onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                            disabled={!canRefreshTracking()}
-                            title={canRefreshTracking() ? "Refresh UPS tracking" : timeUntilNextRefresh}
-                          >
-                            <RefreshCw className="h-3 w-3" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 flex-shrink-0"
+                                onClick={() => handleRefreshTracking(quote.tracking_number!)}
+                                disabled={!canRefreshTracking()}
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {canRefreshTracking() ? "Refresh UPS tracking" : timeUntilNextRefresh}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>

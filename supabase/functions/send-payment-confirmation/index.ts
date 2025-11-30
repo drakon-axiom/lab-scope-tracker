@@ -179,12 +179,6 @@ Thank you for your business!
 
     console.log('Connecting to SMTP server...');
 
-    // Create SMTP connection
-    const conn = await Deno.connect({
-      hostname: smtpHost,
-      port: smtpPort,
-    });
-
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
@@ -200,13 +194,25 @@ Thank you for your business!
       return await readResponse(connection);
     }
 
+    let conn: Deno.TcpConn | null = null;
+    let tlsConn: Deno.TlsConn | null = null;
+
     try {
+      // Create SMTP connection
+      conn = await Deno.connect({
+        hostname: smtpHost,
+        port: smtpPort,
+      }) as Deno.TcpConn;
+
       // SMTP handshake
       await readResponse(conn);
       await sendCommand(conn, `EHLO ${smtpHost}`);
       await sendCommand(conn, "STARTTLS");
       
-      const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
+      // Upgrade to TLS
+      tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
+      conn = null; // Connection is now consumed by TLS
+      
       await sendCommand(tlsConn, `EHLO ${smtpHost}`);
       
       // Authenticate
@@ -223,7 +229,6 @@ Thank you for your business!
       await readResponse(tlsConn);
       
       await sendCommand(tlsConn, "QUIT");
-      tlsConn.close();
       
       console.log('Payment confirmation email sent successfully');
       
@@ -233,8 +238,18 @@ Thank you for your business!
       );
     } catch (emailError) {
       console.error('SMTP error:', emailError);
-      conn.close();
       throw emailError;
+    } finally {
+      // Clean up connections properly
+      try {
+        if (tlsConn) {
+          tlsConn.close();
+        } else if (conn) {
+          conn.close();
+        }
+      } catch (closeError) {
+        console.error('Error closing connection:', closeError);
+      }
     }
   } catch (error: any) {
     console.error('Error in send-payment-confirmation function:', error);

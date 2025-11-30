@@ -20,12 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -2876,7 +2870,7 @@ const Quotes = () => {
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Quote Details</DialogTitle>
               <DialogDescription>
@@ -2884,13 +2878,7 @@ const Quotes = () => {
               </DialogDescription>
             </DialogHeader>
             {selectedQuote && (
-              <Tabs defaultValue="details" className="w-full flex flex-col flex-1 min-h-0">
-                <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="details" className="space-y-6 mt-4 overflow-y-auto flex-1">
+              <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Quote Number</Label>
@@ -3108,89 +3096,62 @@ const Quotes = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2">
-                    {selectedQuote.status === 'paid_awaiting_shipping' && (
-                      <Button
-                        variant="default"
-                        onClick={() => {
-                          const quoteWithItems = {
-                            ...selectedQuote,
-                            quote_items: quoteItems
-                          };
-                          generatePaymentReceipt(quoteWithItems);
-                        }}
+                <div className="flex justify-end gap-2">
+                  {selectedQuote.status === 'paid_awaiting_shipping' && (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        const quoteWithItems = {
+                          ...selectedQuote,
+                          quote_items: quoteItems
+                        };
+                        generatePaymentReceipt(quoteWithItems);
+                      }}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Receipt
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setViewDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                  {emailTemplates.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Email Template:</Label>
+                      <Select
+                        value={selectedEmailTemplate}
+                        onValueChange={setSelectedEmailTemplate}
                       >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Receipt
-                      </Button>
-                    )}
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Select template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {emailTemplates.map((template: any) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {selectedQuote && 
+                   !isQuoteLocked(selectedQuote.status) && 
+                   !['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status) && (
                     <Button
                       variant="outline"
-                      onClick={() => setViewDialogOpen(false)}
+                      onClick={handleSendEmail}
+                      title="Send quote to vendor"
                     >
-                      Close
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send to Vendor
                     </Button>
-                    {emailTemplates.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">Email Template:</Label>
-                        <Select
-                          value={selectedEmailTemplate}
-                          onValueChange={setSelectedEmailTemplate}
-                        >
-                          <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="Select template" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {emailTemplates.map((template: any) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {selectedQuote && 
-                     !isQuoteLocked(selectedQuote.status) && 
-                     !['sent_to_vendor', 'approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'].includes(selectedQuote.status) && (
-                      <Button
-                        variant="outline"
-                        onClick={handleSendEmail}
-                        title="Send quote to vendor"
-                      >
-                        <Mail className="mr-2 h-4 w-4" />
-                        Send to Vendor
-                      </Button>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="notifications" className="space-y-6 mt-4 overflow-y-auto flex-1">
-                  {/* Activity Log Section */}
-                  <div>
-                    <Label className="text-lg font-semibold mb-3 block">Activity Log</Label>
-                    <QuoteActivityLog quoteId={selectedQuote.id} />
-                  </div>
-
-                  {/* Email History Section */}
-                  <div className="border-t pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <Label className="text-lg font-semibold">Email History</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEmailHistoryOpen(true)}
-                      >
-                        <History className="mr-2 h-4 w-4" />
-                        View Full History
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      View email history for this quote in the full history dialog.
-                    </p>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                  )}
+                </div>
+              </div>
             )}
           </DialogContent>
         </Dialog>

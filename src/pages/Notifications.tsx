@@ -1,12 +1,15 @@
 import Layout from "@/components/Layout";
 import { EmailTemplatesManager } from "@/components/EmailTemplatesManager";
+import { EmailHistoryDialog } from "@/components/EmailHistoryDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Code, Mail, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Code, Mail, ChevronDown, History } from "lucide-react";
 import { useState } from "react";
 
 const Notifications = () => {
   const [isVariablesOpen, setIsVariablesOpen] = useState(true);
+  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
 
   return (
     <Layout>
@@ -107,8 +110,33 @@ const Notifications = () => {
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Email History Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Email History</CardTitle>
+            <CardDescription>
+              View all emails sent to labs and vendors for quotes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="default"
+              onClick={() => setEmailHistoryOpen(true)}
+            >
+              <History className="mr-2 h-4 w-4" />
+              View Email History
+            </Button>
+          </CardContent>
+        </Card>
         
         <EmailTemplatesManager />
+
+        {/* Email History Dialog */}
+        <EmailHistoryDialog
+          open={emailHistoryOpen}
+          onOpenChange={setEmailHistoryOpen}
+        />
       </div>
     </Layout>
   );

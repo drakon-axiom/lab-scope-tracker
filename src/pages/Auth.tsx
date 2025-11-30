@@ -51,11 +51,13 @@ const Auth = () => {
         title: "Sign up failed",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
       toast({
         title: "Account created!",
         description: "You can now sign in with your credentials.",
+        duration: 3000,
       });
       setEmail("");
       setPassword("");
@@ -79,6 +81,7 @@ const Auth = () => {
         title: "Sign in failed",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -111,6 +114,7 @@ const Auth = () => {
               title: "Error",
               description: "Failed to initiate 2FA verification",
               variant: "destructive",
+              duration: 4000,
             });
           }
         }
@@ -136,6 +140,7 @@ const Auth = () => {
       toast({
         title: "Success",
         description: "Successfully authenticated with 2FA",
+        duration: 3000,
       });
 
       navigate("/");
@@ -144,6 +149,7 @@ const Auth = () => {
         title: "Verification failed",
         description: "Invalid code. Please try again.",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setLoading(false);

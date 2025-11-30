@@ -66,6 +66,7 @@ const Labs = () => {
         title: "Error fetching labs",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
       setLabs(data || []);
@@ -123,9 +124,10 @@ const Labs = () => {
           title: "Error updating lab",
           description: error.message,
           variant: "destructive",
+          duration: 4000,
         });
       } else {
-        toast({ title: "Lab updated successfully" });
+        toast({ title: "Lab updated successfully", duration: 3000 });
         setOpen(false);
         resetForm();
         fetchLabs();
@@ -140,9 +142,10 @@ const Labs = () => {
           title: "Error creating lab",
           description: error.message,
           variant: "destructive",
+          duration: 4000,
         });
       } else {
-        toast({ title: "Lab created successfully" });
+        toast({ title: "Lab created successfully", duration: 3000 });
         setOpen(false);
         resetForm();
         fetchLabs();
@@ -172,9 +175,10 @@ const Labs = () => {
         title: "Error deleting lab",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
-      toast({ title: "Lab deleted successfully" });
+      toast({ title: "Lab deleted successfully", duration: 3000 });
       fetchLabs();
     }
   };

@@ -75,6 +75,7 @@ export function ShipmentsTimeline() {
       toast({
         title: "Refreshing tracking...",
         description: "Updating all active shipments",
+        duration: 3000,
       });
 
       const { error } = await supabase.functions.invoke("update-ups-tracking", {
@@ -86,6 +87,7 @@ export function ShipmentsTimeline() {
       toast({
         title: "Tracking updated",
         description: "All shipments have been refreshed",
+        duration: 3000,
       });
 
       // Refresh the list
@@ -95,6 +97,7 @@ export function ShipmentsTimeline() {
         title: "Failed to refresh",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setRefreshing(false);

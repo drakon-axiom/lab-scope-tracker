@@ -19,6 +19,7 @@ const BulkImport = () => {
         title: "No data provided",
         description: "Please enter testing types to import",
         variant: "destructive",
+        duration: 4000,
       });
       return;
     }
@@ -30,6 +31,7 @@ const BulkImport = () => {
         title: "Not authenticated",
         description: "Please sign in to import data",
         variant: "destructive",
+        duration: 4000,
       });
       setIsLoading(false);
       return;
@@ -60,11 +62,13 @@ const BulkImport = () => {
         title: "Import failed",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } else {
       toast({
         title: "Import successful",
         description: `Imported ${testingTypes.length} testing types`,
+        duration: 3000,
       });
       setTestingTypesText("");
     }

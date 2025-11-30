@@ -67,6 +67,7 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
         title: "Error fetching email history",
         description: error.message,
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setLoading(false);

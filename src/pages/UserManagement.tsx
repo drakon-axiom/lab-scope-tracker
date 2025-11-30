@@ -104,6 +104,7 @@ const UserManagement = () => {
         title: "Error",
         description: error.message || "Failed to load users",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setLoading(false);
@@ -139,6 +140,7 @@ const UserManagement = () => {
       toast({
         title: "Role updated",
         description: `User role has been changed to ${newRole}`,
+        duration: 3000,
       });
 
       // Refresh the users list
@@ -149,6 +151,7 @@ const UserManagement = () => {
         title: "Error",
         description: error.message || "Failed to update role",
         variant: "destructive",
+        duration: 4000,
       });
     }
   };
@@ -190,6 +193,7 @@ const UserManagement = () => {
       toast({
         title: "User created",
         description: `User ${newUser.email} has been created successfully`,
+        duration: 3000,
       });
 
       // Reset form and close dialog
@@ -209,6 +213,7 @@ const UserManagement = () => {
         title: "Error",
         description: error.message || "Failed to create user",
         variant: "destructive",
+        duration: 4000,
       });
     } finally {
       setIsCreating(false);

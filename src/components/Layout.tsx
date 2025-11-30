@@ -52,6 +52,7 @@ const Layout = ({ children }: LayoutProps) => {
     toast({
       title: "Signed out",
       description: "You have been signed out successfully.",
+      duration: 3000,
     });
     navigate("/auth");
   };

@@ -15,6 +15,7 @@ import Quotes from "./pages/Quotes";
 import BulkImport from "./pages/BulkImport";
 import QuoteConfirm from "./pages/QuoteConfirm";
 import Settings from "./pages/Settings";
+import SecuritySettings from "./pages/SecuritySettings";
 import Notifications from "./pages/Notifications";
 import ImportChromatePricing from "./pages/ImportChromatePricing";
 import UserManagement from "./pages/UserManagement";
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/import-chromate" element={<ImportChromatePricing />} />
           <Route path="/user-management" element={<UserManagement />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/security-settings" element={<SecuritySettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

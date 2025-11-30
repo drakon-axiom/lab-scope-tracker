@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: any) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+      getResponse: (widgetId: string) => string;
+    };
+  }
+}
+
 const AdminAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,6 +29,11 @@ const AdminAuth = () => {
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileWidgetId = useRef<string | null>(null);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -27,7 +43,59 @@ const AdminAuth = () => {
       }
     };
     checkUser();
+
+    // Load Cloudflare Turnstile script
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script on unmount
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
   }, [navigate]);
+
+  // Initialize Turnstile when it should be shown
+  useEffect(() => {
+    if (showCaptcha && turnstileContainerRef.current && window.turnstile) {
+      // Remove existing widget if any
+      if (turnstileWidgetId.current) {
+        try {
+          window.turnstile.remove(turnstileWidgetId.current);
+        } catch (e) {
+          console.error("Error removing turnstile widget:", e);
+        }
+      }
+
+      // Render new widget
+      const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+      if (siteKey) {
+        try {
+          turnstileWidgetId.current = window.turnstile.render(turnstileContainerRef.current, {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              console.log("Turnstile verification successful");
+              setCaptchaToken(token);
+            },
+            "error-callback": () => {
+              console.error("Turnstile verification failed");
+              setCaptchaToken("");
+            },
+            "expired-callback": () => {
+              console.log("Turnstile token expired");
+              setCaptchaToken("");
+            },
+          });
+        } catch (e) {
+          console.error("Error rendering turnstile:", e);
+        }
+      }
+    }
+  }, [showCaptcha]);
 
   const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
     try {
@@ -39,6 +107,7 @@ const AdminAuth = () => {
           userId,
           errorMessage,
           userAgent: navigator.userAgent,
+          captchaToken: showCaptcha ? captchaToken : undefined,
         },
       });
 
@@ -95,6 +164,24 @@ const AdminAuth = () => {
           duration: 6000,
         });
       }
+      
+      // Track failed attempts and show CAPTCHA after 3 attempts
+      const newFailedCount = failedAttempts + 1;
+      setFailedAttempts(newFailedCount);
+      if (newFailedCount >= 3) {
+        setShowCaptcha(true);
+      }
+      
+      // Reset CAPTCHA token for next attempt
+      if (turnstileWidgetId.current && window.turnstile) {
+        try {
+          window.turnstile.reset(turnstileWidgetId.current);
+        } catch (e) {
+          console.error("Error resetting turnstile:", e);
+        }
+      }
+      setCaptchaToken("");
+      
       return;
     }
 
@@ -125,6 +212,11 @@ const AdminAuth = () => {
     // Log successful admin login
     await logAdminLoginAttempt(email, true, data.user.id);
 
+    // Reset failed attempts on success
+    setFailedAttempts(0);
+    setShowCaptcha(false);
+    setCaptchaToken("");
+    
     setLoading(false);
 
     // Check if MFA is required for this user
@@ -307,7 +399,25 @@ const AdminAuth = () => {
                 autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            
+            {showCaptcha && (
+              <div className="space-y-2">
+                <Label>Verification Required</Label>
+                <div 
+                  ref={turnstileContainerRef}
+                  className="flex justify-center"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Multiple failed attempts detected. Please complete the verification.
+                </p>
+              </div>
+            )}
+            
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || (showCaptcha && !captchaToken)}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Shield className="mr-2 h-4 w-4" />
               Sign In as Admin

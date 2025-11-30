@@ -129,8 +129,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check if prices were changed
+      // Check if prices were changed and store old prices
       let pricesChanged = false;
+      const oldPrices: Record<string, number> = {};
       if (updates.items && updates.items.length > 0) {
         const { data: existingItems } = await supabase
           .from('quote_items')
@@ -139,7 +140,11 @@ Deno.serve(async (req) => {
 
         pricesChanged = updates.items.some(updatedItem => {
           const existing = existingItems?.find(ei => ei.id === updatedItem.id);
-          return existing && parseFloat(String(existing.price)) !== updatedItem.price;
+          if (existing) {
+            oldPrices[updatedItem.id] = parseFloat(String(existing.price));
+            return parseFloat(String(existing.price)) !== updatedItem.price;
+          }
+          return false;
         });
       }
 
@@ -185,7 +190,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Log the vendor action
+      // Log the vendor action with old prices
       const activityType = updates.status === 'rejected' ? 'vendor_rejection' : 
                           (pricesChanged || discountChanged) ? 'vendor_approval' : 'vendor_approval';
       const activityDescription = updates.status === 'rejected' 
@@ -202,7 +207,9 @@ Deno.serve(async (req) => {
         metadata: {
           changes_made: pricesChanged || discountChanged,
           lab_quote_number: updates.lab_quote_number,
-          status: updates.status
+          status: updates.status,
+          old_prices: oldPrices,
+          old_discount: discountChanged ? { type: updates.discount_type, amount: updates.discount_amount } : null
         }
       });
 
@@ -275,6 +282,17 @@ Deno.serve(async (req) => {
 
       const rejectionNotes = notes || '';
       
+      // Get quote details for email
+      const { data: quote, error: quoteError } = await supabase
+        .from('quotes')
+        .select('*, labs(name, contact_email)')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError) {
+        console.error('Error fetching quote for rejection email:', quoteError);
+      }
+      
       const { error: rejectError } = await supabase
         .from('quotes')
         .update({ 
@@ -299,6 +317,104 @@ Deno.serve(async (req) => {
         description: `Customer rejected vendor changes: ${rejectionNotes}`,
         metadata: { notes: rejectionNotes }
       });
+
+      // Send rejection notification email to vendor
+      if (quote && quote.labs && quote.labs.contact_email) {
+        try {
+          const smtpHost = Deno.env.get('SMTP_HOST');
+          const smtpPort = parseInt(Deno.env.get('SMTP_PORT') || '587');
+          const smtpUser = Deno.env.get('SMTP_USER');
+          const smtpPassword = Deno.env.get('SMTP_PASSWORD');
+
+          if (smtpHost && smtpPort && smtpUser && smtpPassword) {
+            const emailBody = `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background-color: #fee2e2; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
+                    .content { background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 20px 0; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h1 style="margin: 0; color: #dc2626;">Quote Changes Rejected</h1>
+                      <p style="margin: 8px 0 0 0; color: #991b1b;">Quote #${quote.quote_number || quoteId}</p>
+                    </div>
+                    
+                    <p>Dear ${quote.labs.name},</p>
+                    <p>The customer has rejected the changes you proposed for this quote.</p>
+                    
+                    <div class="content">
+                      <h3 style="margin: 0 0 8px 0; color: #374151;">Customer Feedback:</h3>
+                      <p style="margin: 0; white-space: pre-wrap;">${rejectionNotes}</p>
+                    </div>
+                    
+                    <p>Please review the customer's feedback. They may reach out to you directly or submit a new quote request.</p>
+                    
+                    <p>Thank you for your service!</p>
+                  </div>
+                </body>
+              </html>
+            `;
+
+            // Create SMTP connection
+            const conn = await Deno.connect({
+              hostname: smtpHost,
+              port: smtpPort,
+            });
+
+            const encoder = new TextEncoder();
+            const decoder = new TextDecoder();
+
+            async function readResponse(connection: Deno.Conn): Promise<string> {
+              const buffer = new Uint8Array(4096);
+              const n = await connection.read(buffer);
+              if (!n) throw new Error("Connection closed");
+              return decoder.decode(buffer.subarray(0, n)).trim();
+            }
+
+            async function sendCommand(connection: Deno.Conn, command: string): Promise<string> {
+              await connection.write(encoder.encode(command + "\r\n"));
+              return await readResponse(connection);
+            }
+
+            try {
+              await readResponse(conn);
+              await sendCommand(conn, `EHLO ${smtpHost}`);
+              await sendCommand(conn, "STARTTLS");
+              
+              const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
+              await sendCommand(tlsConn, `EHLO ${smtpHost}`);
+              
+              const authString = btoa(`\0${smtpUser}\0${smtpPassword}`);
+              await sendCommand(tlsConn, `AUTH PLAIN ${authString}`);
+              
+              await sendCommand(tlsConn, `MAIL FROM:<${smtpUser}>`);
+              await sendCommand(tlsConn, `RCPT TO:<${quote.labs.contact_email}>`);
+              await sendCommand(tlsConn, "DATA");
+              
+              const emailContent = `From: ${smtpUser}\r\nTo: ${quote.labs.contact_email}\r\nSubject: Quote Rejected - #${quote.quote_number || quoteId}\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${emailBody}\r\n.\r\n`;
+              await tlsConn.write(encoder.encode(emailContent));
+              await readResponse(tlsConn);
+              
+              await sendCommand(tlsConn, "QUIT");
+              tlsConn.close();
+              
+              console.log('Rejection email sent successfully to vendor');
+            } catch (emailError) {
+              console.error('SMTP error:', emailError);
+              conn.close();
+            }
+          }
+        } catch (emailError) {
+          console.error('Error sending rejection email:', emailError);
+        }
+      }
 
       return new Response(
         JSON.stringify({ success: true, message: 'Quote rejected by customer' }),

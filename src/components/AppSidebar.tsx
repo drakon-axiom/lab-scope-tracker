@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserRole } from "@/hooks/useUserRole";
+import logo from "@/assets/logo.png";
 
 import {
   Sidebar,
@@ -77,8 +78,8 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarHeader className="border-b p-4">
-        <div className="flex items-center gap-2">
-          <TestTube2 className="h-6 w-6 text-primary flex-shrink-0" />
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Testing Tracker" className="h-8 w-8 flex-shrink-0" />
           {!collapsed && <span className="font-bold text-lg">Testing Tracker</span>}
         </div>
       </SidebarHeader>

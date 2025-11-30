@@ -59,6 +59,8 @@ import StatusBadge from "@/components/StatusBadge";
 import { QuoteKanbanBoard } from "@/components/QuoteKanbanBoard";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
+import { PaymentDetailsDialog, PaymentFormData } from "@/components/PaymentDetailsDialog";
+import { ShippingDetailsDialog, ShippingFormData } from "@/components/ShippingDetailsDialog";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -162,7 +164,7 @@ const Quotes = () => {
 
   // Helper function to check if quote is locked (paid or later status)
   const isQuoteLocked = (status: string) => {
-    const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+    const lockedStatuses = ['paid_awaiting_shipping', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
     return lockedStatuses.includes(status);
   };
 
@@ -182,7 +184,7 @@ const Quotes = () => {
       sendToVendor: false,
       approveReject: false,
       addPayment: false,
-      addTracking: false,
+      addShipping: false,
       refreshTracking: false,
       exportPDF: false,
     };
@@ -201,15 +203,13 @@ const Quotes = () => {
         actions.approveReject = true;
         break;
       case 'approved_payment_pending':
-        actions.edit = true; // To record payment
         actions.addPayment = true;
         break;
-      case 'paid':
+      case 'paid_awaiting_shipping':
         actions.edit = !isEditingDisabled(quote.status);
-        actions.addTracking = !quote.tracking_number;
+        actions.addShipping = !quote.tracking_number;
         actions.exportPDF = true;
         break;
-      case 'shipped':
       case 'in_transit':
         actions.refreshTracking = !!quote.tracking_number;
         actions.exportPDF = true;
@@ -266,6 +266,10 @@ const Quotes = () => {
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
+  const [selectedQuoteForPayment, setSelectedQuoteForPayment] = useState<Quote | null>(null);
+  const [selectedQuoteForShipping, setSelectedQuoteForShipping] = useState<Quote | null>(null);
   const { toast } = useToast();
 
   // Input validation schema
@@ -701,7 +705,7 @@ const Quotes = () => {
         }
       }
 
-      // Auto-progress status from "approved_payment_pending" to "paid" when payment is recorded
+      // Auto-progress status from "approved_payment_pending" to "paid_awaiting_shipping" when payment is recorded
       if (editingId && formData.status === "approved_payment_pending") {
         const existingQuote = quotes.find(q => q.id === editingId);
         const isPaymentRecorded = 
@@ -710,7 +714,15 @@ const Quotes = () => {
           formData.payment_date;
         
         if (existingQuote && isPaymentRecorded) {
-          updatedStatus = "paid";
+          updatedStatus = "paid_awaiting_shipping";
+        }
+      }
+      
+      // Auto-progress from "paid_awaiting_shipping" to "in_transit" when tracking is added
+      if (editingId && formData.status === "paid_awaiting_shipping" && formData.tracking_number) {
+        const existingQuote = quotes.find(q => q.id === editingId);
+        if (existingQuote && !existingQuote.tracking_number) {
+          updatedStatus = "in_transit";
         }
       }
 
@@ -731,7 +743,7 @@ const Quotes = () => {
 
       if (editingId) {
         const existingQuote = quotes.find(q => q.id === editingId);
-        const isPaidTransition = updatedStatus === "paid" && formData.status === "approved_payment_pending";
+        const isPaidTransition = updatedStatus === "paid_awaiting_shipping" && formData.status === "approved_payment_pending";
         
         const { error } = await supabase
           .from("quotes")
@@ -745,7 +757,7 @@ const Quotes = () => {
             quote_id: editingId,
             user_id: user.id,
             activity_type: 'payment_recorded',
-            description: 'Payment recorded and quote marked as paid',
+            description: 'Payment recorded - awaiting shipping',
             metadata: {
               payment_amount_usd: payload.payment_amount_usd,
               payment_date: payload.payment_date,
@@ -1789,6 +1801,163 @@ const Quotes = () => {
     }
   };
 
+  const handlePaymentSubmit = async (paymentData: PaymentFormData) => {
+    if (!selectedQuoteForPayment) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const payload = {
+        payment_status: paymentData.payment_status,
+        payment_amount_usd: paymentData.payment_amount_usd ? parseFloat(paymentData.payment_amount_usd) : null,
+        payment_amount_crypto: paymentData.payment_amount_crypto || null,
+        payment_date: paymentData.payment_date || null,
+        transaction_id: paymentData.transaction_id || null,
+        status: "paid_awaiting_shipping", // Auto-transition to paid_awaiting_shipping
+      };
+
+      const { error } = await supabase
+        .from("quotes")
+        .update(payload)
+        .eq("id", selectedQuoteForPayment.id);
+
+      if (error) throw error;
+
+      // Log payment activity
+      await supabase.from('quote_activity_log').insert({
+        quote_id: selectedQuoteForPayment.id,
+        user_id: user.id,
+        activity_type: 'payment_recorded',
+        description: 'Payment recorded - awaiting shipping',
+        metadata: {
+          payment_amount_usd: payload.payment_amount_usd,
+          payment_date: payload.payment_date,
+          transaction_id: payload.transaction_id,
+          payment_status: payload.payment_status
+        }
+      });
+
+      // Fetch quote with items for receipt and email
+      const { data: fullQuote } = await supabase
+        .from('quotes')
+        .select('*, labs(name, contact_email), quote_items:quote_items(*, products(name))')
+        .eq('id', selectedQuoteForPayment.id)
+        .single();
+
+      if (fullQuote) {
+        // Generate and download receipt
+        setTimeout(() => generatePaymentReceipt(fullQuote), 500);
+
+        // Send payment confirmation email
+        try {
+          if (user?.email) {
+            await supabase.functions.invoke('send-payment-confirmation', {
+              body: {
+                quoteId: selectedQuoteForPayment.id,
+                customerEmail: user.email,
+                quoteNumber: fullQuote.quote_number,
+                labName: fullQuote.labs.name,
+                paymentAmountUsd: fullQuote.payment_amount_usd,
+                paymentDate: fullQuote.payment_date,
+                transactionId: fullQuote.transaction_id,
+                items: fullQuote.quote_items.map((item: any) => ({
+                  productName: item.products.name,
+                  client: item.client,
+                  sample: item.sample,
+                  manufacturer: item.manufacturer,
+                  batch: item.batch,
+                  price: item.price,
+                  additional_samples: item.additional_samples,
+                  additional_report_headers: item.additional_report_headers,
+                }))
+              }
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send payment confirmation email:', emailError);
+        }
+
+        // Notify lab about payment
+        try {
+          await supabase.functions.invoke('notify-lab-payment', {
+            body: { quoteId: selectedQuoteForPayment.id }
+          });
+        } catch (labEmailError) {
+          console.error('Failed to notify lab about payment:', labEmailError);
+        }
+      }
+
+      toast({ 
+        title: "Payment Confirmed",
+        description: "Receipt generated and confirmation email sent",
+        duration: 3000,
+      });
+
+      setPaymentDialogOpen(false);
+      setSelectedQuoteForPayment(null);
+      fetchQuotes();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
+    }
+  };
+
+  const handleShippingSubmit = async (shippingData: ShippingFormData) => {
+    if (!selectedQuoteForShipping) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const payload = {
+        tracking_number: shippingData.tracking_number,
+        shipped_date: shippingData.shipped_date || null,
+        status: "in_transit", // Auto-transition to in_transit
+      };
+
+      const { error } = await supabase
+        .from("quotes")
+        .update(payload)
+        .eq("id", selectedQuoteForShipping.id);
+
+      if (error) throw error;
+
+      // Log shipping activity
+      await supabase.from('quote_activity_log').insert({
+        quote_id: selectedQuoteForShipping.id,
+        user_id: user.id,
+        activity_type: 'shipping_added',
+        description: 'Shipping details added - package in transit',
+        metadata: {
+          tracking_number: payload.tracking_number,
+          shipped_date: payload.shipped_date
+        }
+      });
+
+      toast({ 
+        title: "Shipping Details Added",
+        description: "Quote status updated to In Transit",
+        duration: 3000,
+      });
+
+      setShippingDialogOpen(false);
+      setSelectedQuoteForShipping(null);
+      fetchQuotes();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
+    }
+  };
+
   // Helper function to calculate item total including additional samples and headers
   const calculateItemTotal = (item: QuoteItem): number => {
     const basePrice = item.price || 0;
@@ -1960,8 +2129,7 @@ const Quotes = () => {
                               <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
                               <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
                               <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="paid">Paid</SelectItem>
-                              <SelectItem value="shipped">Shipped</SelectItem>
+                              <SelectItem value="paid_awaiting_shipping">Paid - Awaiting Shipping</SelectItem>
                               <SelectItem value="in_transit">In Transit</SelectItem>
                               <SelectItem value="delivered">Delivered</SelectItem>
                               <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
@@ -1978,104 +2146,6 @@ const Quotes = () => {
                             onChange={(e) =>
                               setFormData({ ...formData, shipped_date: e.target.value })
                             }
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tracking_number">Tracking Number</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="tracking_number"
-                            value={formData.tracking_number}
-                            onChange={(e) =>
-                              setFormData({ ...formData, tracking_number: e.target.value })
-                            }
-                            placeholder="Enter tracking number"
-                            className="flex-1"
-                          />
-                          {formData.tracking_number && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleRefreshTracking(formData.tracking_number)}
-                              title="Refresh UPS tracking"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Payment Information */}
-                      <div className="border-t pt-4 space-y-4">
-                        <h3 className="font-medium text-sm">Payment Information</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="payment_status">Payment Status</Label>
-                            <Select
-                              value={formData.payment_status}
-                              onValueChange={(value) =>
-                                setFormData({ ...formData, payment_status: value })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="paid_usd">Paid (USD)</SelectItem>
-                                <SelectItem value="paid_crypto">Paid (Crypto)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="payment_date">Payment Date</Label>
-                            <Input
-                              id="payment_date"
-                              type="date"
-                              value={formData.payment_date}
-                              onChange={(e) =>
-                                setFormData({ ...formData, payment_date: e.target.value })
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="payment_amount_usd">Amount (USD)</Label>
-                            <Input
-                              id="payment_amount_usd"
-                              type="number"
-                              step="0.01"
-                              value={formData.payment_amount_usd}
-                              onChange={(e) =>
-                                setFormData({ ...formData, payment_amount_usd: e.target.value })
-                              }
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="payment_amount_crypto">Amount (Crypto)</Label>
-                            <Input
-                              id="payment_amount_crypto"
-                              value={formData.payment_amount_crypto}
-                              onChange={(e) =>
-                                setFormData({ ...formData, payment_amount_crypto: e.target.value })
-                              }
-                              placeholder="e.g., 0.5 BTC"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="transaction_id">Transaction ID (for crypto)</Label>
-                          <Input
-                            id="transaction_id"
-                            value={formData.transaction_id}
-                            onChange={(e) =>
-                              setFormData({ ...formData, transaction_id: e.target.value })
-                            }
-                            placeholder="Blockchain transaction ID"
                           />
                         </div>
                       </div>
@@ -2402,7 +2472,10 @@ const Quotes = () => {
                                 variant="default"
                                 size="sm"
                                 className="h-8 hidden sm:inline-flex"
-                                onClick={() => handleEdit(quote)}
+                                onClick={() => {
+                                  setSelectedQuoteForPayment(quote);
+                                  setPaymentDialogOpen(true);
+                                }}
                                 title="Record payment information"
                               >
                                 💳 Pay
@@ -2436,16 +2509,19 @@ const Quotes = () => {
                               </Button>
                             )}
 
-                            {/* Add Tracking - For paid without tracking */}
-                            {actions.addTracking && (
+                            {/* Add Shipping - For paid_awaiting_shipping without tracking */}
+                            {actions.addShipping && (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-8 hidden sm:inline-flex"
-                                onClick={() => handleEdit(quote)}
-                                title="Add tracking information"
+                                onClick={() => {
+                                  setSelectedQuoteForShipping(quote);
+                                  setShippingDialogOpen(true);
+                                }}
+                                title="Add shipping information"
                               >
-                                Add Tracking
+                                Add Shipping
                               </Button>
                             )}
 
@@ -2871,7 +2947,7 @@ const Quotes = () => {
                     <History className="mr-2 h-4 w-4" />
                     Email History
                   </Button>
-                  {selectedQuote.status === 'paid' && (
+                  {selectedQuote.status === 'paid_awaiting_shipping' && (
                     <Button
                       variant="default"
                       onClick={() => {
@@ -3827,6 +3903,36 @@ const Quotes = () => {
             quoteItems={quoteItems}
             onApprove={() => fetchQuotes()}
             onReject={() => fetchQuotes()}
+          />
+        )}
+
+        {/* Payment Details Dialog */}
+        {selectedQuoteForPayment && (
+          <PaymentDetailsDialog
+            open={paymentDialogOpen}
+            onOpenChange={setPaymentDialogOpen}
+            onSubmit={handlePaymentSubmit}
+            initialData={{
+              payment_status: selectedQuoteForPayment.payment_status || "pending",
+              payment_amount_usd: selectedQuoteForPayment.payment_amount_usd?.toString() || "",
+              payment_amount_crypto: selectedQuoteForPayment.payment_amount_crypto || "",
+              payment_date: selectedQuoteForPayment.payment_date || "",
+              transaction_id: selectedQuoteForPayment.transaction_id || "",
+            }}
+          />
+        )}
+
+        {/* Shipping Details Dialog */}
+        {selectedQuoteForShipping && (
+          <ShippingDetailsDialog
+            open={shippingDialogOpen}
+            onOpenChange={setShippingDialogOpen}
+            onSubmit={handleShippingSubmit}
+            onRefreshTracking={handleRefreshTracking}
+            initialData={{
+              tracking_number: selectedQuoteForShipping.tracking_number || "",
+              shipped_date: selectedQuoteForShipping.shipped_date || "",
+            }}
           />
         )}
       </div>

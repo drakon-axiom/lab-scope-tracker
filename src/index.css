@@ -135,4 +135,21 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Page transition animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Apply fade-in animation to page content */
+  main, .page-content {
+    animation: fadeIn 0.3s ease-out;
+  }
 }

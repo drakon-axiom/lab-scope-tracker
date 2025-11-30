@@ -297,7 +297,7 @@ const AdminAuth = () => {
         <Card className="w-full max-w-md border-primary/20 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-center gap-3 mb-2">
-              <img src={logo} alt="Testing Tracker" className="h-10 w-10" />
+              <img src={logo} alt="Testing Tracker" className="h-16 w-16" />
               <Shield className="h-8 w-8 text-primary" />
             </div>
             <div className="flex items-center gap-2">
@@ -364,7 +364,7 @@ const AdminAuth = () => {
       <Card className="w-full max-w-md border-primary/20 shadow-lg">
         <CardHeader className="space-y-3">
           <div className="flex items-center justify-center gap-3">
-            <img src={logo} alt="Testing Tracker" className="h-12 w-12" />
+            <img src={logo} alt="Testing Tracker" className="h-20 w-20" />
             <div className="flex items-center gap-2 text-primary">
               <Shield className="h-8 w-8" />
               <Lock className="h-6 w-6" />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface QuoteApprovalDialogProps {
   open: boolean;
@@ -29,10 +30,15 @@ export const QuoteApprovalDialog = ({
     setProcessing(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
           quoteId: quote.id,
@@ -66,10 +72,15 @@ export const QuoteApprovalDialog = ({
     setProcessing(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/confirm-quote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
           quoteId: quote.id,

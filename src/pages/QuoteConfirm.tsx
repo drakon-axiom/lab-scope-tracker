@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { triggerSuccessConfetti } from "@/lib/confetti";
 
 const QuoteConfirm = () => {
   const { quoteId } = useParams();
@@ -248,6 +249,7 @@ const QuoteConfirm = () => {
           : "The quote has been approved successfully.",
       });
       setConfirmed(true);
+      triggerSuccessConfetti();
     } catch (error) {
       console.error('Error confirming quote:', error);
       toast({

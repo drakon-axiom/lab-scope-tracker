@@ -263,6 +263,7 @@ const Quotes = () => {
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterLockStatus, setFilterLockStatus] = useState("all");
+  const [searchFilterExpanded, setSearchFilterExpanded] = useState(false);
   const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
@@ -2305,15 +2306,51 @@ const Quotes = () => {
           </div>
         </div>
 
-        {/* View Mode Toggle and Search/Filter Controls */}
-        <div className="mb-6 space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* Compact Search/Filter Bar */}
+        <div className="mb-6">
+          {!searchFilterExpanded ? (
+            <div className="flex items-center justify-between border rounded-lg p-3 bg-background">
+              <div className="flex items-center gap-2 flex-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchFilterExpanded(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="text-sm text-muted-foreground">Search quotes...</span>
+                </Button>
+                {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                    Active
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchFilterExpanded(true)}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="border rounded-lg p-4 bg-background space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Search and Filter</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchFilterExpanded(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <div className="flex-1">
-                  <Label htmlFor="search">Search Quotes</Label>
-                  <div className="relative">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="search" className="text-xs">Search</Label>
+                  <div className="relative mt-1.5">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
@@ -2325,78 +2362,83 @@ const Quotes = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                  <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm">Status</Label>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
-                        <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
-                        <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="in_transit">In Transit</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm">Lab</Label>
-                    <Select value={filterLab} onValueChange={setFilterLab}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Labs</SelectItem>
-                        {labs.map((lab) => (
-                          <SelectItem key={lab.id} value={lab.id}>
-                            {lab.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm">Product</Label>
-                    <Select value={filterProduct} onValueChange={setFilterProduct}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Products</SelectItem>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm">Lock Status</Label>
-                    <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Quotes</SelectItem>
-                        <SelectItem value="locked">Locked (Paid+)</SelectItem>
-                        <SelectItem value="unlocked">Unlocked (Pre-Payment)</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                <div>
+                  <Label className="text-xs mb-2 block">Filters</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="w-full h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background">
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                          <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
+                          <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="shipped">Shipped</SelectItem>
+                          <SelectItem value="in_transit">In Transit</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Lab</Label>
+                      <Select value={filterLab} onValueChange={setFilterLab}>
+                        <SelectTrigger className="w-full h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background">
+                          <SelectItem value="all">All Labs</SelectItem>
+                          {labs.map((lab) => (
+                            <SelectItem key={lab.id} value={lab.id}>
+                              {lab.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Product</Label>
+                      <Select value={filterProduct} onValueChange={setFilterProduct}>
+                        <SelectTrigger className="w-full h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background">
+                          <SelectItem value="all">All Products</SelectItem>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Lock Status</Label>
+                      <Select value={filterLockStatus} onValueChange={setFilterLockStatus}>
+                        <SelectTrigger className="w-full h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background">
+                          <SelectItem value="all">All Quotes</SelectItem>
+                          <SelectItem value="locked">Locked (Paid+)</SelectItem>
+                          <SelectItem value="unlocked">Unlocked (Pre-Payment)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
+
                 {(searchQuery || filterStatus !== "all" || filterLab !== "all" || filterProduct !== "all" || filterLockStatus !== "all") && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       setSearchQuery("");
@@ -2407,11 +2449,13 @@ const Quotes = () => {
                     }}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Clear Filters
+                    Clear All Filters
                   </Button>
                 )}
               </div>
             </div>
+          )}
+        </div>
 
             <div className="border rounded-lg overflow-x-auto">
                 <Table>

@@ -2831,7 +2831,21 @@ const Quotes = () => {
                         {isQuoteLocked(quote.status) && (
                           <Lock className="h-3 w-3 text-muted-foreground" />
                         )}
-                        {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}
+                        <span>{quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</span>
+                        {quote.quote_number?.startsWith('QT-') && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                  Auto
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Auto-generated quote number</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{quote.labs.name}</TableCell>
@@ -3089,9 +3103,40 @@ const Quotes = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Quote Number</Label>
-                      <p className="font-medium">
-                        {selectedQuote.quote_number || `Quote ${selectedQuote.id.slice(0, 8)}`}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {selectedQuote.quote_number || `Quote ${selectedQuote.id.slice(0, 8)}`}
+                        </p>
+                        {selectedQuote.quote_number?.startsWith('QT-') && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                  Auto
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Auto-generated quote number</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedQuote.quote_number || `Quote ${selectedQuote.id.slice(0, 8)}`);
+                            toast({
+                              title: "Copied",
+                              description: "Quote number copied to clipboard",
+                              duration: 2000,
+                            });
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div>
                       <Label className="text-muted-foreground">Lab</Label>

@@ -2,3 +2,6 @@ project_id = "obbvohtcglpfnqbthnga"
 
 [functions.confirm-quote]
 verify_jwt = false
+
+[functions.update-ups-tracking]
+verify_jwt = false

@@ -163,6 +163,12 @@ const Quotes = () => {
     const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
     return lockedStatuses.includes(status);
   };
+
+  // Helper function to check if editing should be disabled (locked for non-admins only)
+  const isEditingDisabled = (status: string) => {
+    if (role === 'admin') return false; // Admins can always edit
+    return isQuoteLocked(status);
+  };
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemsDialogOpen, setItemsDialogOpen] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
@@ -678,6 +684,14 @@ const Quotes = () => {
   };
 
   const handleEdit = (quote: Quote) => {
+    if (isEditingDisabled(quote.status)) {
+      toast({
+        title: "Cannot Edit",
+        description: "Quotes cannot be edited after payment",
+        variant: "destructive",
+      });
+      return;
+    }
     setFormData({
       lab_id: quote.lab_id,
       quote_number: quote.quote_number || "",
@@ -1066,8 +1080,8 @@ const Quotes = () => {
   const handleSendEmail = async () => {
     if (!selectedQuote) return;
     
-    // Prevent sending locked quotes
-    if (isQuoteLocked(selectedQuote.status)) {
+    // Prevent sending locked quotes (unless admin)
+    if (isEditingDisabled(selectedQuote.status)) {
       toast({
         title: "Cannot Send Quote",
         description: "Quotes cannot be sent to vendor after payment",
@@ -2045,8 +2059,8 @@ const Quotes = () => {
                           size="icon"
                           className="h-8 w-8 hidden md:inline-flex"
                           onClick={() => handleEdit(quote)}
-                          disabled={isQuoteLocked(quote.status)}
-                          title={isQuoteLocked(quote.status) ? "Cannot edit paid quotes" : "Edit quote"}
+                          disabled={isEditingDisabled(quote.status)}
+                          title={isEditingDisabled(quote.status) ? "Cannot edit paid quotes" : "Edit quote"}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -2137,7 +2151,7 @@ const Quotes = () => {
                   setViewDialogOpen(true);
                 }}
                 onEditQuote={(quote) => {
-                  if (isQuoteLocked(quote.status)) {
+                  if (isEditingDisabled(quote.status)) {
                     toast({
                       title: "Cannot Edit",
                       description: "Quotes cannot be edited after payment",
@@ -2164,7 +2178,7 @@ const Quotes = () => {
                   setDialogOpen(true);
                 }}
                 onManageItems={(quote) => {
-                  if (isQuoteLocked(quote.status)) {
+                  if (isEditingDisabled(quote.status)) {
                     toast({
                       title: "Cannot Modify Items",
                       description: "Quote items cannot be modified after payment",
@@ -2177,6 +2191,7 @@ const Quotes = () => {
                   fetchProducts(); // Fetch products for the selected quote's lab
                   setItemsDialogOpen(true);
                 }}
+                isEditingDisabled={isEditingDisabled}
               />
             )}
 

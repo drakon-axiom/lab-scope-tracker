@@ -112,7 +112,8 @@ const QuoteConfirm = () => {
           }
         }
         
-        if (data.status === "approved") {
+        const lockedStatuses = ['paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+        if (lockedStatuses.includes(data.status)) {
           setConfirmed(true);
         }
       } catch (error) {

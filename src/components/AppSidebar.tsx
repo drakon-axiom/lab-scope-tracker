@@ -67,8 +67,8 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
 
   const visibleUtilityNavItems = utilityNavItems.filter(item => {
     if (isAdmin) return true; // Admins see everything
-    // Subscribers don't see Bulk Import or Notifications
-    return false;
+    // Subscribers can see Notifications but not Bulk Import
+    return item.url === "/notifications";
   });
 
   const visibleAdminNavItems = isAdmin ? adminNavItems : [];

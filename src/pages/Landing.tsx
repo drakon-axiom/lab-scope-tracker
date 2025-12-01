@@ -8,6 +8,12 @@ import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 import heroBackground from "@/assets/hero-background.jpg";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -446,6 +452,77 @@ const Landing = () => {
             <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
               Create an Account
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <Badge className="mb-4" variant="secondary">FAQ</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Find answers to common questions about SafeBatch and our testing workflow
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-left">
+                  What types of compounds can I submit for testing?
+                </AccordionTrigger>
+                <AccordionContent>
+                  SafeBatch supports testing for a wide range of compounds including peptides, SARMs, AAS (anabolic-androgenic steroids), small molecules, and more. We work with certified labs that specialize in different compound categories to ensure accurate testing results.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-left">
+                  How long does the testing process take?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Testing turnaround times vary by compound type and lab partner, typically ranging from 7-21 days after the lab receives your samples. You can track progress in real-time through the SafeBatch platform, from shipment to final results delivery.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-left">
+                  What labs do you work with?
+                </AccordionTrigger>
+                <AccordionContent>
+                  We partner with certified third-party testing laboratories that have proven track records in analytical chemistry. Our platform allows you to choose from multiple lab options based on your specific testing needs, pricing preferences, and turnaround time requirements.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="text-left">
+                  How does pricing work?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Pricing varies by compound type, testing method, and lab partner. When you create a quote, you'll see transparent pricing for each test. We're currently in beta offering free access with a monthly usage limit of 10 items. Paid plans with higher limits will be available soon.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="text-left">
+                  Is SafeBatch only for high-volume testing?
+                </AccordionTrigger>
+                <AccordionContent>
+                  No! SafeBatch is designed for both occasional users who need guidance on testing processes and high-volume users who want centralized workflow management. Whether you're sending one sample or managing dozens of tests, our platform simplifies the entire process.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6">
+                <AccordionTrigger className="text-left">
+                  How do I get started?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Join our waitlist to get beta access. Once approved, you'll receive an invitation to create your account. From there, you can immediately start creating quotes, selecting compounds, and coordinating with our lab partners through the platform.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </section>

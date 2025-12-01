@@ -380,8 +380,8 @@ const Landing = () => {
           </div>
 
           <div className="text-center mt-12">
-            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
-              Start Your First Quote
+            <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8">
+              Join Waitlist
             </Button>
           </div>
         </div>
@@ -493,8 +493,8 @@ const Landing = () => {
           </div>
 
           <div className="text-center mt-12">
-            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
-              Create an Account
+            <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8">
+              Join Waitlist
             </Button>
           </div>
         </div>

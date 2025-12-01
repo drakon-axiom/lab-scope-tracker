@@ -32,6 +32,8 @@ interface Quote {
   id: string;
   quote_number: string | null;
   status: string;
+  totalResults?: number;
+  completedResults?: number;
 }
 
 interface QuoteItem {
@@ -83,13 +85,52 @@ export default function LabResults() {
       try {
         const { data, error } = await supabase
           .from("quotes")
-          .select("id, quote_number, status")
+          .select(`
+            id, 
+            quote_number, 
+            status,
+            quote_items (
+              id,
+              test_results,
+              additional_report_headers
+            )
+          `)
           .eq("lab_id", labUser.lab_id)
           .eq("status", "testing_in_progress")
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setQuotes(data || []);
+        
+        // Calculate progress for each quote
+        const quotesWithProgress = (data || []).map((quote: any) => {
+          let totalResults = 0;
+          let completedResults = 0;
+
+          quote.quote_items?.forEach((item: any) => {
+            // Count main result + additional headers
+            const additionalCount = item.additional_report_headers || 0;
+            totalResults += 1 + additionalCount;
+
+            // Count completed results
+            if (item.test_results) {
+              const results = JSON.parse(item.test_results);
+              if (results.main?.report_url) completedResults++;
+              if (results.additional_headers) {
+                completedResults += results.additional_headers.filter((h: any) => h.report_url).length;
+              }
+            }
+          });
+
+          return {
+            id: quote.id,
+            quote_number: quote.quote_number,
+            status: quote.status,
+            totalResults,
+            completedResults,
+          };
+        });
+
+        setQuotes(quotesWithProgress);
       } catch (error) {
         console.error("Error fetching quotes:", error);
         toast.error("Failed to load quotes");
@@ -363,19 +404,20 @@ export default function LabResults() {
                 <TableRow>
                   <TableHead>Quote #</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center">
+                    <TableCell colSpan={4} className="text-center">
                       Loading...
                     </TableCell>
                   </TableRow>
                 ) : quotes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No tests awaiting results
                     </TableCell>
                   </TableRow>
@@ -387,6 +429,23 @@ export default function LabResults() {
                       </TableCell>
                       <TableCell>
                         <Badge>{quote.status}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {quote.completedResults} / {quote.totalResults}
+                          </span>
+                          <div className="flex-1 max-w-[100px]">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary transition-all"
+                                style={{ 
+                                  width: `${quote.totalResults ? (quote.completedResults! / quote.totalResults * 100) : 0}%` 
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

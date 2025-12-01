@@ -327,10 +327,10 @@ export default function LabSettings() {
 
   return (
     <LabLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lab Settings</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Lab Settings</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Manage pricing, test panels, and lab configuration
           </p>
         </div>
@@ -338,36 +338,40 @@ export default function LabSettings() {
         {/* Pricing Management */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex flex-col gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                   <DollarSign className="h-5 w-5" />
                   Test Pricing
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   Manage your test panel pricing. Changes are logged in the audit trail.
                 </CardDescription>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadTemplate}
                   disabled={pricing.length === 0}
+                  className="w-full sm:w-auto"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download Template
+                  <span className="hidden sm:inline">Download Template</span>
+                  <span className="sm:hidden">Template</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleExportCSV}
                   disabled={filteredPricing.length === 0}
+                  className="w-full sm:w-auto"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export CSV
+                  <span className="hidden sm:inline">Export CSV</span>
+                  <span className="sm:hidden">Export</span>
                 </Button>
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <input
                     type="file"
                     accept=".csv"
@@ -381,6 +385,7 @@ export default function LabSettings() {
                     size="sm"
                     onClick={() => document.getElementById('csv-upload')?.click()}
                     disabled={isImporting}
+                    className="w-full"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     {isImporting ? "Importing..." : "Import CSV"}
@@ -390,8 +395,8 @@ export default function LabSettings() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by test name or category..."
@@ -401,7 +406,7 @@ export default function LabSettings() {
                 />
               </div>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-[200px] bg-background">
+                <SelectTrigger className="w-full bg-background">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
@@ -414,12 +419,14 @@ export default function LabSettings() {
                 </SelectContent>
               </Select>
             </div>
-            <Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Test / Compound</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Current Price</TableHead>
+                  <TableHead className="min-w-[150px]">Test / Compound</TableHead>
+                  <TableHead className="hidden md:table-cell">Category</TableHead>
+                  <TableHead>Price</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -440,19 +447,24 @@ export default function LabSettings() {
                   filteredPricing.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
-                        {item.products.name}
+                        <div>
+                          <div className="font-medium">{item.products.name}</div>
+                          <div className="md:hidden">
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {item.products.category || "Uncategorized"}
+                            </Badge>
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">
                           {item.products.category || "Uncategorized"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-semibold">
-                            ${item.price.toFixed(2)}
-                          </span>
-                        </div>
+                        <span className="font-semibold text-base md:text-lg">
+                          ${item.price.toFixed(2)}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -470,8 +482,10 @@ export default function LabSettings() {
                               }
                             }
                           }}
+                          className="whitespace-nowrap"
                         >
-                          Update Price
+                          <span className="hidden sm:inline">Update Price</span>
+                          <span className="sm:hidden">Update</span>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -479,25 +493,28 @@ export default function LabSettings() {
                 )}
               </TableBody>
             </Table>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         {/* Pricing Audit Log */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                   <History className="h-5 w-5" />
                   Pricing Audit Trail
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   Complete history of all pricing changes
                 </CardDescription>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setShowAuditLog(!showAuditLog)}
+                className="w-full sm:w-auto"
               >
                 {showAuditLog ? "Hide" : "Show"} Audit Log
               </Button>
@@ -505,14 +522,16 @@ export default function LabSettings() {
           </CardHeader>
           {showAuditLog && (
             <CardContent>
-              <Table>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Test / Compound</TableHead>
-                    <TableHead>Old Price</TableHead>
+                    <TableHead className="min-w-[150px]">Test / Compound</TableHead>
+                    <TableHead className="hidden sm:table-cell">Old Price</TableHead>
                     <TableHead>New Price</TableHead>
-                    <TableHead>Changed</TableHead>
-                    <TableHead>Reason</TableHead>
+                    <TableHead className="hidden md:table-cell">Changed</TableHead>
+                    <TableHead className="hidden lg:table-cell">Reason</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -525,17 +544,27 @@ export default function LabSettings() {
                   ) : (
                     auditLog.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell>{log.products.name}</TableCell>
                         <TableCell>
+                          <div>
+                            <div className="font-medium">{log.products.name}</div>
+                            <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                              {log.old_price ? `$${log.old_price.toFixed(2)}` : "-"} → ${log.new_price.toFixed(2)}
+                            </div>
+                            <div className="md:hidden text-xs text-muted-foreground mt-1">
+                              {format(new Date(log.changed_at), "MMM d, yyyy")}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           {log.old_price ? `$${log.old_price.toFixed(2)}` : "-"}
                         </TableCell>
                         <TableCell className="font-semibold">
                           ${log.new_price.toFixed(2)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
                           {format(new Date(log.changed_at), "MMM d, yyyy h:mm a")}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                           {log.change_reason || "-"}
                         </TableCell>
                       </TableRow>
@@ -543,6 +572,8 @@ export default function LabSettings() {
                   )}
                 </TableBody>
               </Table>
+                </div>
+              </div>
             </CardContent>
           )}
         </Card>

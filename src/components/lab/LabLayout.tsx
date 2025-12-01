@@ -28,6 +28,7 @@ import { useLabUser } from "@/hooks/useLabUser";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, X } from "lucide-react";
+import { LabMobileBottomNav } from "@/components/lab/LabMobileBottomNav";
 
 interface LabLayoutProps {
   children: ReactNode;
@@ -211,10 +212,13 @@ export default function LabLayout({ children }: LabLayoutProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <LabMobileBottomNav />
     </div>
   );
 }

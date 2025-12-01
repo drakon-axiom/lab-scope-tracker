@@ -99,22 +99,47 @@ const Landing = () => {
             </motion.p>
             
             <motion.div 
-              className="flex flex-col sm:flex-row gap-4 mb-12"
+              className="space-y-6 mb-12"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6 }}
             >
-              <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8 shadow-lg">
-                Join Waitlist
-              </Button>
+              {/* Prominent CTA Button */}
               <Button 
                 size="lg" 
-                variant="outline" 
-                onClick={() => scrollToSection("contact")} 
-                className="text-lg px-8 bg-background/50 backdrop-blur-sm hover:bg-background/80"
+                onClick={() => navigate("/waitlist")} 
+                className="text-xl px-12 py-7 h-auto shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105"
               >
-                Contact Us
+                Join Waitlist - Get Early Access
               </Button>
+              
+              {/* Early Access Benefits */}
+              <div className="text-white/80 text-sm md:text-base space-y-2">
+                <p className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  Free access during beta with 10 items per month
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  Priority support and direct feedback channel
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  Exclusive early adopter pricing when we launch
+                </p>
+              </div>
+              
+              {/* Secondary CTA */}
+              <div className="pt-2">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={() => scrollToSection("contact")} 
+                  className="text-base px-6 bg-background/50 backdrop-blur-sm hover:bg-background/80"
+                >
+                  Contact Us
+                </Button>
+              </div>
             </motion.div>
             
             {/* Trust Indicators */}

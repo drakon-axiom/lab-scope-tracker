@@ -61,7 +61,7 @@ const Landing = () => {
             </motion.div>
             
             <motion.h1 
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-foreground"
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -70,7 +70,7 @@ const Landing = () => {
             </motion.h1>
             
             <motion.p 
-              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl leading-relaxed"
+              className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl leading-relaxed"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}

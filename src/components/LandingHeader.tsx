@@ -1,14 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export const LandingHeader = () => {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
     }
+    setMobileMenuOpen(false); // Close mobile menu after navigation
   };
 
   return (
@@ -69,8 +80,90 @@ export const LandingHeader = () => {
             </Button>
           </nav>
 
-          {/* CTA Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Mobile Menu */}
+          <div className="flex md:hidden items-center gap-2">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4 mt-8">
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("demo")}
+                    className="justify-start text-base"
+                  >
+                    Demo
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("services")}
+                    className="justify-start text-base"
+                  >
+                    Features
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("how-it-works")}
+                    className="justify-start text-base"
+                  >
+                    How It Works
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("about")}
+                    className="justify-start text-base"
+                  >
+                    About
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("contact")}
+                    className="justify-start text-base"
+                  >
+                    Contact
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => scrollToSection("faq")}
+                    className="justify-start text-base"
+                  >
+                    FAQ
+                  </Button>
+                  <div className="border-t pt-4 mt-4 flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigate("/auth");
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        navigate("/waitlist");
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Join Waitlist
+                    </Button>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {/* Desktop CTA Buttons */}
+          <div className="hidden md:flex items-center gap-2">
             <Button
               variant="ghost"
               onClick={() => navigate("/auth")}

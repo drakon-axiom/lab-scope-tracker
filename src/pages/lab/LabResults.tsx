@@ -100,6 +100,7 @@ export default function LabResults() {
           product_id,
           additional_report_headers,
           additional_headers_data,
+          test_results,
           products (name)
         `)
         .eq("quote_id", quoteId);
@@ -112,31 +113,38 @@ export default function LabResults() {
       // Initialize item results for each quote item and additional headers
       const results: ItemResult[] = [];
       items.forEach((item: any) => {
+        // Parse existing test results if available
+        const existingResults = item.test_results ? JSON.parse(item.test_results) : null;
+        const existingMain = existingResults?.main || {};
+        const existingAdditional = existingResults?.additional_headers || [];
+
         // Main product entry
         results.push({
           quote_item_id: item.id,
           header_index: 0,
           header_label: item.products.name,
           header_data: null,
-          report_url: "",
-          potency: "",
-          purity: "",
-          identity: "",
+          report_url: existingMain.report_url || "",
+          potency: existingMain.potency || "",
+          purity: existingMain.purity || "",
+          identity: existingMain.identity || "",
         });
 
         // Additional header entries
         const additionalHeaders = item.additional_headers_data || [];
         for (let i = 0; i < (item.additional_report_headers || 0); i++) {
           const headerData = additionalHeaders[i] || {};
+          const existingHeader = existingAdditional.find((h: any) => h.header_index === i + 1) || {};
+          
           results.push({
             quote_item_id: item.id,
             header_index: i + 1,
             header_label: `${item.products.name} - Header #${i + 1}`,
             header_data: headerData,
-            report_url: "",
-            potency: "",
-            purity: "",
-            identity: "",
+            report_url: existingHeader.report_url || "",
+            potency: existingHeader.potency || "",
+            purity: existingHeader.purity || "",
+            identity: existingHeader.identity || "",
           });
         }
       });
@@ -159,17 +167,18 @@ export default function LabResults() {
   const handleSubmitResults = async () => {
     if (!selectedQuote) return;
 
-    // Validate that all results have at least a report URL
-    const missingUrls = itemResults.filter(r => !r.report_url.trim());
-    if (missingUrls.length > 0) {
-      toast.error("Please provide a report URL for all entries");
+    // Filter results that have been filled out (have report URL)
+    const filledResults = itemResults.filter(r => r.report_url.trim());
+    
+    if (filledResults.length === 0) {
+      toast.error("Please provide at least one result to submit");
       return;
     }
 
     setUploading(true);
     try {
-      // Group results by quote_item_id
-      const resultsByItem = itemResults.reduce((acc, result) => {
+      // Group filled results by quote_item_id
+      const resultsByItem = filledResults.reduce((acc, result) => {
         if (!acc[result.quote_item_id]) {
           acc[result.quote_item_id] = [];
         }
@@ -177,62 +186,119 @@ export default function LabResults() {
         return acc;
       }, {} as Record<string, ItemResult[]>);
 
-      // Update each quote item
+      // Get existing test results for each item
+      const { data: existingItems } = await supabase
+        .from("quote_items")
+        .select("id, test_results, additional_report_headers")
+        .in("id", Object.keys(resultsByItem));
+
+      const existingTestResults = new Map(
+        existingItems?.map(item => [
+          item.id, 
+          item.test_results ? JSON.parse(item.test_results) : null
+        ]) || []
+      );
+
+      // Update each quote item with new results merged with existing
       for (const [itemId, results] of Object.entries(resultsByItem)) {
         const mainResult = results.find(r => r.header_index === 0);
         const additionalResults = results.filter(r => r.header_index > 0);
+        
+        // Get existing results to preserve previously submitted data
+        const existing = existingTestResults.get(itemId) || { additional_headers: [] };
 
+        // Merge new results with existing
         const testResults = {
-          main: {
-            report_url: mainResult?.report_url,
-            potency: mainResult?.potency,
-            purity: mainResult?.purity,
-            identity: mainResult?.identity,
-          },
-          additional_headers: additionalResults.map(r => ({
-            header_index: r.header_index,
-            header_data: r.header_data,
-            report_url: r.report_url,
-            potency: r.potency,
-            purity: r.purity,
-            identity: r.identity,
-          })),
+          main: mainResult ? {
+            report_url: mainResult.report_url,
+            potency: mainResult.potency,
+            purity: mainResult.purity,
+            identity: mainResult.identity,
+          } : existing.main,
+          additional_headers: [
+            ...(existing.additional_headers || []),
+            ...additionalResults.map(r => ({
+              header_index: r.header_index,
+              header_data: r.header_data,
+              report_url: r.report_url,
+              potency: r.potency,
+              purity: r.purity,
+              identity: r.identity,
+            }))
+          ].reduce((acc, curr) => {
+            // Remove duplicates by header_index, keeping latest
+            const existingIndex = acc.findIndex(a => a.header_index === curr.header_index);
+            if (existingIndex >= 0) {
+              acc[existingIndex] = curr;
+            } else {
+              acc.push(curr);
+            }
+            return acc;
+          }, [] as any[]),
         };
+
+        // Find the item to check total expected headers
+        const item = existingItems?.find(i => i.id === itemId);
+        const totalExpectedResults = 1 + (item?.additional_report_headers || 0);
+        const submittedCount = (testResults.main ? 1 : 0) + testResults.additional_headers.length;
+        const isComplete = submittedCount >= totalExpectedResults;
 
         await supabase
           .from("quote_items")
           .update({
-            report_url: mainResult?.report_url || null,
+            report_url: testResults.main?.report_url || null,
             test_results: JSON.stringify(testResults),
             testing_notes: notes || null,
-            status: "completed",
-            date_completed: new Date().toISOString(),
+            status: isComplete ? "completed" : "pending",
+            date_completed: isComplete ? new Date().toISOString() : null,
           })
           .eq("id", itemId);
       }
 
-      // Update quote status
-      await supabase
-        .from("quotes")
-        .update({ status: "completed" })
-        .eq("id", selectedQuote.id);
+      // Check if all quote items are completed
+      const { data: allItems } = await supabase
+        .from("quote_items")
+        .select("status")
+        .eq("quote_id", selectedQuote.id);
+
+      const allCompleted = allItems?.every(item => item.status === "completed");
+
+      // Update quote status only if all items are completed
+      if (allCompleted) {
+        await supabase
+          .from("quotes")
+          .update({ status: "completed" })
+          .eq("id", selectedQuote.id);
+      }
 
       // Log activity
       await supabase.from("quote_activity_log").insert({
         quote_id: selectedQuote.id,
         activity_type: "results_submitted",
-        description: "Lab submitted test results",
+        description: allCompleted 
+          ? "Lab submitted final test results - all items completed" 
+          : "Lab submitted partial test results",
         metadata: { 
-          items_count: Object.keys(resultsByItem).length,
-          total_results: itemResults.length,
+          items_updated: Object.keys(resultsByItem).length,
+          results_submitted: filledResults.length,
+          all_completed: allCompleted,
         },
       });
 
-      toast.success("Results submitted successfully");
+      toast.success(
+        allCompleted 
+          ? "All results submitted - quote completed!" 
+          : `Submitted ${filledResults.length} result${filledResults.length > 1 ? 's' : ''}`
+      );
+      
       setDialogOpen(false);
       setSelectedQuote(null);
       resetForm();
-      setQuotes(quotes.filter(q => q.id !== selectedQuote.id));
+      
+      // Only remove from list if all items are completed
+      if (allCompleted) {
+        setQuotes(quotes.filter(q => q.id !== selectedQuote.id));
+      }
     } catch (error) {
       console.error("Error submitting results:", error);
       toast.error("Failed to submit results");
@@ -330,11 +396,18 @@ export default function LabResults() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center justify-between">
                         <span>{result.header_label}</span>
-                        {result.header_index > 0 && (
-                          <Badge variant="outline" className="ml-2">
-                            Additional Report
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {result.report_url && (
+                            <Badge variant="secondary" className="text-xs">
+                              Filled
+                            </Badge>
+                          )}
+                          {result.header_index > 0 && (
+                            <Badge variant="outline" className="ml-2">
+                              Additional Report
+                            </Badge>
+                          )}
+                        </div>
                       </CardTitle>
                       {result.header_data && (
                         <div className="text-xs text-muted-foreground space-y-1 mt-2">
@@ -412,17 +485,20 @@ export default function LabResults() {
               </div>
             </ScrollArea>
 
-            <DialogFooter>
+            <DialogFooter className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {itemResults.filter(r => r.report_url.trim()).length} of {itemResults.length} results filled
+              </div>
               <Button
                 onClick={handleSubmitResults}
-                disabled={uploading || itemResults.length === 0}
+                disabled={uploading || itemResults.filter(r => r.report_url.trim()).length === 0}
               >
                 {uploading ? (
                   <>Submitting...</>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-1" />
-                    Submit All Results
+                    Submit Results
                   </>
                 )}
               </Button>

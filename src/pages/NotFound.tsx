@@ -19,7 +19,7 @@ const NotFound = () => {
             <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-xl" />
             <img 
               src="/logo.png" 
-              alt="Testing Tracker" 
+              alt="SafeBatch" 
               className="relative h-24 w-24"
             />
           </div>

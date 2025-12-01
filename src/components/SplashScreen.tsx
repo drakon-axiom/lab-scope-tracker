@@ -45,14 +45,14 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           {/* Logo with scale animation */}
           <img
             src="/logo.png"
-            alt="Testing Tracker"
+            alt="SafeBatch"
             className="relative h-32 w-32 animate-[scale-in_0.6s_ease-out] drop-shadow-[0_0_20px_rgba(67,188,205,0.6)]"
           />
         </div>
 
         {/* App name with fade-in animation */}
         <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: "0.3s", animationFillMode: "backwards" }}>
-          <h1 className="text-3xl font-bold text-foreground">Testing Tracker</h1>
+          <h1 className="text-3xl font-bold text-foreground">SafeBatch</h1>
           
           {/* Animated loading dots */}
           <div className="flex gap-1.5">

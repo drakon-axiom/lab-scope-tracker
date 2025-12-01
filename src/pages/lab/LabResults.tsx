@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
-import { Upload, Link as LinkIcon, FileText } from "lucide-react";
+import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -77,6 +77,8 @@ export default function LabResults() {
   const [submissionHistory, setSubmissionHistory] = useState<SubmissionHistory[]>([]);
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [sortBy, setSortBy] = useState<"progress" | "quote" | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -384,6 +386,52 @@ export default function LabResults() {
     setNotes("");
   };
 
+  const getProgressColor = (completedResults: number, totalResults: number) => {
+    if (totalResults === 0) return "bg-muted";
+    const percentage = (completedResults / totalResults) * 100;
+    if (percentage === 0) return "bg-red-500";
+    if (percentage === 100) return "bg-green-500";
+    return "bg-yellow-500";
+  };
+
+  const handleSort = (column: "progress" | "quote") => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+  };
+
+  const sortedQuotes = [...quotes].sort((a, b) => {
+    if (!sortBy) return 0;
+
+    if (sortBy === "progress") {
+      const aProgress = a.totalResults ? (a.completedResults! / a.totalResults) : 0;
+      const bProgress = b.totalResults ? (b.completedResults! / b.totalResults) : 0;
+      return sortOrder === "asc" ? aProgress - bProgress : bProgress - aProgress;
+    }
+
+    if (sortBy === "quote") {
+      const aQuote = a.quote_number || "";
+      const bQuote = b.quote_number || "";
+      return sortOrder === "asc" 
+        ? aQuote.localeCompare(bQuote) 
+        : bQuote.localeCompare(aQuote);
+    }
+
+    return 0;
+  });
+
+  // Calculate aggregate statistics
+  const totalQuotes = quotes.length;
+  const totalResultsNeeded = quotes.reduce((sum, q) => sum + (q.totalResults || 0), 0);
+  const totalResultsCompleted = quotes.reduce((sum, q) => sum + (q.completedResults || 0), 0);
+  const overallProgress = totalResultsNeeded ? (totalResultsCompleted / totalResultsNeeded) * 100 : 0;
+  const quotesFullyCompleted = quotes.filter(q => 
+    q.totalResults && q.completedResults === q.totalResults
+  ).length;
+
   return (
     <LabLayout>
       <div className="space-y-6">
@@ -394,6 +442,53 @@ export default function LabResults() {
           </p>
         </div>
 
+        {/* Aggregate Progress Summary */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Quotes</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalQuotes}</div>
+              <p className="text-xs text-muted-foreground">
+                {quotesFullyCompleted} fully completed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Results</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalResultsCompleted} / {totalResultsNeeded}</div>
+              <p className="text-xs text-muted-foreground">
+                Results submitted
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
+              <div className="text-sm font-bold">{overallProgress.toFixed(1)}%</div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-4 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all ${getProgressColor(totalResultsCompleted, totalResultsNeeded)}`}
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Across all active testing quotes
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Tests Ready for Results</CardTitle>
@@ -402,9 +497,29 @@ export default function LabResults() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Quote #</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8"
+                      onClick={() => handleSort("quote")}
+                    >
+                      Quote #
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8"
+                      onClick={() => handleSort("progress")}
+                    >
+                      Progress
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -415,14 +530,14 @@ export default function LabResults() {
                       Loading...
                     </TableCell>
                   </TableRow>
-                ) : quotes.length === 0 ? (
+                ) : sortedQuotes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No tests awaiting results
                     </TableCell>
                   </TableRow>
                 ) : (
-                  quotes.map((quote) => (
+                  sortedQuotes.map((quote) => (
                     <TableRow key={quote.id}>
                       <TableCell className="font-medium">
                         {quote.quote_number || "N/A"}
@@ -438,7 +553,7 @@ export default function LabResults() {
                           <div className="flex-1 max-w-[100px]">
                             <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div 
-                                className="h-full bg-primary transition-all"
+                                className={`h-full transition-all ${getProgressColor(quote.completedResults || 0, quote.totalResults || 0)}`}
                                 style={{ 
                                   width: `${quote.totalResults ? (quote.completedResults! / quote.totalResults * 100) : 0}%` 
                                 }}

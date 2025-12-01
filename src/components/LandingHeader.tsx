@@ -62,7 +62,7 @@ export const LandingHeader = () => {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => navigate("/faq")}
+              onClick={() => scrollToSection("faq")}
               className="text-sm font-medium"
             >
               FAQ

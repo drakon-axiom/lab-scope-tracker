@@ -147,17 +147,7 @@ export const LandingHeader = () => {
                   >
                     FAQ
                   </Button>
-                  <div className="border-t pt-4 mt-4 flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        navigate("/auth");
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full"
-                    >
-                      Sign In
-                    </Button>
+                  <div className="border-t pt-4 mt-4">
                     <Button
                       onClick={() => {
                         navigate("/waitlist");
@@ -175,13 +165,6 @@ export const LandingHeader = () => {
 
           {/* Desktop CTA Buttons */}
           <div className="hidden lg:flex items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/auth")}
-              className="hidden sm:inline-flex"
-            >
-              Sign In
-            </Button>
             <Button
               onClick={() => navigate("/waitlist")}
             >

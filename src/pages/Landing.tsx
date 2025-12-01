@@ -15,7 +15,7 @@ const Landing = () => {
       <LandingHeader />
       
       {/* Hero Section */}
-      <section className="relative min-h-[600px] md:min-h-[700px] flex items-center overflow-hidden">
+      <section className="relative min-h-[500px] md:min-h-[600px] flex items-center overflow-hidden">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -32,12 +32,8 @@ const Landing = () => {
               Welcome to SafeBatch
             </Badge>
             
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                Test Submission & Tracking
-              </span>
-              <br />
-              <span className="text-foreground">Platform</span>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-foreground">
+              Test Submission & Tracking Platform
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl leading-relaxed">

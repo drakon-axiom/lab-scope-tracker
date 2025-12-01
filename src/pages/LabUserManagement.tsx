@@ -135,34 +135,34 @@ export default function LabUserManagement() {
 
     setCreating(true);
     try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
+      // Get current user for created_by field
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      // Call edge function to create user with service role
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email,
+          password,
+          role: "lab",
+          metadata: {
+            lab_id: selectedLabId,
+            lab_role: selectedRole,
+            created_by: currentUser?.id,
+          },
+        },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("User creation failed");
-
-      // Assign lab role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "lab",
-        });
-
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (!data?.user) throw new Error("User creation failed");
 
       // Link to lab
       const { error: labUserError } = await supabase
         .from("lab_users")
         .insert({
-          user_id: authData.user.id,
+          user_id: data.user.id,
           lab_id: selectedLabId,
           role: selectedRole,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: currentUser?.id,
         });
 
       if (labUserError) throw labUserError;

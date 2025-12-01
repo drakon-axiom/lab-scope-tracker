@@ -44,7 +44,7 @@ const Landing = () => {
           style={{ backgroundImage: `url(${heroBackground})` }}
         >
           {/* Dark Overlay for Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-background/98 via-background/92 to-background/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/80 to-black/60" />
         </div>
         
         {/* Content */}
@@ -62,6 +62,7 @@ const Landing = () => {
             
             <motion.h1 
               className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
+              style={{ textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)' }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}

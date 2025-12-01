@@ -16,12 +16,12 @@ const Landing = () => {
             <div className="flex items-center gap-3 mb-4">
               <img src="/logo.png" alt="Logo" className="h-16 w-16" />
               <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                Scientific Testing Solutions
+                Test Submission & Tracking Platform
               </h1>
             </div>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl">
-              Professional analytical testing services for peptides, SARMs, AAS, and small molecules. 
-              Trusted by researchers and manufacturers worldwide.
+              Streamline your testing workflow. Submit compounds to certified labs, track progress, and manage results—all in one place. 
+              Perfect for businesses and researchers who need testing guidance or handle high volumes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
               <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
@@ -39,10 +39,10 @@ const Landing = () => {
       <section id="services" className="py-16 md:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <Badge className="mb-4" variant="secondary">Our Services</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Comprehensive Testing Solutions</h2>
+            <Badge className="mb-4" variant="secondary">Platform Features</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Manage Lab Testing</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              State-of-the-art analytical testing across multiple compound categories
+              Submit compounds to certified third-party labs and track every step of the process
             </p>
           </div>
 
@@ -52,9 +52,9 @@ const Landing = () => {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Beaker className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Peptide Analysis</CardTitle>
+                <CardTitle>Multi-Lab Submission</CardTitle>
                 <CardDescription>
-                  High-precision testing for Tirzepatide, Semaglutide, Retatrutide, and research peptides
+                  Submit compounds to certified third-party labs including peptides, SARMs, AAS, and small molecules
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -64,9 +64,9 @@ const Landing = () => {
                 <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
                   <Shield className="h-6 w-6 text-accent" />
                 </div>
-                <CardTitle>SARMs & AAS Testing</CardTitle>
+                <CardTitle>Quote Management</CardTitle>
                 <CardDescription>
-                  Comprehensive analysis for selective androgen receptor modulators and anabolic androgenic steroids
+                  Generate quotes, communicate with labs, and manage approvals all from one centralized platform
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -76,9 +76,9 @@ const Landing = () => {
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Fast Turnaround</CardTitle>
+                <CardTitle>Real-Time Tracking</CardTitle>
                 <CardDescription>
-                  Quick processing times with automated tracking and real-time status updates throughout the testing process
+                  Track shipments, testing progress, and delivery status with automated updates—no more email hunting
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -88,9 +88,9 @@ const Landing = () => {
                 <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
                   <Award className="h-6 w-6 text-accent" />
                 </div>
-                <CardTitle>Certified Labs</CardTitle>
+                <CardTitle>Vendor Coordination</CardTitle>
                 <CardDescription>
-                  Partner with accredited testing facilities meeting international quality and safety standards
+                  Seamlessly coordinate with multiple certified lab partners for pricing, scheduling, and results delivery
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -98,11 +98,11 @@ const Landing = () => {
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Beaker className="h-6 w-6 text-primary" />
+                  <Mail className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Small Molecules</CardTitle>
+                <CardTitle>Automated Notifications</CardTitle>
                 <CardDescription>
-                  Advanced analytical methods for small molecule compounds and pharmaceutical intermediates
+                  Receive email alerts for payment reminders, delivery confirmations, and test completion updates
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -112,9 +112,9 @@ const Landing = () => {
                 <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
                   <Shield className="h-6 w-6 text-accent" />
                 </div>
-                <CardTitle>Quality Assurance</CardTitle>
+                <CardTitle>Complete Audit Trail</CardTitle>
                 <CardDescription>
-                  Rigorous quality control protocols ensuring accurate, reliable, and reproducible results
+                  Full activity logs and email history ensure compliance and visibility for high-volume testing workflows
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -128,20 +128,22 @@ const Landing = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <Badge className="mb-4" variant="secondary">About Us</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Your Trusted Testing Partner</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">Your Testing Management Partner</h2>
               <div className="space-y-4 text-lg text-muted-foreground">
                 <p>
-                  We provide comprehensive analytical testing services for research compounds, pharmaceuticals, 
-                  and specialized molecules. Our platform streamlines the entire testing workflow from quote 
-                  generation to final report delivery.
+                  We're a software platform that simplifies how you submit compounds to third-party testing labs 
+                  and track results. Whether you need guidance on testing processes or handle high volumes, 
+                  our platform replaces chaotic email threads with organized workflows.
                 </p>
                 <p>
-                  Working with certified laboratory partners worldwide, we ensure your compounds receive 
-                  accurate, timely analysis using state-of-the-art instrumentation and methodologies.
+                  Our platform connects you with certified laboratory partners worldwide, managing the entire 
+                  process—from quote generation to final report delivery. You get one central place to coordinate 
+                  with multiple labs, track shipments, and manage testing progress.
                 </p>
                 <p>
-                  Our automated system handles quote management, payment processing, shipping logistics, 
-                  and result tracking - giving you complete visibility throughout the testing lifecycle.
+                  Stop juggling emails and spreadsheets. Our automated system handles quote approvals, payment 
+                  tracking, shipping coordination, and result notifications—giving you complete visibility and 
+                  control throughout the testing lifecycle.
                 </p>
               </div>
             </div>
@@ -180,9 +182,9 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <Badge className="mb-4" variant="secondary">Contact Us</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Get in Touch</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Started</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Ready to start testing? Contact our team for quotes and inquiries
+              Ready to streamline your lab testing workflow? Create an account or reach out for questions
             </p>
           </div>
 

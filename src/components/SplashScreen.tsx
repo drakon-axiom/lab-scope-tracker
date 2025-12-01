@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import logo from "@/assets/logo.png";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -45,7 +44,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           
           {/* Logo with scale animation */}
           <img
-            src={logo}
+            src="/logo.png"
             alt="Testing Tracker"
             className="relative h-32 w-32 animate-[scale-in_0.6s_ease-out] drop-shadow-[0_0_20px_rgba(67,188,205,0.6)]"
           />

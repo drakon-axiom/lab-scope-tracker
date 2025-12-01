@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/logo.png";
 
 const NotFound = () => {
   const location = useLocation();
@@ -19,7 +18,7 @@ const NotFound = () => {
           <div className="relative">
             <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-xl" />
             <img 
-              src={logo} 
+              src="/logo.png" 
               alt="Testing Tracker" 
               className="relative h-24 w-24"
             />

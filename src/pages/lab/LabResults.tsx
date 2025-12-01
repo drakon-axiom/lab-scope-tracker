@@ -53,6 +53,15 @@ interface ItemResult {
   potency: string;
   purity: string;
   identity: string;
+  isSubmitted?: boolean; // Track if this result was previously submitted
+}
+
+interface SubmissionHistory {
+  id: string;
+  created_at: string;
+  description: string;
+  metadata: any;
+  user_id: string | null;
 }
 
 export default function LabResults() {
@@ -63,6 +72,7 @@ export default function LabResults() {
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [itemResults, setItemResults] = useState<ItemResult[]>([]);
+  const [submissionHistory, setSubmissionHistory] = useState<SubmissionHistory[]>([]);
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -90,6 +100,22 @@ export default function LabResults() {
 
     fetchQuotes();
   }, [labUser?.lab_id]);
+
+  const fetchSubmissionHistory = async (quoteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("quote_activity_log")
+        .select("id, created_at, description, metadata, user_id")
+        .eq("quote_id", quoteId)
+        .eq("activity_type", "results_submitted")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setSubmissionHistory(data || []);
+    } catch (error) {
+      console.error("Error fetching submission history:", error);
+    }
+  };
 
   const fetchQuoteItems = async (quoteId: string) => {
     try {
@@ -119,6 +145,7 @@ export default function LabResults() {
         const existingAdditional = existingResults?.additional_headers || [];
 
         // Main product entry
+        const hasMainResult = !!(existingMain.report_url);
         results.push({
           quote_item_id: item.id,
           header_index: 0,
@@ -128,6 +155,7 @@ export default function LabResults() {
           potency: existingMain.potency || "",
           purity: existingMain.purity || "",
           identity: existingMain.identity || "",
+          isSubmitted: hasMainResult,
         });
 
         // Additional header entries
@@ -135,6 +163,7 @@ export default function LabResults() {
         for (let i = 0; i < (item.additional_report_headers || 0); i++) {
           const headerData = additionalHeaders[i] || {};
           const existingHeader = existingAdditional.find((h: any) => h.header_index === i + 1) || {};
+          const hasHeaderResult = !!(existingHeader.report_url);
           
           results.push({
             quote_item_id: item.id,
@@ -145,6 +174,7 @@ export default function LabResults() {
             potency: existingHeader.potency || "",
             purity: existingHeader.purity || "",
             identity: existingHeader.identity || "",
+            isSubmitted: hasHeaderResult,
           });
         }
       });
@@ -364,6 +394,7 @@ export default function LabResults() {
                           onClick={() => {
                             setSelectedQuote(quote);
                             fetchQuoteItems(quote.id);
+                            fetchSubmissionHistory(quote.id);
                             setDialogOpen(true);
                           }}
                         >
@@ -391,15 +422,70 @@ export default function LabResults() {
             
             <ScrollArea className="max-h-[60vh] pr-4">
               <div className="space-y-6">
+                {/* Submission History */}
+                {submissionHistory.length > 0 && (
+                  <Card className="bg-muted/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Submission History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {submissionHistory.map((history) => (
+                        <div key={history.id} className="flex items-start gap-3 text-xs border-l-2 border-primary pl-3 py-1">
+                          <div className="flex-1">
+                            <div className="font-medium">{history.description}</div>
+                            <div className="text-muted-foreground mt-1">
+                              {new Date(history.created_at).toLocaleString()}
+                            </div>
+                            {history.metadata && (
+                              <div className="text-muted-foreground mt-1">
+                                {history.metadata.results_submitted && (
+                                  <span>{history.metadata.results_submitted} result(s) submitted</span>
+                                )}
+                                {history.metadata.all_completed && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    All Completed
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Status Summary */}
+                <div className="flex gap-4 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-green-500">
+                      Submitted: {itemResults.filter(r => r.isSubmitted).length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      Pending: {itemResults.filter(r => !r.isSubmitted).length}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Result Entries */}
                 {itemResults.map((result, index) => (
-                  <Card key={`${result.quote_item_id}-${result.header_index}`}>
+                  <Card key={`${result.quote_item_id}-${result.header_index}`} className={result.isSubmitted ? "border-green-500/30 bg-green-500/5" : ""}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center justify-between">
                         <span>{result.header_label}</span>
                         <div className="flex items-center gap-2">
-                          {result.report_url && (
-                            <Badge variant="secondary" className="text-xs">
-                              Filled
+                          {result.isSubmitted ? (
+                            <Badge variant="default" className="bg-green-500">
+                              Submitted
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              Pending
                             </Badge>
                           )}
                           {result.header_index > 0 && (

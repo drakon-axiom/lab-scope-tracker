@@ -5,6 +5,7 @@ import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircl
 import { useNavigate } from "react-router-dom";
 import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
+import heroBackground from "@/assets/hero-background.jpg";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -14,50 +15,66 @@ const Landing = () => {
       <LandingHeader />
       
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="container mx-auto px-4 py-20 md:py-32">
-          <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
-            <Badge variant="secondary" className="mb-2">
+      <section className="relative min-h-[600px] md:min-h-[700px] flex items-center overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroBackground})` }}
+        >
+          {/* Dark Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/70" />
+        </div>
+        
+        {/* Content */}
+        <div className="relative container mx-auto px-4 py-20 md:py-32 z-10">
+          <div className="max-w-3xl">
+            <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
               Welcome to SafeBatch
             </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent leading-tight">
-              Test Submission & Tracking Platform
+            
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+              <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
+                Test Submission & Tracking
+              </span>
+              <br />
+              <span className="text-foreground">Platform</span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl">
+            
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl leading-relaxed">
               Streamline your testing workflow. Submit compounds to certified labs, track progress, and manage results—all in one place. 
               Perfect for businesses and researchers who need testing guidance or handle high volumes.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8">
+            
+            <div className="flex flex-col sm:flex-row gap-4 mb-12">
+              <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8 shadow-lg">
                 Join Waitlist
               </Button>
-              <Button size="lg" variant="outline" onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })} className="text-lg px-8">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })} 
+                className="text-lg px-8 bg-background/50 backdrop-blur-sm hover:bg-background/80"
+              >
                 Contact Us
               </Button>
             </div>
             
             {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center gap-8 pt-8 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-6 text-sm">
+              <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5 text-primary" />
-                <span>Certified Labs</span>
+                <span className="font-medium">Certified Labs</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5 text-primary" />
-                <span>Real-time Tracking</span>
+                <span className="font-medium">Real-time Tracking</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5 text-primary" />
-                <span>Automated Workflows</span>
+                <span className="font-medium">Automated Workflows</span>
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Decorative Elements */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
         </div>
       </section>
 

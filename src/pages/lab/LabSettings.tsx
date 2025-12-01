@@ -19,6 +19,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProductPricing {
   id: string;
@@ -48,6 +55,7 @@ export default function LabSettings() {
   const [loading, setLoading] = useState(true);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -103,12 +111,17 @@ export default function LabSettings() {
     fetchData();
   }, [labUser?.lab_id]);
 
+  // Get unique categories
+  const categories = Array.from(new Set(pricing.map(p => p.products.category).filter(Boolean))) as string[];
+
   // Filter and sort pricing data
   const filteredPricing = pricing
-    .filter((item) =>
-      item.products.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.products.category?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    .filter((item) => {
+      const matchesSearch = item.products.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.products.category?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || item.products.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    })
     .sort((a, b) => a.products.name.localeCompare(b.products.name));
 
   const handlePriceUpdate = async (pricingId: string, productId: string, oldPrice: number, newPrice: number) => {
@@ -186,8 +199,8 @@ export default function LabSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="relative">
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by test name or category..."
@@ -196,6 +209,19 @@ export default function LabSettings() {
                   className="pl-9"
                 />
               </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full sm:w-[200px] bg-background">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border z-50">
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Table>
               <TableHeader>

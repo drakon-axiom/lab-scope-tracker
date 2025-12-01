@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone } from "lucide-react";
+import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
@@ -118,6 +118,123 @@ const Landing = () => {
                 </CardDescription>
               </CardHeader>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <Badge className="mb-4" variant="secondary">How It Works</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple 6-Step Process</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              From quote creation to final results, we handle the complexity so you can focus on what matters
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Step 1 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center relative">
+                  <FileText className="h-8 w-8 text-primary" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    1
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Create Quote</h3>
+                <p className="text-muted-foreground">
+                  Select your compounds, choose a certified lab, and generate a testing quote with detailed specifications
+                </p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center relative">
+                  <CheckCircle className="h-8 w-8 text-accent" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-bold">
+                    2
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Lab Approval</h3>
+                <p className="text-muted-foreground">
+                  Lab reviews your quote, verifies pricing, and approves—you'll receive automated notifications throughout
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center relative">
+                  <CreditCard className="h-8 w-8 text-primary" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    3
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Make Payment</h3>
+                <p className="text-muted-foreground">
+                  Submit payment to the lab and track payment status—labs receive automatic confirmation notifications
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center relative">
+                  <Package className="h-8 w-8 text-accent" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-bold">
+                    4
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Ship Samples</h3>
+                <p className="text-muted-foreground">
+                  Generate shipping labels or add tracking manually—automated UPS tracking keeps you updated in real-time
+                </p>
+              </div>
+            </div>
+
+            {/* Step 5 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center relative">
+                  <Activity className="h-8 w-8 text-primary" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    5
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Track Progress</h3>
+                <p className="text-muted-foreground">
+                  Monitor testing progress from delivery to completion with status updates and activity logs
+                </p>
+              </div>
+            </div>
+
+            {/* Step 6 */}
+            <div className="relative">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center relative">
+                  <Download className="h-8 w-8 text-accent" />
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-bold">
+                    6
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">Receive Results</h3>
+                <p className="text-muted-foreground">
+                  Access lab reports, download PDFs, and maintain complete testing records—all in one organized platform
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
+              Start Your First Quote
+            </Button>
           </div>
         </div>
       </section>

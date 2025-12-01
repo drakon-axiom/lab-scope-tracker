@@ -26,6 +26,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useLabUser } from "@/hooks/useLabUser";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, X } from "lucide-react";
 
 interface LabLayoutProps {
   children: ReactNode;
@@ -44,9 +46,15 @@ const navItems = [
 export default function LabLayout({ children }: LabLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { labUser, loading } = useLabUser();
+  const { labUser, loading, isImpersonating } = useLabUser();
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const stopImpersonating = () => {
+    sessionStorage.removeItem("impersonatedLabId");
+    sessionStorage.removeItem("impersonatedLabName");
+    navigate("/lab-user-management");
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -114,6 +122,27 @@ export default function LabLayout({ children }: LabLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Impersonation Banner */}
+      {isImpersonating && (
+        <Alert className="rounded-none border-x-0 border-t-0 bg-amber-500/10 border-amber-500">
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-sm">
+              <strong>Admin Mode:</strong> You are viewing as {labUser?.lab_name}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={stopImpersonating}
+              className="h-6 px-2"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Exit
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">

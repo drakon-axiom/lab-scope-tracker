@@ -1,0 +1,402 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { toast } from "sonner";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+
+interface Lab {
+  id: string;
+  name: string;
+}
+
+interface LabUser {
+  id: string;
+  user_id: string;
+  lab_id: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  labs: {
+    name: string;
+  };
+  email?: string;
+}
+
+export default function LabUserManagement() {
+  const navigate = useNavigate();
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const [labs, setLabs] = useState<Lab[]>([]);
+  const [labUsers, setLabUsers] = useState<LabUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedLabId, setSelectedLabId] = useState("");
+  const [selectedRole, setSelectedRole] = useState("member");
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      navigate("/dashboard");
+      return;
+    }
+
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [isAdmin, roleLoading, navigate]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch labs
+      const { data: labsData, error: labsError } = await supabase
+        .from("labs")
+        .select("id, name")
+        .order("name");
+
+      if (labsError) throw labsError;
+      setLabs(labsData || []);
+
+      // Fetch lab users
+      const { data: labUsersData, error: labUsersError } = await supabase
+        .from("lab_users")
+        .select(`
+          id,
+          user_id,
+          lab_id,
+          role,
+          is_active,
+          created_at,
+          labs:lab_id (
+            name
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (labUsersError) throw labUsersError;
+
+      // Fetch user emails from auth
+      const usersWithEmails = await Promise.all(
+        (labUsersData || []).map(async (labUser) => {
+          const { data: { user } } = await supabase.auth.admin.getUserById(labUser.user_id);
+          return {
+            ...labUser,
+            email: user?.email || "Unknown",
+          };
+        })
+      );
+
+      setLabUsers(usersWithEmails as any);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load lab users");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateLabUser = async () => {
+    if (!email || !password || !selectedLabId) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("User creation failed");
+
+      // Assign lab role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: authData.user.id,
+          role: "lab",
+        });
+
+      if (roleError) throw roleError;
+
+      // Link to lab
+      const { error: labUserError } = await supabase
+        .from("lab_users")
+        .insert({
+          user_id: authData.user.id,
+          lab_id: selectedLabId,
+          role: selectedRole,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        });
+
+      if (labUserError) throw labUserError;
+
+      toast.success("Lab user created successfully");
+      setDialogOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error("Error creating lab user:", error);
+      toast.error(error.message || "Failed to create lab user");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (labUserId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("lab_users")
+        .update({ is_active: !currentStatus })
+        .eq("id", labUserId);
+
+      if (error) throw error;
+
+      toast.success(`Lab user ${!currentStatus ? "activated" : "deactivated"}`);
+      fetchData();
+    } catch (error) {
+      console.error("Error toggling status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleDeleteLabUser = async (labUserId: string, userId: string) => {
+    if (!confirm("Are you sure you want to delete this lab user? This will also delete their auth account.")) {
+      return;
+    }
+
+    try {
+      // Delete lab_users record
+      const { error: labUserError } = await supabase
+        .from("lab_users")
+        .delete()
+        .eq("id", labUserId);
+
+      if (labUserError) throw labUserError;
+
+      // Delete auth user
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      if (authError) throw authError;
+
+      toast.success("Lab user deleted");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting lab user:", error);
+      toast.error("Failed to delete lab user");
+    }
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setSelectedLabId("");
+    setSelectedRole("member");
+  };
+
+  if (roleLoading || loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p>Loading...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Lab User Management</h1>
+            <p className="text-muted-foreground mt-1">
+              Create and manage lab portal accounts
+            </p>
+          </div>
+          <Button onClick={() => setDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Create Lab User
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lab Users</CardTitle>
+            <CardDescription>
+              Accounts with access to the lab portal
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Lab</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {labUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      No lab users yet
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  labUsers.map((labUser) => (
+                    <TableRow key={labUser.id}>
+                      <TableCell className="font-medium">{labUser.email}</TableCell>
+                      <TableCell>{(labUser.labs as any)?.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{labUser.role}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={labUser.is_active ? "default" : "secondary"}>
+                          {labUser.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(labUser.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleToggleActive(labUser.id, labUser.is_active)}
+                          >
+                            {labUser.is_active ? (
+                              <ToggleRight className="h-4 w-4" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteLabUser(labUser.id, labUser.user_id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Create Lab User Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Lab User</DialogTitle>
+              <DialogDescription>
+                Create a new account for a lab to access the lab portal
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="lab@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Secure password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="lab">Lab</Label>
+                <Select value={selectedLabId} onValueChange={setSelectedLabId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labs.map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id}>
+                        {lab.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="role">Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateLabUser} disabled={creating}>
+                {creating ? "Creating..." : "Create Lab User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
+  );
+}

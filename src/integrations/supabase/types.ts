@@ -260,6 +260,44 @@ export type Database = {
           },
         ]
       }
+      lab_users: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          lab_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          lab_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          lab_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_users_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labs: {
         Row: {
           accreditations: string | null
@@ -385,6 +423,61 @@ export type Database = {
           validation_details?: Json | null
         }
         Relationships: []
+      }
+      pricing_audit_log: {
+        Row: {
+          change_reason: string | null
+          changed_at: string
+          changed_by: string
+          id: string
+          lab_id: string
+          new_price: number
+          old_price: number | null
+          product_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by: string
+          id?: string
+          lab_id: string
+          new_price: number
+          old_price?: number | null
+          product_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          lab_id?: string
+          new_price?: number
+          old_price?: number | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_audit_log_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "labs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_audit_log_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_audit_log_product_id_lab_id_fkey"
+            columns: ["product_id", "lab_id"]
+            isOneToOne: false
+            referencedRelation: "product_vendor_pricing"
+            referencedColumns: ["product_id", "lab_id"]
+          },
+        ]
       }
       product_vendor_pricing: {
         Row: {
@@ -934,6 +1027,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_lab_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -945,10 +1039,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_lab_user: { Args: { _user_id: string }; Returns: boolean }
       reset_monthly_usage: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "subscriber"
+      app_role: "admin" | "subscriber" | "lab"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1076,7 +1171,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "subscriber"],
+      app_role: ["admin", "subscriber", "lab"],
     },
   },
 } as const

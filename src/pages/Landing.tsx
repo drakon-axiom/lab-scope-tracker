@@ -327,7 +327,7 @@ const Landing = () => {
                 </div>
                 <CardTitle className="text-lg">Phone</CardTitle>
                 <CardDescription className="mt-2">
-                  +1 (555) 123-4567
+                  +1 (415) 555-0123
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -339,7 +339,8 @@ const Landing = () => {
                 </div>
                 <CardTitle className="text-lg">Location</CardTitle>
                 <CardDescription className="mt-2">
-                  Global Service Available
+                  1234 Lab Street, Suite 500<br />
+                  San Francisco, CA 94102
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -355,8 +356,26 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 SafeBatch. All rights reserved.</p>
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+            <p>&copy; 2025 SafeBatch. All rights reserved.</p>
+            <div className="flex gap-6">
+              <Button
+                variant="link"
+                className="text-muted-foreground p-0 h-auto"
+                onClick={() => navigate("/terms")}
+              >
+                Terms of Service
+              </Button>
+              <Button
+                variant="link"
+                className="text-muted-foreground p-0 h-auto"
+                onClick={() => navigate("/privacy")}
+              >
+                Privacy Policy
+              </Button>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

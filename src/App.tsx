@@ -23,6 +23,8 @@ import ImportChromatePricing from "./pages/ImportChromatePricing";
 import UserManagement from "./pages/UserManagement";
 import Waitlist from "./pages/Waitlist";
 import WaitlistManagement from "./pages/WaitlistManagement";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
@@ -86,6 +88,8 @@ const App = () => {
             <Route path="/user-management" element={<UserManagement />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/waitlist-management" element={<WaitlistManagement />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/security-settings" element={<SecuritySettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

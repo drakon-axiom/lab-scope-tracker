@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.84.0';
+import { getEmailSignature } from '../_shared/emailSignature.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -203,6 +204,8 @@ Deno.serve(async (req) => {
                   If you have any questions or need assistance with payment, please don't hesitate to reach out.
                 </p>
               </div>
+              
+              ${getEmailSignature()}
             </div>
           </body>
         </html>

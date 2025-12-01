@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Compounds", url: "/compounds", icon: FileCheck },
   { title: "Labs", url: "/labs", icon: FlaskConical },

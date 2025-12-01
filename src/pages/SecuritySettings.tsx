@@ -36,7 +36,7 @@ const SecuritySettings = () => {
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [isAdmin, roleLoading, navigate]);
 

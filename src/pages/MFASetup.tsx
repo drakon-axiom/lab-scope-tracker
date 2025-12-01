@@ -33,7 +33,7 @@ const MFASetup = () => {
     const { data: factors } = await supabase.auth.mfa.listFactors();
     if (factors?.totp && factors.totp.length > 0) {
       // User already has MFA enabled
-      navigate("/");
+      navigate("/dashboard");
     }
   };
 
@@ -81,7 +81,7 @@ const MFASetup = () => {
         description: "Two-factor authentication has been successfully enabled.",
       });
       
-      navigate("/");
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Verification failed",

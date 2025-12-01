@@ -3,6 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+import { getEmailSignature } from '../_shared/emailSignature.ts';
+
 interface QuoteEmailRequest {
   quoteId: string;
   labEmail: string;
@@ -350,6 +352,8 @@ Deno.serve(async (req) => {
               </ul>
               <p style="margin-top: 20px;">Thank you for your service!</p>
             </div>
+            
+            ${getEmailSignature()}
           </div>
         </body>
       </html>

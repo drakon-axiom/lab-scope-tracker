@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { getEmailSignature } from '../_shared/emailSignature.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -202,6 +203,8 @@ ${index + 1}. ${item.productName}
                   Thank you for your business! If you have any questions, please don't hesitate to reach out.
                 </p>
               </div>
+              
+              ${getEmailSignature()}
             </div>
           </body>
         </html>

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getEmailSignature } from "../_shared/emailSignature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -260,6 +261,8 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="color: #dc2626; font-weight: bold;">⚠️ If this was not you, please review your security settings immediately.</p>
             <hr style="margin: 20px 0;" />
             <p style="color: #666; font-size: 12px;">This is an automated security alert from SafeBatch Admin Portal.</p>
+            
+            ${getEmailSignature()}
           `;
 
           // Send email using existing SMTP configuration

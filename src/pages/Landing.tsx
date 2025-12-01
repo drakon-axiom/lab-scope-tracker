@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { SectionNav } from "@/components/SectionNav";
+import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -36,6 +37,23 @@ const Landing = () => {
           </div>
         </div>
       </header>
+
+      {/* Interactive Demo Section */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <Badge className="mb-4" variant="secondary">Interactive Demo</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">See SafeBatch in Action</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Explore key features with our interactive tour. Navigate through different aspects of the platform to see how SafeBatch streamlines your testing workflow.
+            </p>
+          </div>
+          
+          <div className="max-w-5xl mx-auto">
+            <ProductTourCarousel />
+          </div>
+        </div>
+      </section>
 
       {/* Services Section */}
       <section id="services" className="py-16 md:py-24 bg-muted/30">

@@ -29,6 +29,15 @@ import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
+import LabAuth from "./pages/lab/LabAuth";
+import LabDashboard from "./pages/lab/LabDashboard";
+import LabQuotes from "./pages/lab/LabQuotes";
+import LabPayments from "./pages/lab/LabPayments";
+import LabShipping from "./pages/lab/LabShipping";
+import LabResults from "./pages/lab/LabResults";
+import LabSettings from "./pages/lab/LabSettings";
+import LabNotifications from "./pages/lab/LabNotifications";
+import LabUserManagement from "./pages/LabUserManagement";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +96,7 @@ const App = () => {
             <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />
             <Route path="/import-chromate" element={<ImportChromatePricing />} />
             <Route path="/user-management" element={<UserManagement />} />
+            <Route path="/lab-user-management" element={<LabUserManagement />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/waitlist-management" element={<WaitlistManagement />} />
             <Route path="/terms" element={<TermsOfService />} />
@@ -94,6 +104,17 @@ const App = () => {
             <Route path="/faq" element={<FAQ />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/security-settings" element={<SecuritySettings />} />
+            
+            {/* Lab Portal Routes */}
+            <Route path="/lab/auth" element={<LabAuth />} />
+            <Route path="/lab/dashboard" element={<LabDashboard />} />
+            <Route path="/lab/quotes" element={<LabQuotes />} />
+            <Route path="/lab/payments" element={<LabPayments />} />
+            <Route path="/lab/shipping" element={<LabShipping />} />
+            <Route path="/lab/results" element={<LabResults />} />
+            <Route path="/lab/settings" element={<LabSettings />} />
+            <Route path="/lab/notifications" element={<LabNotifications />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

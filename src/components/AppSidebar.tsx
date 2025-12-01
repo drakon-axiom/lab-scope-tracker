@@ -41,6 +41,7 @@ const utilityNavItems = [
 
 const adminNavItems = [
   { title: "User Management", url: "/user-management", icon: Users },
+  { title: "Lab Users", url: "/lab-user-management", icon: Users },
   { title: "Waitlist", url: "/waitlist-management", icon: UserPlus },
   { title: "Security Settings", url: "/security-settings", icon: Shield },
 ];

@@ -3,12 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { SectionNav } from "@/components/SectionNav";
 
 const Landing = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
+      <SectionNav />
       {/* Header/Hero Section */}
       <header className="relative overflow-hidden border-b bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="container mx-auto px-4 py-16 md:py-24">

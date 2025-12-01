@@ -374,6 +374,13 @@ const Landing = () => {
               >
                 Privacy Policy
               </Button>
+              <Button
+                variant="link"
+                className="text-muted-foreground p-0 h-auto"
+                onClick={() => navigate("/faq")}
+              >
+                FAQ
+              </Button>
             </div>
           </div>
         </div>

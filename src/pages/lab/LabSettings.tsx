@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search } from "lucide-react";
+import { Save, DollarSign, History, Search, Upload, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -56,6 +56,7 @@ export default function LabSettings() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -177,6 +178,129 @@ export default function LabSettings() {
     }
   };
 
+  const handleExportCSV = () => {
+    const csvHeader = "Compound Name,Category,Current Price\n";
+    const csvRows = filteredPricing
+      .map((item) => 
+        `"${item.products.name}","${item.products.category || "Uncategorized"}",${item.price}`
+      )
+      .join("\n");
+    
+    const csvContent = csvHeader + csvRows;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `lab-pricing-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Pricing exported successfully");
+  };
+
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const rows = text.split("\n").filter(row => row.trim());
+      
+      // Skip header row
+      const dataRows = rows.slice(1);
+      
+      let successCount = 0;
+      let errorCount = 0;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      for (const row of dataRows) {
+        // Parse CSV row handling quoted values
+        const match = row.match(/^"([^"]*)","([^"]*)",(.+)$/);
+        if (!match) continue;
+
+        const [, compoundName, , priceStr] = match;
+        const newPrice = parseFloat(priceStr.trim());
+
+        if (isNaN(newPrice) || newPrice <= 0) {
+          errorCount++;
+          continue;
+        }
+
+        // Find the pricing record by compound name
+        const pricingItem = pricing.find(
+          p => p.products.name.toLowerCase() === compoundName.toLowerCase()
+        );
+
+        if (!pricingItem) {
+          errorCount++;
+          continue;
+        }
+
+        // Update price
+        const { error: updateError } = await supabase
+          .from("product_vendor_pricing")
+          .update({ price: newPrice })
+          .eq("id", pricingItem.id);
+
+        if (updateError) {
+          errorCount++;
+          continue;
+        }
+
+        // Log change
+        await supabase
+          .from("pricing_audit_log")
+          .insert({
+            product_id: pricingItem.product_id,
+            lab_id: labUser?.lab_id,
+            old_price: pricingItem.price,
+            new_price: newPrice,
+            changed_by: user.id,
+            change_reason: "Bulk import from CSV",
+          });
+
+        successCount++;
+      }
+
+      // Refresh pricing data
+      const { data } = await supabase
+        .from("product_vendor_pricing")
+        .select(`
+          id,
+          price,
+          product_id,
+          products (
+            name,
+            category
+          )
+        `)
+        .eq("lab_id", labUser?.lab_id)
+        .eq("is_active", true);
+
+      setPricing(data || []);
+
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} price${successCount !== 1 ? 's' : ''}`);
+      }
+      if (errorCount > 0) {
+        toast.warning(`Failed to import ${errorCount} price${errorCount !== 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error("Error importing CSV:", error);
+      toast.error("Failed to import pricing");
+    } finally {
+      setIsImporting(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  };
+
   return (
     <LabLayout>
       <div className="space-y-6">
@@ -190,13 +314,47 @@ export default function LabSettings() {
         {/* Pricing Management */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Test Pricing
-            </CardTitle>
-            <CardDescription>
-              Manage your test panel pricing. Changes are logged in the audit trail.
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Test Pricing
+                </CardTitle>
+                <CardDescription>
+                  Manage your test panel pricing. Changes are logged in the audit trail.
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  disabled={filteredPricing.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportCSV}
+                    className="hidden"
+                    id="csv-upload"
+                    disabled={isImporting}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('csv-upload')?.click()}
+                    disabled={isImporting}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isImporting ? "Importing..." : "Import CSV"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex flex-col sm:flex-row gap-3">

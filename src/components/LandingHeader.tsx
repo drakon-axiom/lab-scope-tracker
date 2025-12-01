@@ -17,9 +17,13 @@ export const LandingHeader = () => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      const headerOffset = 80; // Account for sticky header height
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      // Get actual header height dynamically
+      const header = document.querySelector('header');
+      const headerHeight = header ? header.offsetHeight : 64;
+      const extraOffset = 20; // Extra padding for better visibility
+      
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerHeight - extraOffset;
 
       window.scrollTo({
         top: offsetPosition,

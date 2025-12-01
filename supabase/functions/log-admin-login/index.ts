@@ -259,7 +259,7 @@ const handler = async (req: Request): Promise<Response> => {
             </table>
             <p style="color: #dc2626; font-weight: bold;">⚠️ If this was not you, please review your security settings immediately.</p>
             <hr style="margin: 20px 0;" />
-            <p style="color: #666; font-size: 12px;">This is an automated security alert from Testing Tracker Admin Portal.</p>
+            <p style="color: #666; font-size: 12px;">This is an automated security alert from SafeBatch Admin Portal.</p>
           `;
 
           // Send email using existing SMTP configuration

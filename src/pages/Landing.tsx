@@ -315,7 +315,7 @@ const Landing = () => {
                 </div>
                 <CardTitle className="text-lg">Email</CardTitle>
                 <CardDescription className="mt-2">
-                  support@scientifictesting.com
+                  support@safebatch.com
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -356,7 +356,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 Scientific Testing Solutions. All rights reserved.</p>
+          <p>&copy; 2025 SafeBatch. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { toast } from "sonner";
-import { Save, DollarSign, History } from "lucide-react";
+import { Save, DollarSign, History, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -47,6 +47,7 @@ export default function LabSettings() {
   const [auditLog, setAuditLog] = useState<PricingAudit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -101,6 +102,14 @@ export default function LabSettings() {
 
     fetchData();
   }, [labUser?.lab_id]);
+
+  // Filter and sort pricing data
+  const filteredPricing = pricing
+    .filter((item) =>
+      item.products.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.products.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.products.name.localeCompare(b.products.name));
 
   const handlePriceUpdate = async (pricingId: string, productId: string, oldPrice: number, newPrice: number) => {
     if (!labUser?.lab_id) return;
@@ -177,6 +186,17 @@ export default function LabSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by test name or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -193,14 +213,14 @@ export default function LabSettings() {
                       Loading...
                     </TableCell>
                   </TableRow>
-                ) : pricing.length === 0 ? (
+                ) : filteredPricing.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No pricing configured
+                      {searchQuery ? "No tests match your search" : "No pricing configured"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  pricing.map((item) => (
+                  filteredPricing.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
                         {item.products.name}

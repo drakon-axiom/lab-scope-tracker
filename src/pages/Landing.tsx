@@ -1,15 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download } from "lucide-react";
+import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download, ArrowUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 import heroBackground from "@/assets/hero-background.jpg";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -466,6 +481,23 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Back to Top Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: showBackToTop ? 1 : 0, scale: showBackToTop ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed bottom-8 right-8 z-50"
+      >
+        <Button
+          onClick={scrollToTop}
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </Button>
+      </motion.div>
     </div>
   );
 };

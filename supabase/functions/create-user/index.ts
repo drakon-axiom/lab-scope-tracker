@@ -92,21 +92,8 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', newUser.user.id)
 
-    // Create profile entry
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: newUser.user.id,
-        full_name: fullName || null,
-      })
-
-    if (profileError) {
-      console.error('Error creating profile:', profileError)
-      // Try to clean up the auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
-      throw new Error('Failed to create user profile')
-    }
-
+    // Note: Profile is automatically created by handle_new_user trigger
+    
     // Create user role entry
     const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')

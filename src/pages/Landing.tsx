@@ -26,8 +26,8 @@ const Landing = () => {
               Perfect for businesses and researchers who need testing guidance or handle high volumes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
-                Get Started
+              <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8">
+                Join Waitlist
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })} className="text-lg px-8">
                 Contact Us

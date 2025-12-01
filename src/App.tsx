@@ -21,6 +21,8 @@ import SecuritySettings from "./pages/SecuritySettings";
 import Notifications from "./pages/Notifications";
 import ImportChromatePricing from "./pages/ImportChromatePricing";
 import UserManagement from "./pages/UserManagement";
+import Waitlist from "./pages/Waitlist";
+import WaitlistManagement from "./pages/WaitlistManagement";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
@@ -82,6 +84,8 @@ const App = () => {
             <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />
             <Route path="/import-chromate" element={<ImportChromatePricing />} />
             <Route path="/user-management" element={<UserManagement />} />
+            <Route path="/waitlist" element={<Waitlist />} />
+            <Route path="/waitlist-management" element={<WaitlistManagement />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/security-settings" element={<SecuritySettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

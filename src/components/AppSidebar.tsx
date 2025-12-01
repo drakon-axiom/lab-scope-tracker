@@ -1,4 +1,4 @@
-import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut, Bell, Users, Shield } from "lucide-react";
+import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut, Bell, Users, Shield, UserPlus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
@@ -41,6 +41,7 @@ const utilityNavItems = [
 
 const adminNavItems = [
   { title: "User Management", url: "/user-management", icon: Users },
+  { title: "Waitlist", url: "/waitlist-management", icon: UserPlus },
   { title: "Security Settings", url: "/security-settings", icon: Shield },
 ];
 

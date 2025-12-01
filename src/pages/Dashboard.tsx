@@ -8,6 +8,7 @@ import { Package, Clock, TrendingUp, FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import StatusBadge from "@/components/StatusBadge";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
+import { UsageWidget } from "@/components/UsageWidget";
 
 interface Quote {
   id: string;
@@ -159,6 +160,9 @@ const Dashboard = () => {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
             <p className="text-sm text-muted-foreground">Quick overview of your lab operations</p>
           </div>
+
+          {/* Usage Widget */}
+          <UsageWidget />
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

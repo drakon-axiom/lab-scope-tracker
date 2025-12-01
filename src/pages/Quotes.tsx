@@ -68,6 +68,7 @@ import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Quote {
   id: string;
@@ -154,6 +155,7 @@ interface TrackingHistory {
 
 const Quotes = () => {
   const { role, isSubscriber } = useUserRole();
+  const { canSendItems, getRemainingItems } = useSubscription();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
@@ -1771,6 +1773,21 @@ const Quotes = () => {
   const confirmSendEmail = async () => {
     if (!selectedQuote) return;
     
+    // Check usage limits for subscribers
+    if (isSubscriber) {
+      const itemCount = quoteItems.length;
+      if (!canSendItems(itemCount)) {
+        const remaining = getRemainingItems();
+        toast({
+          title: "Monthly limit reached",
+          description: `You have ${remaining} items remaining this month. This quote has ${itemCount} items. Upgrade to Pro for unlimited items.`,
+          variant: "destructive",
+          duration: 5000,
+        });
+        return;
+      }
+    }
+    
     setIsSendingEmail(true);
 
     try {
@@ -1856,6 +1873,17 @@ const Quotes = () => {
         .from("quotes")
         .update({ status: "sent_to_vendor" })
         .eq("id", selectedQuote.id);
+
+      // Track usage for subscribers
+      if (isSubscriber) {
+        const itemCount = quoteItems.length;
+        await supabase.functions.invoke("track-usage", {
+          body: {
+            userId: user.id,
+            itemCount: itemCount,
+          },
+        });
+      }
 
       toast({
         title: "Email sent successfully",

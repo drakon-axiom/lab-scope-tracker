@@ -601,7 +601,7 @@ const Settings = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/dashboard")}
                 >
                   Cancel
                 </Button>

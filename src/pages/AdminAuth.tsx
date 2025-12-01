@@ -40,7 +40,7 @@ const AdminAuth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/");
+        navigate("/dashboard");
       }
     };
     checkUser();
@@ -255,7 +255,7 @@ const AdminAuth = () => {
       }
     }
     
-    navigate("/");
+    navigate("/dashboard");
   };
 
   const handleVerifyMfa = async (e: React.FormEvent) => {
@@ -277,7 +277,7 @@ const AdminAuth = () => {
         duration: 3000,
       });
 
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       toast({
         title: "Verification failed",

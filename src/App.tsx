@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
 import Index from "./pages/Index";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AdminAuth from "./pages/AdminAuth";
 import MFASetup from "./pages/MFASetup";
@@ -65,7 +66,8 @@ const App = () => {
           <ScrollToTop />
           <Suspense fallback={<LoadingScreen />}>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/overseer-alpha/auth" element={<AdminAuth />} />
             <Route path="/mfa-setup" element={<MFASetup />} />

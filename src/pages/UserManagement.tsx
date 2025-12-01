@@ -61,7 +61,7 @@ const UserManagement = () => {
   useEffect(() => {
     // Redirect non-admins
     if (!roleLoading && !isAdmin) {
-      navigate("/");
+      navigate("/dashboard");
       return;
     }
 

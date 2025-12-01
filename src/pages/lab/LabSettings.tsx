@@ -201,6 +201,30 @@ export default function LabSettings() {
     toast.success("Pricing exported successfully");
   };
 
+  const handleDownloadTemplate = () => {
+    const csvHeader = "Compound Name,Category,Current Price\n";
+    const csvRows = pricing
+      .sort((a, b) => a.products.name.localeCompare(b.products.name))
+      .map((item) => 
+        `"${item.products.name}","${item.products.category || "Uncategorized"}",0.00`
+      )
+      .join("\n");
+    
+    const csvContent = csvHeader + csvRows;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `pricing-template-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Template downloaded successfully");
+  };
+
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -325,6 +349,15 @@ export default function LabSettings() {
                 </CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadTemplate}
+                  disabled={pricing.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Template
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

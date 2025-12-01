@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 import heroBackground from "@/assets/hero-background.jpg";
+import { motion } from "framer-motion";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -22,26 +23,47 @@ const Landing = () => {
           style={{ backgroundImage: `url(${heroBackground})` }}
         >
           {/* Dark Overlay for Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/98 via-background/92 to-background/80" />
         </div>
         
         {/* Content */}
         <div className="relative container mx-auto px-4 py-20 md:py-32 z-10">
           <div className="max-w-3xl">
-            <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
-              Welcome to SafeBatch
-            </Badge>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
+                Welcome to SafeBatch
+              </Badge>
+            </motion.div>
             
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-foreground">
+            <motion.h1 
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-foreground"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               Test Submission & Tracking Platform
-            </h1>
+            </motion.h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl leading-relaxed">
+            <motion.p 
+              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
               Streamline your testing workflow. Submit compounds to certified labs, track progress, and manage results—all in one place. 
               Perfect for businesses and researchers who need testing guidance or handle high volumes.
-            </p>
+            </motion.p>
             
-            <div className="flex flex-col sm:flex-row gap-4 mb-12">
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
               <Button size="lg" onClick={() => navigate("/waitlist")} className="text-lg px-8 shadow-lg">
                 Join Waitlist
               </Button>
@@ -53,10 +75,15 @@ const Landing = () => {
               >
                 Contact Us
               </Button>
-            </div>
+            </motion.div>
             
             {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center gap-6 text-sm">
+            <motion.div 
+              className="flex flex-wrap items-center gap-6 text-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+            >
               <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5 text-primary" />
                 <span className="font-medium">Certified Labs</span>
@@ -69,13 +96,13 @@ const Landing = () => {
                 <CheckCircle className="h-5 w-5 text-primary" />
                 <span className="font-medium">Automated Workflows</span>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Interactive Demo Section */}
-      <section className="py-16 md:py-24">
+      <section id="demo" className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <Badge className="mb-4" variant="secondary">Interactive Demo</Badge>

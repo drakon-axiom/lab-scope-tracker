@@ -27,6 +27,13 @@ export const LandingHeader = () => {
           <nav className="hidden md:flex items-center gap-6">
             <Button
               variant="ghost"
+              onClick={() => scrollToSection("demo")}
+              className="text-sm font-medium"
+            >
+              Demo
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => scrollToSection("services")}
               className="text-sm font-medium"
             >

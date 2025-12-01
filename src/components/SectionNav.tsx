@@ -14,6 +14,7 @@ export const SectionNav = () => {
   const [activeSection, setActiveSection] = useState("");
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [clickedSection, setClickedSection] = useState<string | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -34,6 +35,13 @@ export const SectionNav = () => {
 
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 400);
+      
+      // Calculate scroll progress
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollTop = window.scrollY;
+      const scrollPercentage = (scrollTop / (documentHeight - windowHeight)) * 100;
+      setScrollProgress(Math.min(scrollPercentage, 100));
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -56,6 +64,14 @@ export const SectionNav = () => {
 
   return (
     <>
+      {/* Scroll Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-muted z-50">
+        <div 
+          className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-150 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       <nav className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 z-50">
         <ul className="space-y-4">
           {sections.map(({ id, label }) => (

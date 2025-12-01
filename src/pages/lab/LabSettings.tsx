@@ -8,7 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search, Upload, Download } from "lucide-react";
+import { Save, DollarSign, History, Search, Upload, Download, Edit } from "lucide-react";
+import { useSwipeable } from "react-swipeable";
+import PullToRefresh from "react-pull-to-refresh";
+import { MobilePriceEditDialog } from "@/components/lab/MobilePriceEditDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
   TableBody,
@@ -50,6 +54,7 @@ interface PricingAudit {
 
 export default function LabSettings() {
   const { labUser } = useLabUser();
+  const isMobile = useIsMobile();
   const [pricing, setPricing] = useState<ProductPricing[]>([]);
   const [auditLog, setAuditLog] = useState<PricingAudit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,60 +62,67 @@ export default function LabSettings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isImporting, setIsImporting] = useState(false);
+  const [editingItem, setEditingItem] = useState<ProductPricing | null>(null);
+  const [swipedRowId, setSwipedRowId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!labUser?.lab_id) return;
 
-    const fetchData = async () => {
-      try {
-        // Fetch pricing
-        const { data: pricingData, error: pricingError } = await supabase
-          .from("product_vendor_pricing")
-          .select(`
-            id,
-            price,
-            product_id,
-            products (
-              name,
-              category
-            )
-          `)
-          .eq("lab_id", labUser.lab_id)
-          .eq("is_active", true)
-          .order("product_id");
+    try {
+      setLoading(true);
+      // Fetch pricing
+      const { data: pricingData, error: pricingError } = await supabase
+        .from("product_vendor_pricing")
+        .select(`
+          id,
+          price,
+          product_id,
+          products (
+            name,
+            category
+          )
+        `)
+        .eq("lab_id", labUser.lab_id)
+        .eq("is_active", true)
+        .order("product_id");
 
-        if (pricingError) throw pricingError;
-        setPricing(pricingData || []);
+      if (pricingError) throw pricingError;
+      setPricing(pricingData || []);
 
-        // Fetch audit log
-        const { data: auditData, error: auditError } = await supabase
-          .from("pricing_audit_log")
-          .select(`
-            id,
-            old_price,
-            new_price,
-            changed_at,
-            change_reason,
-            products (
-              name
-            )
-          `)
-          .eq("lab_id", labUser.lab_id)
-          .order("changed_at", { ascending: false })
-          .limit(50);
+      // Fetch audit log
+      const { data: auditData, error: auditError } = await supabase
+        .from("pricing_audit_log")
+        .select(`
+          id,
+          old_price,
+          new_price,
+          changed_at,
+          change_reason,
+          products (
+            name
+          )
+        `)
+        .eq("lab_id", labUser.lab_id)
+        .order("changed_at", { ascending: false })
+        .limit(50);
 
-        if (auditError) throw auditError;
-        setAuditLog(auditData as any || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load settings");
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (auditError) throw auditError;
+      setAuditLog(auditData as any || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [labUser?.lab_id]);
+
+  const handleRefresh = async () => {
+    await fetchData();
+  };
 
   // Get unique categories
   const categories = Array.from(new Set(pricing.map(p => p.products.category).filter(Boolean))) as string[];
@@ -149,7 +161,7 @@ export default function LabSettings() {
           old_price: oldPrice,
           new_price: newPrice,
           changed_by: user.id,
-          change_reason: "Updated from lab portal",
+          change_reason: isMobile ? "Updated from mobile" : "Updated from lab portal",
         });
 
       if (logError) throw logError;
@@ -157,25 +169,89 @@ export default function LabSettings() {
       toast.success("Price updated successfully");
       
       // Refresh data
-      const { data } = await supabase
-        .from("product_vendor_pricing")
-        .select(`
-          id,
-          price,
-          product_id,
-          products (
-            name,
-            category
-          )
-        `)
-        .eq("lab_id", labUser.lab_id)
-        .eq("is_active", true);
-
-      setPricing(data || []);
+      await fetchData();
     } catch (error) {
       console.error("Error updating price:", error);
       toast.error("Failed to update price");
     }
+  };
+
+  const SwipeableRow = ({ item }: { item: ProductPricing }) => {
+    const handlers = useSwipeable({
+      onSwipedLeft: () => isMobile && setSwipedRowId(item.id),
+      onSwipedRight: () => isMobile && setSwipedRowId(null),
+      trackMouse: false,
+    });
+
+    const isSwiped = swipedRowId === item.id;
+
+    return (
+      <div {...handlers} className="relative">
+        <TableRow className={`transition-transform duration-200 ${isSwiped ? '-translate-x-20' : ''}`}>
+          <TableCell className="font-medium">
+            <div>
+              <div className="font-medium">{item.products.name}</div>
+              <div className="md:hidden">
+                <Badge variant="outline" className="text-xs mt-1">
+                  {item.products.category || "Uncategorized"}
+                </Badge>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell className="hidden md:table-cell">
+            <Badge variant="outline">
+              {item.products.category || "Uncategorized"}
+            </Badge>
+          </TableCell>
+          <TableCell>
+            <span className="font-semibold text-base md:text-lg">
+              ${item.price.toFixed(2)}
+            </span>
+          </TableCell>
+          <TableCell className="text-right">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (isMobile) {
+                  setEditingItem(item);
+                } else {
+                  const newPrice = prompt(
+                    `Enter new price for ${item.products.name}:`,
+                    item.price.toString()
+                  );
+                  if (newPrice) {
+                    const parsed = parseFloat(newPrice);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      handlePriceUpdate(item.id, item.product_id, item.price, parsed);
+                    }
+                  }
+                }
+              }}
+              className="whitespace-nowrap"
+            >
+              <span className="hidden sm:inline">Update Price</span>
+              <span className="sm:hidden">Update</span>
+            </Button>
+          </TableCell>
+        </TableRow>
+        {isMobile && isSwiped && (
+          <div className="absolute right-0 top-0 h-full flex items-center pr-2 bg-primary">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-primary-foreground h-full"
+              onClick={() => {
+                setEditingItem(item);
+                setSwipedRowId(null);
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleExportCSV = () => {
@@ -325,15 +401,31 @@ export default function LabSettings() {
     }
   };
 
+  const ContentWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (isMobile) {
+      return (
+        <PullToRefresh
+          onRefresh={handleRefresh}
+          className="min-h-screen"
+        >
+          {children}
+        </PullToRefresh>
+      );
+    }
+    return <>{children}</>;
+  };
+
   return (
     <LabLayout>
-      <div className="space-y-4 md:space-y-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Lab Settings</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Manage pricing, test panels, and lab configuration
-          </p>
-        </div>
+      <ContentWrapper>
+        <div className="space-y-4 md:space-y-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Lab Settings</h1>
+            <p className="text-muted-foreground mt-1 text-sm md:text-base">
+              Manage pricing, test panels, and lab configuration
+              {isMobile && <span className="block text-xs mt-1">Pull down to refresh</span>}
+            </p>
+          </div>
 
         {/* Pricing Management */}
         <Card>
@@ -445,50 +537,7 @@ export default function LabSettings() {
                   </TableRow>
                 ) : (
                   filteredPricing.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div className="font-medium">{item.products.name}</div>
-                          <div className="md:hidden">
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {item.products.category || "Uncategorized"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline">
-                          {item.products.category || "Uncategorized"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-base md:text-lg">
-                          ${item.price.toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const newPrice = prompt(
-                              `Enter new price for ${item.products.name}:`,
-                              item.price.toString()
-                            );
-                            if (newPrice) {
-                              const parsed = parseFloat(newPrice);
-                              if (!isNaN(parsed) && parsed > 0) {
-                                handlePriceUpdate(item.id, item.product_id, item.price, parsed);
-                              }
-                            }
-                          }}
-                          className="whitespace-nowrap"
-                        >
-                          <span className="hidden sm:inline">Update Price</span>
-                          <span className="sm:hidden">Update</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <SwipeableRow key={item.id} item={item} />
                   ))
                 )}
               </TableBody>
@@ -577,7 +626,26 @@ export default function LabSettings() {
             </CardContent>
           )}
         </Card>
-      </div>
+        </div>
+      </ContentWrapper>
+
+      {/* Mobile Price Edit Dialog */}
+      {editingItem && (
+        <MobilePriceEditDialog
+          open={!!editingItem}
+          onOpenChange={(open) => !open && setEditingItem(null)}
+          compoundName={editingItem.products.name}
+          currentPrice={editingItem.price}
+          onSave={(newPrice) =>
+            handlePriceUpdate(
+              editingItem.id,
+              editingItem.product_id,
+              editingItem.price,
+              newPrice
+            )
+          }
+        />
+      )}
     </LabLayout>
   );
 }

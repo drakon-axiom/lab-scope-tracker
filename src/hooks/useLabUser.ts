@@ -11,6 +11,7 @@ export interface LabUser {
 export const useLabUser = () => {
   const [labUser, setLabUser] = useState<LabUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   useEffect(() => {
     const fetchLabUser = async () => {
@@ -18,6 +19,22 @@ export const useLabUser = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setLabUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Check for impersonation
+        const impersonatedLabId = sessionStorage.getItem("impersonatedLabId");
+        const impersonatedLabName = sessionStorage.getItem("impersonatedLabName");
+        
+        if (impersonatedLabId && impersonatedLabName) {
+          setLabUser({
+            id: "impersonated",
+            lab_id: impersonatedLabId,
+            role: "admin",
+            lab_name: impersonatedLabName,
+          });
+          setIsImpersonating(true);
           setLoading(false);
           return;
         }
@@ -67,5 +84,5 @@ export const useLabUser = () => {
     };
   }, []);
 
-  return { labUser, loading };
+  return { labUser, loading, isImpersonating };
 };

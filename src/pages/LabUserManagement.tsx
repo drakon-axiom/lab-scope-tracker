@@ -32,7 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight, UserCog } from "lucide-react";
 
 interface Lab {
   id: string;
@@ -222,6 +222,13 @@ export default function LabUserManagement() {
     }
   };
 
+  const handleImpersonate = (labId: string, labName: string) => {
+    sessionStorage.setItem("impersonatedLabId", labId);
+    sessionStorage.setItem("impersonatedLabName", labName);
+    navigate("/lab/dashboard");
+    toast.success(`Now viewing as ${labName}`);
+  };
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
@@ -299,6 +306,14 @@ export default function LabUserManagement() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleImpersonate(labUser.lab_id, (labUser.labs as any)?.name)}
+                            title="View lab portal as this lab"
+                          >
+                            <UserCog className="h-4 w-4" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"

@@ -72,6 +72,7 @@ export const SectionNav = () => {
         />
       </div>
 
+      {/* Desktop Navigation - Right Side */}
       <nav className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 z-50">
         <ul className="space-y-4">
           {sections.map(({ id, label }) => (
@@ -104,12 +105,39 @@ export const SectionNav = () => {
         </ul>
       </nav>
 
+      {/* Mobile Navigation - Bottom */}
+      <nav className="lg:hidden fixed bottom-20 left-0 right-0 z-50 px-4">
+        <div className="bg-card/95 backdrop-blur-sm border rounded-full shadow-lg px-6 py-3 mx-auto max-w-fit">
+          <ul className="flex items-center gap-3">
+            {sections.map(({ id }) => (
+              <li key={id}>
+                <button
+                  onClick={() => scrollToSection(id)}
+                  className={cn(
+                    "transition-all duration-300",
+                    activeSection === id ? "opacity-100" : "opacity-40"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-2 rounded-full bg-primary transition-all duration-300",
+                      activeSection === id ? "w-8" : "w-2",
+                      clickedSection === id && "scale-125 animate-pulse"
+                    )}
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
+
       {/* Back to Top Button */}
       <Button
         onClick={scrollToTop}
         size="icon"
         className={cn(
-          "fixed right-8 bottom-8 z-50 rounded-full shadow-lg transition-all duration-300",
+          "fixed right-4 lg:right-8 bottom-4 lg:bottom-8 z-50 rounded-full shadow-lg transition-all duration-300",
           showBackToTop ? "opacity-100 translate-y-0" : "opacity-0 translate-y-16 pointer-events-none"
         )}
       >

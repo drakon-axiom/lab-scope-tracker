@@ -32,6 +32,20 @@ const Landing = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const headerOffset = 80; // Account for sticky header height
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <LandingHeader />
@@ -92,7 +106,7 @@ const Landing = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })} 
+                onClick={() => scrollToSection("contact")} 
                 className="text-lg px-8 bg-background/50 backdrop-blur-sm hover:bg-background/80"
               >
                 Contact Us

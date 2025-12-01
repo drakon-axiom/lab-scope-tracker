@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { SectionNav } from "@/components/SectionNav";
+import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 
 const Landing = () => {
@@ -11,17 +11,18 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <SectionNav />
-      {/* Header/Hero Section */}
-      <header className="relative overflow-hidden border-b bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="flex flex-col items-center text-center space-y-8">
-            <div className="flex items-center gap-3 mb-4">
-              <img src="/logo.png" alt="Logo" className="h-16 w-16" />
-              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                Test Submission & Tracking Platform
-              </h1>
-            </div>
+      <LandingHeader />
+      
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="container mx-auto px-4 py-20 md:py-32">
+          <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
+            <Badge variant="secondary" className="mb-2">
+              Welcome to SafeBatch
+            </Badge>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent leading-tight">
+              Test Submission & Tracking Platform
+            </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl">
               Streamline your testing workflow. Submit compounds to certified labs, track progress, and manage results—all in one place. 
               Perfect for businesses and researchers who need testing guidance or handle high volumes.
@@ -34,9 +35,31 @@ const Landing = () => {
                 Contact Us
               </Button>
             </div>
+            
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap items-center justify-center gap-8 pt-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <span>Certified Labs</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <span>Real-time Tracking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <span>Automated Workflows</span>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
+        
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
+        </div>
+      </section>
 
       {/* Interactive Demo Section */}
       <section className="py-16 md:py-24">

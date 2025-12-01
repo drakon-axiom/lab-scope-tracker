@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import StatusBadge from "@/components/StatusBadge";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { UsageWidget } from "@/components/UsageWidget";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 interface Quote {
   id: string;
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const [shipmentsInProgress, setShipmentsInProgress] = useState<ShipmentInProgress[]>([]);
   const [avgCompletionDays, setAvgCompletionDays] = useState<number | null>(null);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -116,6 +118,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    checkOnboardingStatus();
 
     // Set up realtime subscription
     const channel = supabase
@@ -138,6 +141,25 @@ const Dashboard = () => {
     };
   }, []);
 
+  const checkOnboardingStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+
+      if (profile && !profile.onboarding_completed) {
+        setShowOnboarding(true);
+      }
+    } catch (error) {
+      console.error("Error checking onboarding status:", error);
+    }
+  };
+
   const handleRefresh = async () => {
     await fetchDashboardData();
   };
@@ -154,6 +176,9 @@ const Dashboard = () => {
 
   return (
     <Layout>
+      {showOnboarding && (
+        <OnboardingTutorial onComplete={() => setShowOnboarding(false)} />
+      )}
       <PullToRefreshWrapper onRefresh={handleRefresh}>
         <div className="space-y-6">
           <div>

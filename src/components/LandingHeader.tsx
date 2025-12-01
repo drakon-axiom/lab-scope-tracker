@@ -34,8 +34,8 @@ export const LandingHeader = () => {
             </span>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Navigation Links - Only show on large desktop */}
+          <nav className="hidden lg:flex items-center gap-6">
             <Button
               variant="ghost"
               onClick={() => scrollToSection("demo")}
@@ -80,8 +80,8 @@ export const LandingHeader = () => {
             </Button>
           </nav>
 
-          {/* Mobile Menu */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile & Tablet Menu */}
+          <div className="flex lg:hidden items-center gap-2">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -163,7 +163,7 @@ export const LandingHeader = () => {
           </div>
 
           {/* Desktop CTA Buttons */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <Button
               variant="ghost"
               onClick={() => navigate("/auth")}

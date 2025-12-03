@@ -118,6 +118,13 @@ const AdminAuth = () => {
         if (logError.message?.includes("locked") || data?.locked) {
           throw new Error(`Account temporarily locked. Please try again in ${data?.lockoutMinutes || 30} minutes.`);
         }
+        
+        // Check if CAPTCHA is required from error response
+        if (data?.captchaRequired) {
+          const err: any = new Error("CAPTCHA verification required");
+          err.captchaRequired = true;
+          throw err;
+        }
       }
 
       // Return data for rate limiting info
@@ -144,6 +151,11 @@ const AdminAuth = () => {
         
         setLoading(false);
         
+        // Check if server requires CAPTCHA
+        if (logData?.captchaRequired) {
+          setShowCaptcha(true);
+        }
+        
         // Show attempts remaining if available
         const attemptsMsg = logData?.attemptsRemaining !== undefined 
           ? ` (${logData.attemptsRemaining} attempts remaining)` 
@@ -157,15 +169,21 @@ const AdminAuth = () => {
         });
       } catch (lockError: any) {
         setLoading(false);
+        
+        // Check if the error response contains captchaRequired flag
+        if (lockError?.captchaRequired) {
+          setShowCaptcha(true);
+        }
+        
         toast({
           title: "Account Locked",
-          description: lockError.message,
+          description: lockError.message || "Please complete CAPTCHA verification",
           variant: "destructive",
           duration: 6000,
         });
       }
       
-      // Track failed attempts and show CAPTCHA after 3 attempts
+      // Track failed attempts locally as backup
       const newFailedCount = failedAttempts + 1;
       setFailedAttempts(newFailedCount);
       if (newFailedCount >= 3) {

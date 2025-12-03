@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,17 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (container: string | HTMLElement, options: any) => string;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-      getResponse: (widgetId: string) => string;
-    };
-  }
-}
-
 const AdminAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -29,12 +18,6 @@ const AdminAuth = () => {
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [showCaptcha, setShowCaptcha] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-  const turnstileWidgetId = useRef<string | null>(null);
-  const turnstileContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -44,70 +27,10 @@ const AdminAuth = () => {
       }
     };
     checkUser();
-
-    // Load Cloudflare Turnstile script
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      console.log("Turnstile script loaded");
-      setTurnstileLoaded(true);
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup script on unmount
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
   }, [navigate]);
-
-  // Initialize Turnstile when it should be shown and script is loaded
-  useEffect(() => {
-    if (showCaptcha && turnstileLoaded && turnstileContainerRef.current && window.turnstile) {
-      // Remove existing widget if any
-      if (turnstileWidgetId.current) {
-        try {
-          window.turnstile.remove(turnstileWidgetId.current);
-        } catch (e) {
-          console.error("Error removing turnstile widget:", e);
-        }
-      }
-
-      // Render new widget
-      const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-      console.log("Rendering Turnstile widget, siteKey exists:", !!siteKey);
-      if (siteKey) {
-        try {
-          turnstileWidgetId.current = window.turnstile.render(turnstileContainerRef.current, {
-            sitekey: siteKey,
-            callback: (token: string) => {
-              console.log("Turnstile verification successful");
-              setCaptchaToken(token);
-            },
-            "error-callback": () => {
-              console.error("Turnstile verification failed");
-              setCaptchaToken("");
-            },
-            "expired-callback": () => {
-              console.log("Turnstile token expired");
-              setCaptchaToken("");
-            },
-          });
-        } catch (e) {
-          console.error("Error rendering turnstile:", e);
-        }
-      } else {
-        console.error("VITE_TURNSTILE_SITE_KEY not configured");
-      }
-    }
-  }, [showCaptcha, turnstileLoaded]);
 
   const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
     try {
-      // Call edge function to log with IP address tracking and email alerts
       const { data, error: logError } = await supabase.functions.invoke("log-admin-login", {
         body: {
           email,
@@ -115,40 +38,20 @@ const AdminAuth = () => {
           userId,
           errorMessage,
           userAgent: navigator.userAgent,
-          captchaToken: showCaptcha ? captchaToken : undefined,
         },
       });
 
-      // Check response data first (edge function may return error info in data even on success)
-      if (data?.captchaRequired) {
-        setShowCaptcha(true);
-        return data;
-      }
-      
       if (data?.locked) {
         throw new Error(`Account temporarily locked. Please try again in ${data?.lockoutMinutes || 30} minutes.`);
       }
 
       if (logError) {
         console.error("Failed to log admin login attempt:", logError);
-        
-        // Try to parse error context for captcha requirement
-        try {
-          const errorContext = (logError as any)?.context;
-          if (errorContext?.captchaRequired) {
-            setShowCaptcha(true);
-            return { captchaRequired: true };
-          }
-        } catch (e) {
-          // Ignore parsing errors
-        }
       }
 
-      // Return data for rate limiting info
       return data;
     } catch (err: any) {
       console.error("Failed to log admin login attempt:", err);
-      // Don't re-throw - just return indication of failure
       return { error: true };
     }
   };
@@ -163,21 +66,11 @@ const AdminAuth = () => {
     });
 
     if (error) {
-      // Log failed attempt and check for rate limiting
       const logData = await logAdminLoginAttempt(email, false, undefined, error.message);
       
       setLoading(false);
       
-      // Check if server requires CAPTCHA
-      if (logData?.captchaRequired) {
-        setShowCaptcha(true);
-        toast({
-          title: "Verification Required",
-          description: "Please complete the CAPTCHA verification below.",
-          variant: "destructive",
-          duration: 4000,
-        });
-      } else if (logData?.locked) {
+      if (logData?.locked) {
         toast({
           title: "Account Locked",
           description: `Account temporarily locked. Please try again in ${logData?.lockoutMinutes || 30} minutes.`,
@@ -185,7 +78,6 @@ const AdminAuth = () => {
           duration: 6000,
         });
       } else {
-        // Show attempts remaining if available
         const attemptsMsg = logData?.attemptsRemaining !== undefined 
           ? ` (${logData.attemptsRemaining} attempts remaining)` 
           : '';
@@ -198,23 +90,6 @@ const AdminAuth = () => {
         });
       }
       
-      // Track failed attempts locally as backup
-      const newFailedCount = failedAttempts + 1;
-      setFailedAttempts(newFailedCount);
-      if (newFailedCount >= 3) {
-        setShowCaptcha(true);
-      }
-      
-      // Reset CAPTCHA token for next attempt
-      if (turnstileWidgetId.current && window.turnstile) {
-        try {
-          window.turnstile.reset(turnstileWidgetId.current);
-        } catch (e) {
-          console.error("Error resetting turnstile:", e);
-        }
-      }
-      setCaptchaToken("");
-      
       return;
     }
 
@@ -226,10 +101,7 @@ const AdminAuth = () => {
       .single();
 
     if (roleData?.role !== "admin") {
-      // Log unauthorized attempt
       await logAdminLoginAttempt(email, false, data.user.id, "User is not an admin");
-      
-      // Sign out the user
       await supabase.auth.signOut();
       
       setLoading(false);
@@ -242,26 +114,17 @@ const AdminAuth = () => {
       return;
     }
 
-    // Log successful admin login
     await logAdminLoginAttempt(email, true, data.user.id);
-
-    // Reset failed attempts on success
-    setFailedAttempts(0);
-    setShowCaptcha(false);
-    setCaptchaToken("");
-    
     setLoading(false);
 
-    // Check if MFA is required for this user
+    // Check if MFA is required
     const { data: factors } = await supabase.auth.mfa.listFactors();
     const hasMfaEnabled = factors?.totp?.some(f => f.status === "verified");
     
-    // If user has MFA enabled, check if they need to verify
     if (hasMfaEnabled) {
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       
       if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
-        // User needs to complete MFA challenge
         const factor = factors?.totp?.find(f => f.status === "verified");
         if (factor) {
           try {
@@ -440,31 +303,10 @@ const AdminAuth = () => {
               />
             </div>
             
-            {showCaptcha && (
-              <div className="space-y-2">
-                <Label>Verification Required</Label>
-                {!import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>
-                      CAPTCHA configuration missing. Please contact administrator.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div 
-                    ref={turnstileContainerRef}
-                    className="flex justify-center min-h-[65px]"
-                  />
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Multiple failed attempts detected. Please complete the verification.
-                </p>
-              </div>
-            )}
-            
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading || (showCaptcha && !captchaToken)}
+              disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Shield className="mr-2 h-4 w-4" />

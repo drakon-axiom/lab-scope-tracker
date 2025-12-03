@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download, ArrowUp, Sparkles, X } from "lucide-react";
+import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download, ArrowUp, Sparkles, X, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
@@ -14,11 +14,23 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { supabase } from "@/integrations/supabase/client";
 
 const Landing = () => {
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [showBetaBanner, setShowBetaBanner] = useState(true);
+  const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchWaitlistCount = async () => {
+      const { count } = await supabase
+        .from('waitlist')
+        .select('*', { count: 'exact', head: true });
+      setWaitlistCount(count);
+    };
+    fetchWaitlistCount();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -196,6 +208,51 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      {/* Social Proof Section */}
+      {waitlistCount !== null && waitlistCount > 0 && (
+        <section className="py-8 md:py-12 bg-muted/30 border-y border-border/50">
+          <div className="container mx-auto px-4">
+            <motion.div 
+              className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-3xl md:text-4xl font-bold text-foreground">
+                    {waitlistCount.toLocaleString()}+
+                  </p>
+                  <p className="text-sm text-muted-foreground">Early Access Signups</p>
+                </div>
+              </div>
+              
+              <div className="hidden md:block h-12 w-px bg-border" />
+              
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-accent/10">
+                  <Sparkles className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Join the Beta</p>
+                  <p className="text-sm text-muted-foreground">Limited spots available</p>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={() => navigate("/waitlist")} 
+                className="md:ml-4"
+              >
+                Get Early Access
+              </Button>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* Interactive Demo Section */}
       <section id="demo" className="py-16 md:py-24">

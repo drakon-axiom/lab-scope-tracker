@@ -111,19 +111,28 @@ const AdminAuth = () => {
         },
       });
 
+      // Check response data first (edge function may return error info in data even on success)
+      if (data?.captchaRequired) {
+        setShowCaptcha(true);
+        return data;
+      }
+      
+      if (data?.locked) {
+        throw new Error(`Account temporarily locked. Please try again in ${data?.lockoutMinutes || 30} minutes.`);
+      }
+
       if (logError) {
         console.error("Failed to log admin login attempt:", logError);
         
-        // Check if this is a rate limit error
-        if (logError.message?.includes("locked") || data?.locked) {
-          throw new Error(`Account temporarily locked. Please try again in ${data?.lockoutMinutes || 30} minutes.`);
-        }
-        
-        // Check if CAPTCHA is required from error response
-        if (data?.captchaRequired) {
-          const err: any = new Error("CAPTCHA verification required");
-          err.captchaRequired = true;
-          throw err;
+        // Try to parse error context for captcha requirement
+        try {
+          const errorContext = (logError as any)?.context;
+          if (errorContext?.captchaRequired) {
+            setShowCaptcha(true);
+            return { captchaRequired: true };
+          }
+        } catch (e) {
+          // Ignore parsing errors
         }
       }
 
@@ -131,7 +140,8 @@ const AdminAuth = () => {
       return data;
     } catch (err: any) {
       console.error("Failed to log admin login attempt:", err);
-      throw err;
+      // Don't re-throw - just return indication of failure
+      return { error: true };
     }
   };
 
@@ -146,16 +156,27 @@ const AdminAuth = () => {
 
     if (error) {
       // Log failed attempt and check for rate limiting
-      try {
-        const logData = await logAdminLoginAttempt(email, false, undefined, error.message);
-        
-        setLoading(false);
-        
-        // Check if server requires CAPTCHA
-        if (logData?.captchaRequired) {
-          setShowCaptcha(true);
-        }
-        
+      const logData = await logAdminLoginAttempt(email, false, undefined, error.message);
+      
+      setLoading(false);
+      
+      // Check if server requires CAPTCHA
+      if (logData?.captchaRequired) {
+        setShowCaptcha(true);
+        toast({
+          title: "Verification Required",
+          description: "Please complete the CAPTCHA verification below.",
+          variant: "destructive",
+          duration: 4000,
+        });
+      } else if (logData?.locked) {
+        toast({
+          title: "Account Locked",
+          description: `Account temporarily locked. Please try again in ${logData?.lockoutMinutes || 30} minutes.`,
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else {
         // Show attempts remaining if available
         const attemptsMsg = logData?.attemptsRemaining !== undefined 
           ? ` (${logData.attemptsRemaining} attempts remaining)` 
@@ -166,20 +187,6 @@ const AdminAuth = () => {
           description: error.message + attemptsMsg,
           variant: "destructive",
           duration: 4000,
-        });
-      } catch (lockError: any) {
-        setLoading(false);
-        
-        // Check if the error response contains captchaRequired flag
-        if (lockError?.captchaRequired) {
-          setShowCaptcha(true);
-        }
-        
-        toast({
-          title: "Account Locked",
-          description: lockError.message || "Please complete CAPTCHA verification",
-          variant: "destructive",
-          duration: 6000,
         });
       }
       

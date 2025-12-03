@@ -122,7 +122,7 @@ const QuoteConfirm = () => {
           }
         }
         
-        const lockedStatuses = ['approved', 'awaiting_customer_approval', 'rejected', 'paid', 'shipped', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
+        const lockedStatuses = ['approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid_awaiting_shipping', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
         if (lockedStatuses.includes(data.status)) {
           setConfirmed(true);
         }
@@ -224,7 +224,7 @@ const QuoteConfirm = () => {
           quoteId,
           action: 'update',
           updates: {
-            status: changesWereMade ? 'awaiting_customer_approval' : 'approved',
+            status: changesWereMade ? 'awaiting_customer_approval' : 'approved_payment_pending',
             lab_quote_number: quoteNumber || null,
             lab_response: labResponse,
             discount_type: discountAmount ? discountType : null,
@@ -566,6 +566,7 @@ const QuoteConfirm = () => {
   if (confirmed) {
     const isRejected = quote.status === 'rejected';
     const isAwaitingCustomerApproval = quote.status === 'awaiting_customer_approval';
+    const isApproved = quote.status === 'approved_payment_pending';
     
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -574,7 +575,7 @@ const QuoteConfirm = () => {
             <div className={`flex items-center gap-2 ${isRejected ? 'text-destructive' : 'text-success'}`}>
               <CheckCircle2 className="h-6 w-6" />
               <CardTitle>
-                {isRejected ? 'Quote Rejected' : isAwaitingCustomerApproval ? 'Quote Updated' : 'Quote Confirmed'}
+                {isRejected ? 'Quote Rejected' : isAwaitingCustomerApproval ? 'Quote Updated' : 'Quote Approved'}
               </CardTitle>
             </div>
             <CardDescription>

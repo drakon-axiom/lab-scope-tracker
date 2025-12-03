@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
 import { triggerSuccessConfetti } from "@/lib/confetti";
+import * as XLSX from "xlsx";
 
 const QuoteConfirm = () => {
   const { quoteId } = useParams();
@@ -305,6 +306,137 @@ const QuoteConfirm = () => {
     }
   };
 
+  const getOrderData = () => {
+    const totals = calculateTotal();
+    return {
+      quote_number: quote?.quote_number || `Quote ${quote?.id?.slice(0, 8)}`,
+      lab: quote?.labs?.name,
+      status: quote?.status?.replace(/_/g, ' '),
+      created_at: quote?.created_at,
+      items: quoteItems.map(item => ({
+        product: item.products?.name || '',
+        client: item.client || '',
+        sample: item.sample || '',
+        manufacturer: item.manufacturer || '',
+        batch: item.batch || '',
+        base_price: parseFloat(item.price || 0),
+        additional_samples: item.additional_samples || 0,
+        additional_report_headers: item.additional_report_headers || 0,
+      })),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      total: totals.total,
+    };
+  };
+
+  const downloadJSON = () => {
+    const data = getOrderData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote?.quote_number || quote?.id?.slice(0, 8)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = () => {
+    const data = getOrderData();
+    const headers = ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Additional Samples', 'Additional Headers'];
+    const rows = data.items.map(item => [
+      item.product,
+      item.client,
+      item.sample,
+      item.manufacturer,
+      item.batch,
+      item.base_price.toFixed(2),
+      item.additional_samples,
+      item.additional_report_headers,
+    ]);
+    rows.push([]);
+    rows.push(['', '', '', '', '', 'Subtotal:', '', data.subtotal.toFixed(2)]);
+    rows.push(['', '', '', '', '', 'Discount:', '', data.discount.toFixed(2)]);
+    rows.push(['', '', '', '', '', 'Total:', '', data.total.toFixed(2)]);
+    
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote?.quote_number || quote?.id?.slice(0, 8)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadExcel = () => {
+    const data = getOrderData();
+    const wsData = [
+      ['Order Details'],
+      ['Quote Number:', data.quote_number],
+      ['Lab:', data.lab],
+      ['Status:', data.status],
+      [],
+      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Additional Samples', 'Additional Headers'],
+      ...data.items.map(item => [
+        item.product,
+        item.client,
+        item.sample,
+        item.manufacturer,
+        item.batch,
+        item.base_price,
+        item.additional_samples,
+        item.additional_report_headers,
+      ]),
+      [],
+      ['', '', '', '', '', 'Subtotal:', '', data.subtotal],
+      ['', '', '', '', '', 'Discount:', '', data.discount],
+      ['', '', '', '', '', 'Total:', '', data.total],
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Order');
+    XLSX.writeFile(wb, `order-${quote?.quote_number || quote?.id?.slice(0, 8)}.xlsx`);
+  };
+
+  const downloadText = () => {
+    const data = getOrderData();
+    let text = `ORDER DETAILS\n${'='.repeat(50)}\n\n`;
+    text += `Quote Number: ${data.quote_number}\n`;
+    text += `Lab: ${data.lab}\n`;
+    text += `Status: ${data.status}\n\n`;
+    text += `ITEMS\n${'-'.repeat(50)}\n\n`;
+    
+    data.items.forEach((item, index) => {
+      text += `${index + 1}. ${item.product}\n`;
+      text += `   Client: ${item.client}\n`;
+      text += `   Sample: ${item.sample}\n`;
+      text += `   Manufacturer: ${item.manufacturer}\n`;
+      text += `   Batch: ${item.batch}\n`;
+      text += `   Base Price: $${item.base_price.toFixed(2)}\n`;
+      if (item.additional_samples > 0) {
+        text += `   Additional Samples: ${item.additional_samples}\n`;
+      }
+      if (item.additional_report_headers > 0) {
+        text += `   Additional Headers: ${item.additional_report_headers}\n`;
+      }
+      text += '\n';
+    });
+    
+    text += `${'-'.repeat(50)}\n`;
+    text += `Subtotal: $${data.subtotal.toFixed(2)}\n`;
+    text += `Discount: -$${data.discount.toFixed(2)}\n`;
+    text += `TOTAL: $${data.total.toFixed(2)}\n`;
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote?.quote_number || quote?.id?.slice(0, 8)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -350,12 +482,39 @@ const QuoteConfirm = () => {
                 : "Thank you for confirming the quote. The customer has been notified."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="space-y-2 text-sm">
               <p><strong>Quote Number:</strong> {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</p>
               <p><strong>Lab:</strong> {quote.labs.name}</p>
               <p><strong>Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
             </div>
+            
+            {!isRejected && (
+              <div className="border-t pt-4 space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Download Order Details
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" onClick={downloadJSON} className="justify-start">
+                    <FileJson className="h-4 w-4 mr-2" />
+                    JSON
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadCSV} className="justify-start">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    CSV
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadExcel} className="justify-start">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Excel
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadText} className="justify-start">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Text
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

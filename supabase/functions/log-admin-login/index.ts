@@ -13,36 +13,9 @@ interface LoginAttempt {
   userId?: string;
   errorMessage?: string;
   userAgent?: string;
-  captchaToken?: string;
 }
 
-async function verifyCaptcha(token: string): Promise<boolean> {
-  const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
-  if (!secretKey) {
-    console.error("TURNSTILE_SECRET_KEY not configured");
-    return false;
-  }
-
-  try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        secret: secretKey,
-        response: token,
-      }),
-    });
-
-    const data = await response.json();
-    console.log("Turnstile verification response:", data);
-    return data.success === true;
-  } catch (error) {
-    console.error("Error verifying CAPTCHA:", error);
-    return false;
-  }
-}
+// CAPTCHA verification disabled - using lockout and email alerts for security
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -55,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, success, userId, errorMessage, userAgent, captchaToken }: LoginAttempt = await req.json();
+    const { email, success, userId, errorMessage, userAgent }: LoginAttempt = await req.json();
 
     // Extract IP address from request headers
     const ipAddress = 
@@ -104,60 +77,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const failedAttemptsCount = recentAttempts?.length || 0;
     console.log("Recent failed attempts:", failedAttemptsCount);
-
-    // Check if CAPTCHA is required (3 or more failed attempts)
-    const captchaRequired = failedAttemptsCount >= 3;
-    console.log("CAPTCHA required:", captchaRequired);
-
-    // If CAPTCHA is required, verify it
-    if (captchaRequired) {
-      if (!captchaToken) {
-        console.log("CAPTCHA required but not provided");
-        return new Response(
-          JSON.stringify({ 
-            error: "CAPTCHA verification required",
-            captchaRequired: true
-          }),
-          {
-            status: 400,
-            headers: {
-              "Content-Type": "application/json",
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-
-      const captchaValid = await verifyCaptcha(captchaToken);
-      if (!captchaValid) {
-        console.log("CAPTCHA verification failed");
-        
-        // Log the failed attempt
-        await supabase.from("admin_login_audit").insert({
-          user_id: userId || null,
-          email,
-          success: false,
-          error_message: "CAPTCHA verification failed",
-          ip_address: ipAddress,
-          user_agent: userAgent || null,
-        });
-
-        return new Response(
-          JSON.stringify({ 
-            error: "CAPTCHA verification failed. Please try again.",
-            captchaRequired: true
-          }),
-          {
-            status: 400,
-            headers: {
-              "Content-Type": "application/json",
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-      console.log("CAPTCHA verification successful");
-    }
 
     // If failed attempts exceed limit, reject the login attempt
     if (!success && failedAttemptsCount >= maxAttempts) {

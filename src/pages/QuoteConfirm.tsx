@@ -313,18 +313,53 @@ const QuoteConfirm = () => {
       lab: quote?.labs?.name,
       status: quote?.status?.replace(/_/g, ' '),
       created_at: quote?.created_at,
-      items: quoteItems.map(item => ({
-        product: item.products?.name || '',
-        client: item.client || '',
-        sample: item.sample || '',
-        manufacturer: item.manufacturer || '',
-        batch: item.batch || '',
-        base_price: parseFloat(item.price || 0),
-        additional_samples: item.additional_samples || 0,
-        additional_report_headers: item.additional_report_headers || 0,
-      })),
+      notes: quote?.notes || '',
+      items: quoteItems.map(item => {
+        const productName = item.products?.name || '';
+        const additionalSamples = item.additional_samples || 0;
+        const additionalHeaders = item.additional_report_headers || 0;
+        const samplePrice = parseFloat(additionalSamplePrices[item.id] || "60");
+        const headerPrice = parseFloat(additionalHeaderPrices[item.id] || "30");
+        
+        // Calculate costs
+        const additionalSamplesCost = ["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName) 
+          ? additionalSamples * samplePrice 
+          : 0;
+        const additionalHeadersCost = additionalHeaders * headerPrice;
+        
+        // Parse additional headers data
+        let headersData: Array<{client: string, sample: string, manufacturer: string, batch: string}> = [];
+        if (item.additional_headers_data) {
+          try {
+            headersData = typeof item.additional_headers_data === 'string' 
+              ? JSON.parse(item.additional_headers_data) 
+              : item.additional_headers_data;
+          } catch (e) {
+            headersData = [];
+          }
+        }
+        
+        return {
+          product: productName,
+          client: item.client || '',
+          sample: item.sample || '',
+          manufacturer: item.manufacturer || '',
+          batch: item.batch || '',
+          base_price: parseFloat(item.price || 0),
+          additional_samples: additionalSamples,
+          additional_samples_price_each: samplePrice,
+          additional_samples_total: additionalSamplesCost,
+          additional_report_headers: additionalHeaders,
+          additional_headers_price_each: headerPrice,
+          additional_headers_total: additionalHeadersCost,
+          additional_headers_data: headersData,
+          item_total: parseFloat(item.price || 0) + additionalSamplesCost + additionalHeadersCost,
+        };
+      }),
       subtotal: totals.subtotal,
       discount: totals.discount,
+      discount_type: discountType,
+      discount_amount: discountAmount ? parseFloat(discountAmount) : 0,
       total: totals.total,
     };
   };
@@ -342,23 +377,54 @@ const QuoteConfirm = () => {
 
   const downloadCSV = () => {
     const data = getOrderData();
-    const headers = ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Additional Samples', 'Additional Headers'];
-    const rows = data.items.map(item => [
-      item.product,
-      item.client,
-      item.sample,
-      item.manufacturer,
-      item.batch,
-      item.base_price.toFixed(2),
-      item.additional_samples,
-      item.additional_report_headers,
-    ]);
-    rows.push([]);
-    rows.push(['', '', '', '', '', 'Subtotal:', '', data.subtotal.toFixed(2)]);
-    rows.push(['', '', '', '', '', 'Discount:', '', data.discount.toFixed(2)]);
-    rows.push(['', '', '', '', '', 'Total:', '', data.total.toFixed(2)]);
+    const rows: string[][] = [];
     
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    // Header info
+    rows.push(['Quote Number:', data.quote_number]);
+    rows.push(['Lab:', data.lab || '']);
+    rows.push(['Status:', data.status || '']);
+    rows.push(['Notes:', data.notes]);
+    rows.push([]);
+    
+    // Items header
+    rows.push(['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Add. Samples', 'Samples Cost', 'Add. Headers', 'Headers Cost', 'Item Total']);
+    
+    data.items.forEach(item => {
+      rows.push([
+        item.product,
+        item.client,
+        item.sample,
+        item.manufacturer,
+        item.batch,
+        `$${item.base_price.toFixed(2)}`,
+        item.additional_samples.toString(),
+        `$${item.additional_samples_total.toFixed(2)}`,
+        item.additional_report_headers.toString(),
+        `$${item.additional_headers_total.toFixed(2)}`,
+        `$${item.item_total.toFixed(2)}`,
+      ]);
+      
+      // Add additional headers details if present
+      if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+        item.additional_headers_data.forEach((header, idx) => {
+          rows.push([
+            `  └ Additional Header ${idx + 1}`,
+            header.client || '',
+            header.sample || '',
+            header.manufacturer || '',
+            header.batch || '',
+            '', '', '', '', '', '',
+          ]);
+        });
+      }
+    });
+    
+    rows.push([]);
+    rows.push(['', '', '', '', '', '', '', '', '', 'Subtotal:', `$${data.subtotal.toFixed(2)}`]);
+    rows.push(['', '', '', '', '', '', '', '', '', `Discount (${data.discount_type === 'percentage' ? data.discount_amount + '%' : 'Fixed'}):`, `-$${data.discount.toFixed(2)}`]);
+    rows.push(['', '', '', '', '', '', '', '', '', 'TOTAL:', `$${data.total.toFixed(2)}`]);
+    
+    const csvContent = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -370,14 +436,18 @@ const QuoteConfirm = () => {
 
   const downloadExcel = () => {
     const data = getOrderData();
-    const wsData = [
-      ['Order Details'],
+    const wsData: (string | number)[][] = [
+      ['ORDER DETAILS'],
       ['Quote Number:', data.quote_number],
-      ['Lab:', data.lab],
-      ['Status:', data.status],
+      ['Lab:', data.lab || ''],
+      ['Status:', data.status || ''],
+      ['Notes:', data.notes],
       [],
-      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Additional Samples', 'Additional Headers'],
-      ...data.items.map(item => [
+      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Add. Samples', 'Samples Cost', 'Add. Headers', 'Headers Cost', 'Item Total'],
+    ];
+    
+    data.items.forEach(item => {
+      wsData.push([
         item.product,
         item.client,
         item.sample,
@@ -385,13 +455,31 @@ const QuoteConfirm = () => {
         item.batch,
         item.base_price,
         item.additional_samples,
+        item.additional_samples_total,
         item.additional_report_headers,
-      ]),
-      [],
-      ['', '', '', '', '', 'Subtotal:', '', data.subtotal],
-      ['', '', '', '', '', 'Discount:', '', data.discount],
-      ['', '', '', '', '', 'Total:', '', data.total],
-    ];
+        item.additional_headers_total,
+        item.item_total,
+      ]);
+      
+      // Add additional headers details if present
+      if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+        item.additional_headers_data.forEach((header, idx) => {
+          wsData.push([
+            `  └ Additional Header ${idx + 1}`,
+            header.client || '',
+            header.sample || '',
+            header.manufacturer || '',
+            header.batch || '',
+            '', '', '', '', '', '',
+          ]);
+        });
+      }
+    });
+    
+    wsData.push([]);
+    wsData.push(['', '', '', '', '', '', '', '', '', 'Subtotal:', data.subtotal]);
+    wsData.push(['', '', '', '', '', '', '', '', '', `Discount (${data.discount_type === 'percentage' ? data.discount_amount + '%' : 'Fixed'}):`, -data.discount]);
+    wsData.push(['', '', '', '', '', '', '', '', '', 'TOTAL:', data.total]);
     
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
@@ -401,11 +489,12 @@ const QuoteConfirm = () => {
 
   const downloadText = () => {
     const data = getOrderData();
-    let text = `ORDER DETAILS\n${'='.repeat(50)}\n\n`;
+    let text = `ORDER DETAILS\n${'='.repeat(60)}\n\n`;
     text += `Quote Number: ${data.quote_number}\n`;
     text += `Lab: ${data.lab}\n`;
-    text += `Status: ${data.status}\n\n`;
-    text += `ITEMS\n${'-'.repeat(50)}\n\n`;
+    text += `Status: ${data.status}\n`;
+    if (data.notes) text += `Notes: ${data.notes}\n`;
+    text += `\nITEMS\n${'-'.repeat(60)}\n\n`;
     
     data.items.forEach((item, index) => {
       text += `${index + 1}. ${item.product}\n`;
@@ -414,18 +503,32 @@ const QuoteConfirm = () => {
       text += `   Manufacturer: ${item.manufacturer}\n`;
       text += `   Batch: ${item.batch}\n`;
       text += `   Base Price: $${item.base_price.toFixed(2)}\n`;
+      
       if (item.additional_samples > 0) {
-        text += `   Additional Samples: ${item.additional_samples}\n`;
+        text += `   Additional Samples: ${item.additional_samples} × $${item.additional_samples_price_each.toFixed(2)} = $${item.additional_samples_total.toFixed(2)}\n`;
       }
+      
       if (item.additional_report_headers > 0) {
-        text += `   Additional Headers: ${item.additional_report_headers}\n`;
+        text += `   Additional Report Headers: ${item.additional_report_headers} × $${item.additional_headers_price_each.toFixed(2)} = $${item.additional_headers_total.toFixed(2)}\n`;
+        
+        if (item.additional_headers_data && item.additional_headers_data.length > 0) {
+          text += `   Additional Header Details:\n`;
+          item.additional_headers_data.forEach((header, idx) => {
+            text += `     Header ${idx + 1}:\n`;
+            text += `       Client: ${header.client || 'N/A'}\n`;
+            text += `       Sample: ${header.sample || 'N/A'}\n`;
+            text += `       Manufacturer: ${header.manufacturer || 'N/A'}\n`;
+            text += `       Batch: ${header.batch || 'N/A'}\n`;
+          });
+        }
       }
-      text += '\n';
+      
+      text += `   Item Total: $${item.item_total.toFixed(2)}\n\n`;
     });
     
-    text += `${'-'.repeat(50)}\n`;
+    text += `${'-'.repeat(60)}\n`;
     text += `Subtotal: $${data.subtotal.toFixed(2)}\n`;
-    text += `Discount: -$${data.discount.toFixed(2)}\n`;
+    text += `Discount (${data.discount_type === 'percentage' ? data.discount_amount + '%' : 'Fixed $' + data.discount_amount}): -$${data.discount.toFixed(2)}\n`;
     text += `TOTAL: $${data.total.toFixed(2)}\n`;
     
     const blob = new Blob([text], { type: 'text/plain' });

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download, ArrowUp } from "lucide-react";
+import { Beaker, Shield, Clock, Award, Mail, MapPin, Phone, FileText, CheckCircle, CreditCard, Package, Activity, Download, ArrowUp, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LandingHeader } from "@/components/LandingHeader";
 import { ProductTourCarousel } from "@/components/ProductTourCarousel";
@@ -18,6 +18,7 @@ import {
 const Landing = () => {
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showBetaBanner, setShowBetaBanner] = useState(true);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -53,6 +54,36 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       <LandingHeader />
+      
+      {/* Beta Waitlist Banner */}
+      {showBetaBanner && (
+        <div className="relative bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-center gap-3 text-sm md:text-base">
+              <Sparkles className="h-5 w-5 shrink-0 animate-pulse" />
+              <span className="font-medium">
+                🎉 <span className="hidden sm:inline">We're in Public Beta!</span><span className="sm:hidden">Beta Access!</span> Join the waitlist for{" "}
+                <span className="font-bold underline underline-offset-2">free early access</span> + exclusive launch pricing
+              </span>
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                onClick={() => navigate("/waitlist")}
+                className="shrink-0 font-semibold"
+              >
+                Join Now
+              </Button>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowBetaBanner(false)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-primary-foreground/10 rounded-full transition-colors"
+            aria-label="Dismiss banner"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       
       {/* Hero Section */}
       <section className="relative min-h-[500px] md:min-h-[600px] flex items-center overflow-hidden">

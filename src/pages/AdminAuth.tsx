@@ -32,6 +32,7 @@ const AdminAuth = () => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
   const turnstileWidgetId = useRef<string | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +50,10 @@ const AdminAuth = () => {
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     script.async = true;
     script.defer = true;
+    script.onload = () => {
+      console.log("Turnstile script loaded");
+      setTurnstileLoaded(true);
+    };
     document.head.appendChild(script);
 
     return () => {
@@ -59,9 +64,9 @@ const AdminAuth = () => {
     };
   }, [navigate]);
 
-  // Initialize Turnstile when it should be shown
+  // Initialize Turnstile when it should be shown and script is loaded
   useEffect(() => {
-    if (showCaptcha && turnstileContainerRef.current && window.turnstile) {
+    if (showCaptcha && turnstileLoaded && turnstileContainerRef.current && window.turnstile) {
       // Remove existing widget if any
       if (turnstileWidgetId.current) {
         try {
@@ -73,6 +78,7 @@ const AdminAuth = () => {
 
       // Render new widget
       const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+      console.log("Rendering Turnstile widget, siteKey exists:", !!siteKey);
       if (siteKey) {
         try {
           turnstileWidgetId.current = window.turnstile.render(turnstileContainerRef.current, {
@@ -93,9 +99,11 @@ const AdminAuth = () => {
         } catch (e) {
           console.error("Error rendering turnstile:", e);
         }
+      } else {
+        console.error("VITE_TURNSTILE_SITE_KEY not configured");
       }
     }
-  }, [showCaptcha]);
+  }, [showCaptcha, turnstileLoaded]);
 
   const logAdminLoginAttempt = async (email: string, success: boolean, userId?: string, errorMessage?: string) => {
     try {
@@ -435,10 +443,18 @@ const AdminAuth = () => {
             {showCaptcha && (
               <div className="space-y-2">
                 <Label>Verification Required</Label>
-                <div 
-                  ref={turnstileContainerRef}
-                  className="flex justify-center"
-                />
+                {!import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      CAPTCHA configuration missing. Please contact administrator.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div 
+                    ref={turnstileContainerRef}
+                    className="flex justify-center min-h-[65px]"
+                  />
+                )}
                 <p className="text-xs text-muted-foreground">
                   Multiple failed attempts detected. Please complete the verification.
                 </p>

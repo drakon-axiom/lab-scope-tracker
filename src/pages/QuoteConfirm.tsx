@@ -6,9 +6,81 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
+import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText, Circle, CheckCircle, Clock, Package, Truck, FlaskConical, FileCheck } from "lucide-react";
 import { triggerSuccessConfetti } from "@/lib/confetti";
+import StatusBadge from "@/components/StatusBadge";
 import * as XLSX from "xlsx";
+
+const ORDER_TIMELINE_STAGES = [
+  { status: 'draft', label: 'Draft', icon: Circle },
+  { status: 'sent_to_vendor', label: 'Sent to Lab', icon: Clock },
+  { status: 'awaiting_customer_approval', label: 'Awaiting Approval', icon: Clock },
+  { status: 'approved_payment_pending', label: 'Payment Pending', icon: CheckCircle },
+  { status: 'paid_awaiting_shipping', label: 'Paid', icon: CheckCircle },
+  { status: 'in_transit', label: 'In Transit', icon: Truck },
+  { status: 'delivered', label: 'Delivered', icon: Package },
+  { status: 'testing_in_progress', label: 'Testing', icon: FlaskConical },
+  { status: 'completed', label: 'Completed', icon: FileCheck },
+];
+
+const OrderTimeline = ({ currentStatus }: { currentStatus: string }) => {
+  const currentIndex = ORDER_TIMELINE_STAGES.findIndex(s => s.status === currentStatus);
+  const isRejected = currentStatus === 'rejected';
+  
+  if (isRejected) {
+    return (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Order Timeline</Label>
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+          <Circle className="h-4 w-4 text-destructive" />
+          <span className="text-sm text-destructive font-medium">Quote was rejected</span>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Order Timeline</Label>
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          {ORDER_TIMELINE_STAGES.map((stage, index) => {
+            const Icon = stage.icon;
+            const isPast = index < currentIndex;
+            const isCurrent = index === currentIndex;
+            const isFuture = index > currentIndex;
+            
+            return (
+              <div key={stage.status} className="flex flex-col items-center relative z-10">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors
+                  ${isPast ? 'bg-success border-success text-success-foreground' : ''}
+                  ${isCurrent ? 'bg-primary border-primary text-primary-foreground' : ''}
+                  ${isFuture ? 'bg-muted border-border text-muted-foreground' : ''}
+                `}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className={`
+                  text-[10px] mt-1 text-center max-w-[60px] leading-tight
+                  ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}
+                `}>
+                  {stage.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Progress line */}
+        <div className="absolute top-4 left-4 right-4 h-0.5 bg-border -z-0">
+          <div 
+            className="h-full bg-success transition-all duration-500"
+            style={{ width: `${Math.max(0, (currentIndex / (ORDER_TIMELINE_STAGES.length - 1)) * 100)}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const QuoteConfirm = () => {
   const { quoteId } = useParams();
@@ -587,10 +659,23 @@ const QuoteConfirm = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2 text-sm">
-              <p><strong>Quote Number:</strong> {quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</p>
-              <p><strong>Lab:</strong> {quote.labs.name}</p>
-              <p><strong>Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Quote Number:</span>
+                <span>{quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Lab:</span>
+                <span>{quote.labs.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Status:</span>
+                <StatusBadge status={quote.status} />
+              </div>
+            </div>
+            
+            <div className="border-t pt-4">
+              <OrderTimeline currentStatus={quote.status} />
             </div>
             
             {!isRejected && (
@@ -635,9 +720,15 @@ const QuoteConfirm = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2 text-sm">
-            <p><strong>Lab:</strong> {quote.labs.name}</p>
-            <p><strong>Current Status:</strong> {quote.status.replace(/_/g, ' ')}</p>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Lab:</span>
+              <span>{quote.labs.name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Current Status:</span>
+              <StatusBadge status={quote.status} />
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -26,12 +26,13 @@ export const useLabUser = () => {
         // Check for impersonation
         const impersonatedLabId = sessionStorage.getItem("impersonatedLabId");
         const impersonatedLabName = sessionStorage.getItem("impersonatedLabName");
+        const impersonatedLabRole = sessionStorage.getItem("impersonatedLabRole");
         
         if (impersonatedLabId && impersonatedLabName) {
           setLabUser({
             id: "impersonated",
             lab_id: impersonatedLabId,
-            role: "admin",
+            role: impersonatedLabRole || "admin", // Use stored role, fallback to admin for backwards compatibility
             lab_name: impersonatedLabName,
           });
           setIsImpersonating(true);

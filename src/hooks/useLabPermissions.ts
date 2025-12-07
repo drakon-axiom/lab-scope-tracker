@@ -53,27 +53,6 @@ export const useLabPermissions = (): LabPermissions => {
 
   return useMemo(() => {
     const role = (labUser?.role as LabRole) || null;
-    
-    // Impersonating admins get full access
-    if (isImpersonating) {
-      return {
-        canViewQuotes: true,
-        canApproveQuotes: true,
-        canRejectQuotes: true,
-        canModifyQuotePricing: true,
-        canViewResults: true,
-        canSubmitResults: true,
-        canViewPricing: true,
-        canEditPricing: true,
-        canBulkEditPricing: true,
-        canImportExportPricing: true,
-        canViewSettings: true,
-        canEditLabSettings: true,
-        canManageLabUsers: true,
-        role: "admin",
-        isReadOnly: false,
-      };
-    }
 
     // Default permissions (no access)
     if (!role) {

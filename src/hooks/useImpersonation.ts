@@ -60,7 +60,7 @@ export const useImpersonation = () => {
     });
   };
 
-  const startLabImpersonation = (labId: string, labName: string) => {
+  const startLabImpersonation = (labId: string, labName: string, labRole?: string) => {
     // Clear any customer impersonation first
     sessionStorage.removeItem("impersonatedCustomerId");
     sessionStorage.removeItem("impersonatedCustomerEmail");
@@ -68,6 +68,9 @@ export const useImpersonation = () => {
     
     sessionStorage.setItem("impersonatedLabId", labId);
     sessionStorage.setItem("impersonatedLabName", labName);
+    if (labRole) {
+      sessionStorage.setItem("impersonatedLabRole", labRole);
+    }
     
     setImpersonatedUser({
       id: labId,
@@ -85,6 +88,7 @@ export const useImpersonation = () => {
     sessionStorage.removeItem("impersonatedCustomerName");
     sessionStorage.removeItem("impersonatedLabId");
     sessionStorage.removeItem("impersonatedLabName");
+    sessionStorage.removeItem("impersonatedLabRole");
     setImpersonatedUser(null);
   };
 

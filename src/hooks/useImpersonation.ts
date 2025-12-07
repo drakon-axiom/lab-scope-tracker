@@ -80,6 +80,9 @@ export const useImpersonation = () => {
       labId,
       labName,
     });
+
+    // Dispatch custom event for same-tab listeners
+    window.dispatchEvent(new CustomEvent("impersonation-changed"));
   };
 
   const stopImpersonation = () => {
@@ -90,6 +93,9 @@ export const useImpersonation = () => {
     sessionStorage.removeItem("impersonatedLabName");
     sessionStorage.removeItem("impersonatedLabRole");
     setImpersonatedUser(null);
+
+    // Dispatch custom event for same-tab listeners
+    window.dispatchEvent(new CustomEvent("impersonation-changed"));
   };
 
   return {

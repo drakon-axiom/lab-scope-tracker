@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
-import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { useLabPermissions } from "@/hooks/useLabPermissions";
+import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp, Sparkles, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -27,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Quote {
   id: string;
@@ -69,6 +71,7 @@ interface SubmissionHistory {
 
 export default function LabResults() {
   const { labUser } = useLabUser();
+  const permissions = useLabPermissions();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -516,9 +519,18 @@ export default function LabResults() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Results Submission</h1>
           <p className="text-muted-foreground mt-1">
-            Upload test results and reports
+            {permissions.canSubmitResults ? "Upload test results and reports" : "View test results (read-only)"}
           </p>
         </div>
+
+        {permissions.isReadOnly && (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              You have read-only access. Contact a lab manager or admin to submit results.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Aggregate Progress Summary */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -643,6 +655,7 @@ export default function LabResults() {
                       <TableCell className="text-right">
                         <Button
                           size="sm"
+                          variant={permissions.canSubmitResults ? "default" : "outline"}
                           onClick={() => {
                             setSelectedQuote(quote);
                             fetchQuoteItems(quote.id);
@@ -651,7 +664,7 @@ export default function LabResults() {
                           }}
                         >
                           <FileText className="h-4 w-4 mr-1" />
-                          Submit Results
+                          {permissions.canSubmitResults ? "Submit Results" : "View Details"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -666,9 +679,11 @@ export default function LabResults() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh]">
             <DialogHeader>
-              <DialogTitle>Submit Test Results</DialogTitle>
+              <DialogTitle>{permissions.canSubmitResults ? "Submit Test Results" : "View Test Results"}</DialogTitle>
               <DialogDescription>
-                Enter results for each product and additional report header
+                {permissions.canSubmitResults 
+                  ? "Enter results for each product and additional report header"
+                  : "View submitted results (read-only access)"}
               </DialogDescription>
             </DialogHeader>
             
@@ -774,31 +789,36 @@ export default function LabResults() {
                             value={result.report_url}
                             onChange={(e) => updateItemResult(index, "report_url", e.target.value)}
                             className="text-sm flex-1"
+                            disabled={!permissions.canSubmitResults}
                           />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={!result.report_url.trim() || extractingIndex === index}
-                            onClick={() => handleExtractFromUrl(index)}
-                            className="whitespace-nowrap"
-                          >
-                            {extractingIndex === index ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                Extracting...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4 mr-1" />
-                                Extract Results
-                              </>
-                            )}
-                          </Button>
+                          {permissions.canSubmitResults && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={!result.report_url.trim() || extractingIndex === index}
+                              onClick={() => handleExtractFromUrl(index)}
+                              className="whitespace-nowrap"
+                            >
+                              {extractingIndex === index ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  Extracting...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4 mr-1" />
+                                  Extract Results
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Enter the report URL and click "Extract Results" to auto-fill purity and identity
-                        </p>
+                        {permissions.canSubmitResults && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Enter the report URL and click "Extract Results" to auto-fill purity and identity
+                          </p>
+                        )}
                       </div>
 
                       {/* Purity fields - one per sample */}
@@ -817,6 +837,7 @@ export default function LabResults() {
                                 value={purity}
                                 onChange={(e) => updatePurityValue(index, sampleIdx, e.target.value)}
                                 className="text-sm"
+                                disabled={!permissions.canSubmitResults}
                               />
                             </div>
                           ))}
@@ -830,21 +851,24 @@ export default function LabResults() {
                           value={result.identity}
                           onChange={(e) => updateItemResult(index, "identity", e.target.value)}
                           className="text-sm"
+                          disabled={!permissions.canSubmitResults}
                         />
                       </div>
                     </CardContent>
                   </Card>
                 ))}
 
-                <div>
-                  <Label>Additional Notes (applies to all results)</Label>
-                  <Textarea
-                    placeholder="Any additional observations or notes..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                  />
-                </div>
+                {permissions.canSubmitResults && (
+                  <div>
+                    <Label>Additional Notes (applies to all results)</Label>
+                    <Textarea
+                      placeholder="Any additional observations or notes..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                )}
               </div>
             </ScrollArea>
 
@@ -852,19 +876,25 @@ export default function LabResults() {
               <div className="text-sm text-muted-foreground">
                 {itemResults.filter(r => r.report_url.trim()).length} of {itemResults.length} results filled
               </div>
-              <Button
-                onClick={handleSubmitResults}
-                disabled={uploading || itemResults.filter(r => r.report_url.trim()).length === 0}
-              >
-                {uploading ? (
-                  <>Submitting...</>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-1" />
-                    Submit Results
-                  </>
-                )}
-              </Button>
+              {permissions.canSubmitResults ? (
+                <Button
+                  onClick={handleSubmitResults}
+                  disabled={uploading || itemResults.filter(r => r.report_url.trim()).length === 0}
+                >
+                  {uploading ? (
+                    <>Submitting...</>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-1" />
+                      Submit Results
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Close
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

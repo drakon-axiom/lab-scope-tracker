@@ -3,13 +3,9 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard,
   FileText,
-  CreditCard,
-  Package,
-  FlaskConical,
+  CheckCircle,
   Settings,
-  Bell,
   LogOut,
   Menu,
   Beaker,
@@ -28,21 +24,24 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { LabMobileBottomNav } from "@/components/lab/LabMobileBottomNav";
+import { Badge } from "@/components/ui/badge";
 
 interface LabLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/lab/dashboard" },
-  { icon: FileText, label: "Quote Requests", path: "/lab/quotes" },
-  { icon: CreditCard, label: "Payments", path: "/lab/payments" },
-  { icon: Package, label: "Shipping", path: "/lab/shipping" },
-  { icon: FlaskConical, label: "Results", path: "/lab/results" },
-  { icon: Settings, label: "Lab Settings", path: "/lab/settings" },
-  { icon: Bell, label: "Notifications", path: "/lab/notifications" },
+// Core nav items for all users
+const coreNavItems = [
+  { icon: FileText, label: "Open Requests", path: "/lab/requests" },
+  { icon: CheckCircle, label: "Completed", path: "/lab/completed" },
+];
+
+// Additional nav items for managers and admins
+const adminNavItems = [
+  { icon: Settings, label: "Settings", path: "/lab/settings" },
 ];
 
 export default function LabLayout({ children }: LabLayoutProps) {
@@ -50,6 +49,7 @@ export default function LabLayout({ children }: LabLayoutProps) {
   const location = useLocation();
   const { labUser, loading, isImpersonating } = useLabUser();
   const { stopImpersonation } = useImpersonation();
+  const permissions = useLabPermissions();
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -97,6 +97,12 @@ export default function LabLayout({ children }: LabLayoutProps) {
       </div>
     );
   }
+
+  const canAccessSettings = permissions.role === "manager" || permissions.role === "admin";
+  
+  const navItems = canAccessSettings 
+    ? [...coreNavItems, ...adminNavItems]
+    : coreNavItems;
 
   const NavContent = () => (
     <>
@@ -210,6 +216,16 @@ export default function LabLayout({ children }: LabLayoutProps) {
           <nav className="flex flex-col gap-2 p-4">
             <NavContent />
           </nav>
+          
+          {/* Role badge in sidebar footer */}
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Your Role</p>
+              <Badge variant="outline" className="capitalize">
+                {permissions.role || "Unknown"}
+              </Badge>
+            </div>
+          </div>
         </aside>
 
         {/* Main Content */}

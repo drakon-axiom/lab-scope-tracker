@@ -40,6 +40,7 @@ interface QuoteItem {
   id: string;
   product_id: string;
   additional_report_headers: number;
+  additional_samples: number;
   additional_headers_data: any[];
   products: {
     name: string;
@@ -49,10 +50,10 @@ interface QuoteItem {
 interface ItemResult {
   quote_item_id: string;
   header_index: number;
+  sample_index: number; // 0 = main sample, 1+ = additional samples for variance
   header_label: string;
   header_data: any;
   report_url: string;
-  potency: string;
   purity: string;
   identity: string;
   isSubmitted?: boolean; // Track if this result was previously submitted
@@ -168,6 +169,7 @@ export default function LabResults() {
           id,
           product_id,
           additional_report_headers,
+          additional_samples,
           additional_headers_data,
           test_results,
           products (name)
@@ -179,46 +181,83 @@ export default function LabResults() {
       const items = data || [];
       setQuoteItems(items as QuoteItem[]);
 
-      // Initialize item results for each quote item and additional headers
+      // Initialize item results for each quote item, additional headers, and additional samples
       const results: ItemResult[] = [];
       items.forEach((item: any) => {
         // Parse existing test results if available
         const existingResults = item.test_results ? JSON.parse(item.test_results) : null;
         const existingMain = existingResults?.main || {};
         const existingAdditional = existingResults?.additional_headers || [];
+        const existingSamples = existingResults?.additional_samples || [];
 
-        // Main product entry
+        const additionalSamplesCount = item.additional_samples || 0;
+
+        // Main product entry (sample 0)
         const hasMainResult = !!(existingMain.report_url);
         results.push({
           quote_item_id: item.id,
           header_index: 0,
+          sample_index: 0,
           header_label: item.products.name,
           header_data: null,
           report_url: existingMain.report_url || "",
-          potency: existingMain.potency || "",
           purity: existingMain.purity || "",
           identity: existingMain.identity || "",
           isSubmitted: hasMainResult,
         });
 
+        // Additional samples for variance testing (for main header)
+        for (let s = 0; s < additionalSamplesCount; s++) {
+          const existingSample = existingSamples.find((sam: any) => sam.header_index === 0 && sam.sample_index === s + 1) || {};
+          const hasSampleResult = !!(existingSample.report_url);
+          results.push({
+            quote_item_id: item.id,
+            header_index: 0,
+            sample_index: s + 1,
+            header_label: `${item.products.name} - Sample #${s + 2} (Variance)`,
+            header_data: null,
+            report_url: existingSample.report_url || "",
+            purity: existingSample.purity || "",
+            identity: existingSample.identity || "",
+            isSubmitted: hasSampleResult,
+          });
+        }
+
         // Additional header entries
         const additionalHeaders = item.additional_headers_data || [];
         for (let i = 0; i < (item.additional_report_headers || 0); i++) {
           const headerData = additionalHeaders[i] || {};
-          const existingHeader = existingAdditional.find((h: any) => h.header_index === i + 1) || {};
+          const existingHeader = existingAdditional.find((h: any) => h.header_index === i + 1 && (!h.sample_index || h.sample_index === 0)) || {};
           const hasHeaderResult = !!(existingHeader.report_url);
           
           results.push({
             quote_item_id: item.id,
             header_index: i + 1,
+            sample_index: 0,
             header_label: `${item.products.name} - Header #${i + 1}`,
             header_data: headerData,
             report_url: existingHeader.report_url || "",
-            potency: existingHeader.potency || "",
             purity: existingHeader.purity || "",
             identity: existingHeader.identity || "",
             isSubmitted: hasHeaderResult,
           });
+
+          // Additional samples for this header (variance testing)
+          for (let s = 0; s < additionalSamplesCount; s++) {
+            const existingHeaderSample = existingSamples.find((sam: any) => sam.header_index === i + 1 && sam.sample_index === s + 1) || {};
+            const hasHeaderSampleResult = !!(existingHeaderSample.report_url);
+            results.push({
+              quote_item_id: item.id,
+              header_index: i + 1,
+              sample_index: s + 1,
+              header_label: `${item.products.name} - Header #${i + 1} - Sample #${s + 2} (Variance)`,
+              header_data: headerData,
+              report_url: existingHeaderSample.report_url || "",
+              purity: existingHeaderSample.purity || "",
+              identity: existingHeaderSample.identity || "",
+              isSubmitted: hasHeaderSampleResult,
+            });
+          }
         }
       });
 
@@ -274,17 +313,19 @@ export default function LabResults() {
 
       // Update each quote item with new results merged with existing
       for (const [itemId, results] of Object.entries(resultsByItem)) {
-        const mainResult = results.find(r => r.header_index === 0);
-        const additionalResults = results.filter(r => r.header_index > 0);
+        const mainResults = results.filter(r => r.header_index === 0);
+        const mainResult = mainResults.find(r => r.sample_index === 0);
+        const mainSampleResults = mainResults.filter(r => r.sample_index > 0);
+        const additionalResults = results.filter(r => r.header_index > 0 && r.sample_index === 0);
+        const additionalSampleResults = results.filter(r => r.header_index > 0 && r.sample_index > 0);
         
         // Get existing results to preserve previously submitted data
-        const existing = existingTestResults.get(itemId) || { additional_headers: [] };
+        const existing = existingTestResults.get(itemId) || { additional_headers: [], additional_samples: [] };
 
         // Merge new results with existing
         const testResults = {
           main: mainResult ? {
             report_url: mainResult.report_url,
-            potency: mainResult.potency,
             purity: mainResult.purity,
             identity: mainResult.identity,
           } : existing.main,
@@ -294,13 +335,39 @@ export default function LabResults() {
               header_index: r.header_index,
               header_data: r.header_data,
               report_url: r.report_url,
-              potency: r.potency,
               purity: r.purity,
               identity: r.identity,
             }))
           ].reduce((acc, curr) => {
             // Remove duplicates by header_index, keeping latest
             const existingIndex = acc.findIndex(a => a.header_index === curr.header_index);
+            if (existingIndex >= 0) {
+              acc[existingIndex] = curr;
+            } else {
+              acc.push(curr);
+            }
+            return acc;
+          }, [] as any[]),
+          additional_samples: [
+            ...(existing.additional_samples || []),
+            ...mainSampleResults.map(r => ({
+              header_index: r.header_index,
+              sample_index: r.sample_index,
+              report_url: r.report_url,
+              purity: r.purity,
+              identity: r.identity,
+            })),
+            ...additionalSampleResults.map(r => ({
+              header_index: r.header_index,
+              sample_index: r.sample_index,
+              header_data: r.header_data,
+              report_url: r.report_url,
+              purity: r.purity,
+              identity: r.identity,
+            }))
+          ].reduce((acc, curr) => {
+            // Remove duplicates by header_index + sample_index, keeping latest
+            const existingIndex = acc.findIndex(a => a.header_index === curr.header_index && a.sample_index === curr.sample_index);
             if (existingIndex >= 0) {
               acc[existingIndex] = curr;
             } else {
@@ -700,16 +767,7 @@ export default function LabResults() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <Label className="text-xs">Potency</Label>
-                          <Input
-                            placeholder="98.5%"
-                            value={result.potency}
-                            onChange={(e) => updateItemResult(index, "potency", e.target.value)}
-                            className="text-sm"
-                          />
-                        </div>
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs">Purity</Label>
                           <Input
@@ -729,6 +787,12 @@ export default function LabResults() {
                           />
                         </div>
                       </div>
+
+                      {result.sample_index > 0 && (
+                        <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                          This is a variance sample for multi-unit testing
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

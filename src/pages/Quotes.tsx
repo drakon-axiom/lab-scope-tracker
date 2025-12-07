@@ -2987,7 +2987,7 @@ const Quotes = () => {
                             </span>
                           )}
                         </div>
-                        {quote.tracking_number && (
+                        {quote.tracking_number && !['delivered', 'completed', 'testing_in_progress'].includes(quote.status) && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-flex">

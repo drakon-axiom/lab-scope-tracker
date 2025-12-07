@@ -70,10 +70,22 @@ Deno.serve(async (req) => {
       throw listError
     }
 
-    // Get all user roles
+    // Get all lab user IDs to exclude them
+    const { data: labUsers, error: labUsersError } = await supabaseAdmin
+      .from('lab_users')
+      .select('user_id')
+
+    if (labUsersError) {
+      throw labUsersError
+    }
+
+    const labUserIds = new Set((labUsers || []).map(lu => lu.user_id))
+
+    // Get user roles - only subscribers (exclude admins and labs)
     const { data: userRoles, error: rolesError } = await supabaseAdmin
       .from('user_roles')
       .select('user_id, role, created_at')
+      .eq('role', 'subscriber')
       .order('created_at', { ascending: false })
 
     if (rolesError) {
@@ -89,19 +101,21 @@ Deno.serve(async (req) => {
       throw profilesError
     }
 
-    // Combine data
-    const usersWithRoles = userRoles.map((ur) => {
-      const authUser = authUsers.users.find((u) => u.id === ur.user_id)
-      const profile = profiles.find((p) => p.id === ur.user_id)
+    // Combine data - exclude lab users
+    const usersWithRoles = userRoles
+      .filter((ur) => !labUserIds.has(ur.user_id))
+      .map((ur) => {
+        const authUser = authUsers.users.find((u) => u.id === ur.user_id)
+        const profile = profiles.find((p) => p.id === ur.user_id)
 
-      return {
-        id: ur.user_id,
-        email: authUser?.email || 'Unknown',
-        full_name: profile?.full_name || null,
-        created_at: authUser?.created_at || '',
-        role: ur.role,
-      }
-    })
+        return {
+          id: ur.user_id,
+          email: authUser?.email || 'Unknown',
+          full_name: profile?.full_name || null,
+          created_at: authUser?.created_at || '',
+          role: ur.role,
+        }
+      })
 
     return new Response(JSON.stringify({ users: usersWithRoles }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

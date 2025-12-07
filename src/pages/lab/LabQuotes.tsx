@@ -46,7 +46,9 @@ export default function LabQuotes() {
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [historicalQuotes, setHistoricalQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historicalLoading, setHistoricalLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [responseNotes, setResponseNotes] = useState("");
@@ -55,29 +57,53 @@ export default function LabQuotes() {
   // Use impersonated lab ID if available, otherwise use the lab user's lab ID
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
 
+  const fetchQuotes = async () => {
+    if (!effectiveLabId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("lab_id", effectiveLabId)
+        .in("status", ["sent_to_vendor", "awaiting_customer_approval"])
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setQuotes(data || []);
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      toast.error("Failed to load quotes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchHistoricalQuotes = async () => {
+    if (!effectiveLabId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("lab_id", effectiveLabId)
+        .in("status", ["completed", "rejected"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setHistoricalQuotes(data || []);
+    } catch (error) {
+      console.error("Error fetching historical quotes:", error);
+    } finally {
+      setHistoricalLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!effectiveLabId) return;
 
-    const fetchQuotes = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("quotes")
-          .select("*")
-          .eq("lab_id", effectiveLabId)
-          .in("status", ["sent_to_vendor", "awaiting_customer_approval"])
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setQuotes(data || []);
-      } catch (error) {
-        console.error("Error fetching quotes:", error);
-        toast.error("Failed to load quotes");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchQuotes();
+    fetchHistoricalQuotes();
 
     // Set up realtime subscription
     const channel = supabase
@@ -92,6 +118,7 @@ export default function LabQuotes() {
         },
         () => {
           fetchQuotes();
+          fetchHistoricalQuotes();
         }
       )
       .subscribe();
@@ -263,7 +290,75 @@ export default function LabQuotes() {
           </CardContent>
         </Card>
 
-        {/* Review Dialog */}
+        {/* Historical Quotes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Historical Quotes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Quote #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historicalLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : historicalQuotes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No historical quotes
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  historicalQuotes.map((quote) => (
+                    <TableRow key={quote.id}>
+                      <TableCell className="font-medium">
+                        {quote.quote_number || "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(quote.created_at), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={quote.status === "completed" ? "default" : "destructive"}
+                        >
+                          {quote.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {quote.notes || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedQuote(quote);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>

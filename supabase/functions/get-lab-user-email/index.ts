@@ -36,24 +36,28 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check if user is a lab admin or manager for their lab
-    const { data: labUserData, error: labUserError } = await supabaseAdmin
+    // Check if user is a SafeBatch admin
+    const { data: adminRoleData } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    const isSafeBatchAdmin = adminRoleData?.role === 'admin'
+
+    // Check if user is a lab admin for their lab
+    const { data: labUserData } = await supabaseAdmin
       .from('lab_users')
       .select('lab_id, role')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single()
 
-    if (labUserError || !labUserData) {
-      return new Response(JSON.stringify({ error: 'Not a lab user' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    const isLabAdmin = labUserData?.role === 'admin'
 
-    // Only lab admins can view user emails
-    if (labUserData.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Only lab admins can view user details' }), {
+    // Must be either a SafeBatch admin or a lab admin
+    if (!isSafeBatchAdmin && !isLabAdmin) {
+      return new Response(JSON.stringify({ error: 'Only admins can view user details' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -68,14 +72,22 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Verify the target user belongs to the same lab
+    // Get the target user's lab
     const { data: targetLabUser, error: targetError } = await supabaseAdmin
       .from('lab_users')
       .select('lab_id')
       .eq('user_id', userId)
       .single()
 
-    if (targetError || !targetLabUser || targetLabUser.lab_id !== labUserData.lab_id) {
+    if (targetError || !targetLabUser) {
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Lab admins can only see users in their own lab (SafeBatch admins can see all)
+    if (!isSafeBatchAdmin && labUserData && targetLabUser.lab_id !== labUserData.lab_id) {
       return new Response(JSON.stringify({ error: 'User not found in your lab' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

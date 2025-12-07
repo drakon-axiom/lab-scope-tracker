@@ -3,11 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Users, Shield, UserCheck, UserPlus, Eye } from "lucide-react";
+import { Users, UserCheck, UserPlus, Eye } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,13 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -47,7 +39,7 @@ interface UserWithRole {
   email: string;
   full_name: string | null;
   created_at: string;
-  role: "admin" | "subscriber";
+  role: "subscriber";
 }
 
 const UserManagement = () => {
@@ -63,7 +55,6 @@ const UserManagement = () => {
     email: "",
     password: "",
     fullName: "",
-    role: "subscriber" as "admin" | "subscriber",
   });
 
   useEffect(() => {
@@ -119,51 +110,6 @@ const UserManagement = () => {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: "admin" | "subscriber") => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Not authenticated");
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/update-user-role`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId, newRole }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update role");
-      }
-
-      toast({
-        title: "Role updated",
-        description: `User role has been changed to ${newRole}`,
-        duration: 3000,
-      });
-
-      // Refresh the users list
-      fetchUsers();
-    } catch (error: any) {
-      console.error("Error updating role:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update role",
-        variant: "destructive",
-        duration: 4000,
-      });
-    }
-  };
-
   const handleRefresh = async () => {
     await fetchUsers();
   };
@@ -189,7 +135,7 @@ const UserManagement = () => {
             Authorization: `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(newUser),
+          body: JSON.stringify({ ...newUser, role: "subscriber" }),
         }
       );
 
@@ -209,7 +155,6 @@ const UserManagement = () => {
         email: "",
         password: "",
         fullName: "",
-        role: "subscriber",
       });
       setIsAddUserOpen(false);
 
@@ -245,11 +190,11 @@ const UserManagement = () => {
   return (
     <Layout>
       <PullToRefreshWrapper onRefresh={handleRefresh}>
-        <div className="space-y-6">
+          <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h2>
-              <p className="text-sm text-muted-foreground">Manage user roles and permissions</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Customer Management</h2>
+              <p className="text-sm text-muted-foreground">Manage customer accounts</p>
             </div>
             <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
               <DialogTrigger asChild>
@@ -260,9 +205,9 @@ const UserManagement = () => {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
+                  <DialogTitle>Create New Customer</DialogTitle>
                   <DialogDescription>
-                    Add a new user to the system and assign them a role.
+                    Add a new customer to the system.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateUser} className="space-y-4">
@@ -299,23 +244,6 @@ const UserManagement = () => {
                       onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select
-                      value={newUser.role}
-                      onValueChange={(value) =>
-                        setNewUser({ ...newUser, role: value as "admin" | "subscriber" })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="subscriber">Subscriber</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
@@ -326,7 +254,7 @@ const UserManagement = () => {
                       Cancel
                     </Button>
                     <Button type="submit" disabled={isCreating}>
-                      {isCreating ? "Creating..." : "Create User"}
+                      {isCreating ? "Creating..." : "Create Customer"}
                     </Button>
                   </div>
                 </form>
@@ -335,10 +263,10 @@ const UserManagement = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -348,43 +276,28 @@ const UserManagement = () => {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Admins</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {users.filter((u) => u.role === "admin").length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
+                <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {users.filter((u) => u.role === "subscriber").length}
-                </div>
+                <div className="text-2xl font-bold">{users.length}</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Users Table */}
+          {/* Customers Table */}
           <Card>
             <CardHeader>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>View and manage user roles</CardDescription>
+              <CardTitle>All Customers</CardTitle>
+              <CardDescription>View and manage customer accounts</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -397,56 +310,33 @@ const UserManagement = () => {
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                            {user.role === "admin" ? "Admin" : "Subscriber"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {user.role === "subscriber" && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        startCustomerImpersonation(user.id, user.email, user.full_name);
-                                        toast({
-                                          title: "Impersonating customer",
-                                          description: `Now viewing as ${user.email}`,
-                                          duration: 3000,
-                                        });
-                                        navigate("/dashboard");
-                                      }}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>View as this customer</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                            <Select
-                              value={user.role}
-                              onValueChange={(value) => 
-                                handleRoleChange(user.id, value as "admin" | "subscriber")
-                              }
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="subscriber">Subscriber</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    startCustomerImpersonation(user.id, user.email, user.full_name);
+                                    toast({
+                                      title: "Impersonating customer",
+                                      description: `Now viewing as ${user.email}`,
+                                      duration: 3000,
+                                    });
+                                    navigate("/dashboard");
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View as this customer</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -457,7 +347,7 @@ const UserManagement = () => {
               {users.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="mx-auto h-12 w-12 opacity-50 mb-3" />
-                  <p>No users found</p>
+                  <p>No customers found</p>
                 </div>
               )}
             </CardContent>

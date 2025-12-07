@@ -54,7 +54,7 @@ interface ItemResult {
   header_data: any;
   sample_count: number; // Total samples on this report (1 + additional_samples)
   report_url: string;
-  purity: string;
+  purity_values: string[]; // One purity per sample
   identity: string;
   isSubmitted?: boolean;
 }
@@ -195,6 +195,7 @@ export default function LabResults() {
 
         // Main product report (covers all samples for this product)
         const hasMainResult = !!(existingMain.report_url);
+        const existingPurityValues = existingMain.purity_values || (existingMain.purity ? [existingMain.purity] : []);
         results.push({
           quote_item_id: item.id,
           header_index: 0,
@@ -202,7 +203,9 @@ export default function LabResults() {
           header_data: null,
           sample_count: totalSamples,
           report_url: existingMain.report_url || "",
-          purity: existingMain.purity || "",
+          purity_values: existingPurityValues.length === totalSamples 
+            ? existingPurityValues 
+            : Array(totalSamples).fill("").map((_, i) => existingPurityValues[i] || ""),
           identity: existingMain.identity || "",
           isSubmitted: hasMainResult,
         });
@@ -213,6 +216,7 @@ export default function LabResults() {
           const headerData = additionalHeaders[i] || {};
           const existingHeader = existingAdditional.find((h: any) => h.header_index === i + 1) || {};
           const hasHeaderResult = !!(existingHeader.report_url);
+          const existingHeaderPurity = existingHeader.purity_values || (existingHeader.purity ? [existingHeader.purity] : []);
           
           results.push({
             quote_item_id: item.id,
@@ -221,7 +225,9 @@ export default function LabResults() {
             header_data: headerData,
             sample_count: totalSamples,
             report_url: existingHeader.report_url || "",
-            purity: existingHeader.purity || "",
+            purity_values: existingHeaderPurity.length === totalSamples 
+              ? existingHeaderPurity 
+              : Array(totalSamples).fill("").map((_, idx) => existingHeaderPurity[idx] || ""),
             identity: existingHeader.identity || "",
             isSubmitted: hasHeaderResult,
           });
@@ -235,10 +241,20 @@ export default function LabResults() {
     }
   };
 
-  const updateItemResult = (index: number, field: keyof ItemResult, value: string) => {
+  const updateItemResult = (index: number, field: keyof ItemResult, value: string | string[]) => {
     setItemResults(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const updatePurityValue = (resultIndex: number, sampleIndex: number, value: string) => {
+    setItemResults(prev => {
+      const updated = [...prev];
+      const newPurityValues = [...updated[resultIndex].purity_values];
+      newPurityValues[sampleIndex] = value;
+      updated[resultIndex] = { ...updated[resultIndex], purity_values: newPurityValues };
       return updated;
     });
   };
@@ -290,7 +306,7 @@ export default function LabResults() {
         const testResults = {
           main: mainResult ? {
             report_url: mainResult.report_url,
-            purity: mainResult.purity,
+            purity_values: mainResult.purity_values,
             identity: mainResult.identity,
             sample_count: mainResult.sample_count,
           } : existing.main,
@@ -300,7 +316,7 @@ export default function LabResults() {
               header_index: r.header_index,
               header_data: r.header_data,
               report_url: r.report_url,
-              purity: r.purity,
+              purity_values: r.purity_values,
               identity: r.identity,
               sample_count: r.sample_count,
             }))
@@ -706,32 +722,37 @@ export default function LabResults() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Purity</Label>
-                          <Input
-                            placeholder="99.2%"
-                            value={result.purity}
-                            onChange={(e) => updateItemResult(index, "purity", e.target.value)}
-                            className="text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Identity</Label>
-                          <Input
-                            placeholder="Confirmed"
-                            value={result.identity}
-                            onChange={(e) => updateItemResult(index, "identity", e.target.value)}
-                            className="text-sm"
-                          />
+                      {/* Purity fields - one per sample */}
+                      <div className="space-y-2">
+                        <Label className="text-xs">Purity {result.sample_count > 1 && `(${result.sample_count} samples)`}</Label>
+                        <div className={`grid gap-2 ${result.sample_count > 2 ? 'grid-cols-3' : result.sample_count > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                          {result.purity_values.map((purity, sampleIdx) => (
+                            <div key={sampleIdx}>
+                              {result.sample_count > 1 && (
+                                <span className="text-xs text-muted-foreground block mb-1">
+                                  {sampleIdx === 0 ? 'Main' : `Sample ${sampleIdx + 1}`}
+                                </span>
+                              )}
+                              <Input
+                                placeholder="99.2%"
+                                value={purity}
+                                onChange={(e) => updatePurityValue(index, sampleIdx, e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                          ))}
                         </div>
                       </div>
 
-                      {result.sample_count > 1 && (
-                        <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                          This report covers {result.sample_count} samples (includes variance testing)
-                        </div>
-                      )}
+                      <div>
+                        <Label className="text-xs">Identity</Label>
+                        <Input
+                          placeholder="Confirmed"
+                          value={result.identity}
+                          onChange={(e) => updateItemResult(index, "identity", e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

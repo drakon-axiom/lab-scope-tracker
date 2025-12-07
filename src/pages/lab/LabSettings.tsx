@@ -7,11 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search, Upload, Download, Edit, Check, X, Lock } from "lucide-react";
+import { DollarSign, History, Search, Upload, Download, Edit, Check, X, Lock } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
 import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { LabUserManagement } from "@/components/lab/LabUserManagement";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -883,6 +884,9 @@ export default function LabSettings() {
             </CardContent>
           )}
         </Card>
+
+        {/* Lab User Management - Only for admins */}
+        {permissions.canManageLabUsers && <LabUserManagement />}
         </div>
       </ContentWrapper>
 

@@ -13,6 +13,8 @@ import {
   LogOut,
   Menu,
   Beaker,
+  Eye,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,9 +27,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useLabUser } from "@/hooks/useLabUser";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, X } from "lucide-react";
 import { LabMobileBottomNav } from "@/components/lab/LabMobileBottomNav";
 
 interface LabLayoutProps {
@@ -48,12 +49,12 @@ export default function LabLayout({ children }: LabLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { labUser, loading, isImpersonating } = useLabUser();
+  const { stopImpersonation } = useImpersonation();
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const stopImpersonating = () => {
-    sessionStorage.removeItem("impersonatedLabId");
-    sessionStorage.removeItem("impersonatedLabName");
+  const handleStopImpersonating = () => {
+    stopImpersonation();
     navigate("/lab-user-management");
   };
 
@@ -125,23 +126,23 @@ export default function LabLayout({ children }: LabLayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Impersonation Banner */}
       {isImpersonating && (
-        <Alert className="rounded-none border-x-0 border-t-0 bg-amber-500/10 border-amber-500">
-          <AlertCircle className="h-4 w-4 text-amber-500" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-sm">
-              <strong>Admin Mode:</strong> You are viewing as {labUser?.lab_name}
+        <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Viewing as lab: <strong>{labUser?.lab_name}</strong>
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={stopImpersonating}
-              className="h-6 px-2"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Exit
-            </Button>
-          </AlertDescription>
-        </Alert>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStopImpersonating}
+            className="h-7 px-2 text-amber-950 hover:bg-amber-600 hover:text-amber-950"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Stop
+          </Button>
+        </div>
       )}
 
       {/* Header */}

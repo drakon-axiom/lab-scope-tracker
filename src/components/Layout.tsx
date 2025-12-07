@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { User } from "@supabase/supabase-js";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, X, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -11,6 +11,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 interface LayoutProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ const Layout = ({ children }: LayoutProps) => {
     return saved !== 'collapsed';
   });
   const { isAdmin } = useUserRole();
+  const { impersonatedUser, isImpersonating, stopImpersonation } = useImpersonation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,6 +66,16 @@ const Layout = ({ children }: LayoutProps) => {
     return null;
   }
 
+  const handleStopImpersonation = () => {
+    stopImpersonation();
+    toast({
+      title: "Stopped impersonation",
+      description: "You are now viewing as yourself",
+      duration: 3000,
+    });
+    navigate("/users");
+  };
+
   return (
     <SidebarProvider 
       open={sidebarOpen}
@@ -76,10 +88,32 @@ const Layout = ({ children }: LayoutProps) => {
         <AppSidebar user={user} onSignOut={handleSignOut} />
         
         <div className="flex-1 flex flex-col w-full">
+          {/* Impersonation Banner */}
+          {isImpersonating && impersonatedUser && (
+            <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  Viewing as {impersonatedUser.type === "customer" ? "customer" : "lab"}:{" "}
+                  <strong>{impersonatedUser.name || impersonatedUser.email || impersonatedUser.labName}</strong>
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStopImpersonation}
+                className="h-7 px-2 text-amber-950 hover:bg-amber-600 hover:text-amber-950"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Stop
+              </Button>
+            </div>
+          )}
+          
           <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
             <div className="flex items-center justify-between px-3 md:px-4 py-3">
               <SidebarTrigger />
-              {isAdmin && (
+              {isAdmin && !isImpersonating && (
                 <Badge variant="default" className="flex items-center gap-1">
                   <Shield className="h-3 w-3" />
                   Admin

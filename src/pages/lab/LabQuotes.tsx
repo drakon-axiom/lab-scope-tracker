@@ -8,7 +8,7 @@ import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
-import { Eye, Check, X, Edit, Lock } from "lucide-react";
+import { Eye, Check, X, Edit, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -47,6 +47,9 @@ export default function LabQuotes() {
   const permissions = useLabPermissions();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [historicalQuotes, setHistoricalQuotes] = useState<Quote[]>([]);
+  const [historicalTotalCount, setHistoricalTotalCount] = useState(0);
+  const [historicalPage, setHistoricalPage] = useState(0);
+  const HISTORICAL_PAGE_SIZE = 10;
   const [loading, setLoading] = useState(true);
   const [historicalLoading, setHistoricalLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -78,17 +81,32 @@ export default function LabQuotes() {
     }
   };
 
-  const fetchHistoricalQuotes = async () => {
+  const fetchHistoricalQuotes = async (page: number = 0) => {
     if (!effectiveLabId) return;
     
+    setHistoricalLoading(true);
     try {
+      // Get total count
+      const { count, error: countError } = await supabase
+        .from("quotes")
+        .select("*", { count: "exact", head: true })
+        .eq("lab_id", effectiveLabId)
+        .in("status", ["completed", "rejected"]);
+
+      if (countError) throw countError;
+      setHistoricalTotalCount(count || 0);
+
+      // Get paginated data
+      const from = page * HISTORICAL_PAGE_SIZE;
+      const to = from + HISTORICAL_PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from("quotes")
         .select("*")
         .eq("lab_id", effectiveLabId)
         .in("status", ["completed", "rejected"])
         .order("created_at", { ascending: false })
-        .limit(50);
+        .range(from, to);
 
       if (error) throw error;
       setHistoricalQuotes(data || []);
@@ -100,10 +118,14 @@ export default function LabQuotes() {
   };
 
   useEffect(() => {
+    fetchHistoricalQuotes(historicalPage);
+  }, [historicalPage]);
+
+  useEffect(() => {
     if (!effectiveLabId) return;
 
     fetchQuotes();
-    fetchHistoricalQuotes();
+    fetchHistoricalQuotes(historicalPage);
 
     // Set up realtime subscription
     const channel = supabase
@@ -118,7 +140,7 @@ export default function LabQuotes() {
         },
         () => {
           fetchQuotes();
-          fetchHistoricalQuotes();
+          fetchHistoricalQuotes(historicalPage);
         }
       )
       .subscribe();
@@ -356,6 +378,35 @@ export default function LabQuotes() {
                 )}
               </TableBody>
             </Table>
+            
+            {/* Pagination Controls */}
+            {historicalTotalCount > HISTORICAL_PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Showing {historicalPage * HISTORICAL_PAGE_SIZE + 1} - {Math.min((historicalPage + 1) * HISTORICAL_PAGE_SIZE, historicalTotalCount)} of {historicalTotalCount}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoricalPage(p => p - 1)}
+                    disabled={historicalPage === 0 || historicalLoading}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoricalPage(p => p + 1)}
+                    disabled={(historicalPage + 1) * HISTORICAL_PAGE_SIZE >= historicalTotalCount || historicalLoading}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -56,21 +56,18 @@ serve(async (req) => {
         console.log("Page content length:", pageContent.length);
         
         // Extract the report image URL from the page
-        // Try multiple patterns to find the image URL
-        // Pattern 1: Full URL in href or src
-        let imgMatch = pageContent.match(/href="(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)"/i) ||
-                       pageContent.match(/src="(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)"/i);
+        // The image filename contains alphanumeric characters like 1LCRUYT09HXJQP5EDMOK.png
+        // Pattern 1: Full URL in href (most reliable - the download link)
+        let imgMatch = pageContent.match(/href="(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)"/);
         
-        // Pattern 2: Relative URL
+        // Pattern 2: Full URL in src
         if (!imgMatch) {
-          imgMatch = pageContent.match(/href="(\/tests\/img\/[A-Z0-9]+\.png)"/i) ||
-                     pageContent.match(/src="(\/tests\/img\/[A-Z0-9]+\.png)"/i);
+          imgMatch = pageContent.match(/src="(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)"/);
         }
         
-        // Pattern 3: Any occurrence of the img path
+        // Pattern 3: Any occurrence of the full img path
         if (!imgMatch) {
-          imgMatch = pageContent.match(/(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)/i) ||
-                     pageContent.match(/(\/tests\/img\/[A-Z0-9]+\.png)/i);
+          imgMatch = pageContent.match(/(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)/);
         }
         
         console.log("Image match result:", imgMatch ? imgMatch[1] : "no match");

@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye, Pencil } from "lucide-react";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye, Pencil, Mail } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -68,15 +68,19 @@ export default function LabUserManagement() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [editingLabUser, setEditingLabUser] = useState<LabUser | null>(null);
+  const [emailEditUser, setEmailEditUser] = useState<LabUser | null>(null);
   
   // Form state
   const [email, setEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedLabId, setSelectedLabId] = useState("");
   const [selectedRole, setSelectedRole] = useState("member");
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -279,11 +283,54 @@ export default function LabUserManagement() {
     }
   };
 
+  const handleEmailEditClick = (labUser: LabUser) => {
+    setEmailEditUser(labUser);
+    setNewEmail(labUser.email || "");
+    setEmailDialogOpen(true);
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!emailEditUser || !newEmail) {
+      toast.error("Please enter a new email address");
+      return;
+    }
+
+    if (newEmail === emailEditUser.email) {
+      toast.error("New email must be different from current email");
+      return;
+    }
+
+    setUpdatingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: {
+          userId: emailEditUser.user_id,
+          newEmail: newEmail,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Email updated successfully");
+      setEmailDialogOpen(false);
+      setEmailEditUser(null);
+      setNewEmail("");
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating email:", error);
+      toast.error(error.message || "Failed to update email");
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
     setSelectedLabId("");
     setSelectedRole("member");
+    setNewEmail("");
   };
 
   if (roleLoading || loading) {
@@ -385,6 +432,22 @@ export default function LabUserManagement() {
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Edit lab user</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEmailEditClick(labUser)}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Change email address</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -537,6 +600,54 @@ export default function LabUserManagement() {
               </Button>
               <Button onClick={handleUpdateLabUser} disabled={updating}>
                 {updating ? "Updating..." : "Update Lab User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Email Dialog */}
+        <Dialog open={emailDialogOpen} onOpenChange={(open) => {
+          setEmailDialogOpen(open);
+          if (!open) {
+            setEmailEditUser(null);
+            setNewEmail("");
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Email Address</DialogTitle>
+              <DialogDescription>
+                Update the email address for {emailEditUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="current-email">Current Email</Label>
+                <Input
+                  id="current-email"
+                  type="email"
+                  value={emailEditUser?.email || ""}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-email">New Email</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  placeholder="newemail@example.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateEmail} disabled={updatingEmail}>
+                {updatingEmail ? "Updating..." : "Update Email"}
               </Button>
             </DialogFooter>
           </DialogContent>

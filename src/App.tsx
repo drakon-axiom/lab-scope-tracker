@@ -30,13 +30,9 @@ import NotFound from "./pages/NotFound";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
 import LabAuth from "./pages/lab/LabAuth";
-import LabDashboard from "./pages/lab/LabDashboard";
-import LabQuotes from "./pages/lab/LabQuotes";
-import LabPayments from "./pages/lab/LabPayments";
-import LabShipping from "./pages/lab/LabShipping";
-import LabResults from "./pages/lab/LabResults";
+import LabOpenRequests from "./pages/lab/LabOpenRequests";
+import LabCompletedRequests from "./pages/lab/LabCompletedRequests";
 import LabSettings from "./pages/lab/LabSettings";
-import LabNotifications from "./pages/lab/LabNotifications";
 import LabUserManagement from "./pages/LabUserManagement";
 import AdminManagement from "./pages/AdminManagement";
 
@@ -109,13 +105,15 @@ const App = () => {
             
             {/* Lab Portal Routes */}
             <Route path="/lab/auth" element={<LabAuth />} />
-            <Route path="/lab/dashboard" element={<LabDashboard />} />
-            <Route path="/lab/quotes" element={<LabQuotes />} />
-            <Route path="/lab/payments" element={<LabPayments />} />
-            <Route path="/lab/shipping" element={<LabShipping />} />
-            <Route path="/lab/results" element={<LabResults />} />
+            <Route path="/lab/requests" element={<LabOpenRequests />} />
+            <Route path="/lab/completed" element={<LabCompletedRequests />} />
             <Route path="/lab/settings" element={<LabSettings />} />
-            <Route path="/lab/notifications" element={<LabNotifications />} />
+            {/* Legacy redirects */}
+            <Route path="/lab/dashboard" element={<LabOpenRequests />} />
+            <Route path="/lab/quotes" element={<LabOpenRequests />} />
+            <Route path="/lab/payments" element={<LabOpenRequests />} />
+            <Route path="/lab/shipping" element={<LabOpenRequests />} />
+            <Route path="/lab/results" element={<LabOpenRequests />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

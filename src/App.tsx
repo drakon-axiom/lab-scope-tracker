@@ -38,6 +38,7 @@ import LabResults from "./pages/lab/LabResults";
 import LabSettings from "./pages/lab/LabSettings";
 import LabNotifications from "./pages/lab/LabNotifications";
 import LabUserManagement from "./pages/LabUserManagement";
+import AdminManagement from "./pages/AdminManagement";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => {
             <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />
             <Route path="/import-chromate" element={<ImportChromatePricing />} />
             <Route path="/user-management" element={<UserManagement />} />
+            <Route path="/admin-management" element={<AdminManagement />} />
             <Route path="/lab-user-management" element={<LabUserManagement />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/waitlist-management" element={<WaitlistManagement />} />

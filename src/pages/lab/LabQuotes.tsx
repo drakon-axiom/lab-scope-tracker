@@ -31,14 +31,33 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+interface QuoteItem {
+  id: string;
+  product_id: string;
+  price: number | null;
+  client: string | null;
+  sample: string | null;
+  manufacturer: string | null;
+  batch: string | null;
+  additional_samples: number | null;
+  additional_report_headers: number | null;
+  status: string | null;
+  products?: { name: string; category: string | null };
+}
+
 interface Quote {
   id: string;
   quote_number: string | null;
+  lab_quote_number: string | null;
   status: string;
   created_at: string;
   notes: string | null;
   discount_amount: number | null;
   discount_type: string | null;
+  lab_response: string | null;
+  payment_status: string | null;
+  payment_amount_usd: number | null;
+  payment_date: string | null;
 }
 
 export default function LabQuotes() {
@@ -53,6 +72,8 @@ export default function LabQuotes() {
   const [loading, setLoading] = useState(true);
   const [historicalLoading, setHistoricalLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [responseNotes, setResponseNotes] = useState("");
   const [modifiedDiscount, setModifiedDiscount] = useState("");
@@ -115,6 +136,30 @@ export default function LabQuotes() {
     } finally {
       setHistoricalLoading(false);
     }
+  };
+
+  const fetchQuoteItems = async (quoteId: string) => {
+    setItemsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("quote_items")
+        .select("*, products(name, category)")
+        .eq("quote_id", quoteId);
+
+      if (error) throw error;
+      setSelectedQuoteItems(data || []);
+    } catch (error) {
+      console.error("Error fetching quote items:", error);
+      setSelectedQuoteItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const openQuoteDialog = (quote: Quote) => {
+    setSelectedQuote(quote);
+    setDialogOpen(true);
+    fetchQuoteItems(quote.id);
   };
 
   useEffect(() => {
@@ -294,10 +339,7 @@ export default function LabQuotes() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              setSelectedQuote(quote);
-                              setDialogOpen(true);
-                            }}
+                            onClick={() => openQuoteDialog(quote)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             {permissions.canApproveQuotes ? "Review" : "View"}
@@ -364,10 +406,7 @@ export default function LabQuotes() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            setSelectedQuote(quote);
-                            setDialogOpen(true);
-                          }}
+                          onClick={() => openQuoteDialog(quote)}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
@@ -411,50 +450,146 @@ export default function LabQuotes() {
         </Card>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{permissions.canApproveQuotes ? "Review Quote Request" : "View Quote Request"}</DialogTitle>
+              <DialogTitle>
+                {selectedQuote?.status === "completed" || selectedQuote?.status === "rejected" 
+                  ? "Quote Details" 
+                  : permissions.canApproveQuotes ? "Review Quote Request" : "View Quote Request"}
+              </DialogTitle>
               <DialogDescription>
-                {permissions.canApproveQuotes 
-                  ? "Review and respond to this quote request"
-                  : "View quote details (read-only access)"}
+                {selectedQuote?.quote_number || selectedQuote?.lab_quote_number 
+                  ? `Quote #${selectedQuote?.quote_number || selectedQuote?.lab_quote_number}`
+                  : "Quote details"}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              {permissions.canApproveQuotes ? (
-                <>
+            
+            {selectedQuote && (
+              <div className="space-y-4">
+                {/* Quote Info */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
-                    <Label>Response Notes</Label>
-                    <Textarea
-                      placeholder="Add notes for the customer..."
-                      value={responseNotes}
-                      onChange={(e) => setResponseNotes(e.target.value)}
-                      rows={4}
-                    />
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge 
+                      variant={selectedQuote.status === "completed" ? "default" : selectedQuote.status === "rejected" ? "destructive" : "outline"}
+                    >
+                      {selectedQuote.status}
+                    </Badge>
                   </div>
                   <div>
-                    <Label>Modified Discount (%)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={modifiedDiscount}
-                      onChange={(e) => setModifiedDiscount(e.target.value)}
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Optional: Offer a discount or modify pricing
+                    <p className="text-xs text-muted-foreground">Created</p>
+                    <p className="text-sm font-medium">{format(new Date(selectedQuote.created_at), "MMM d, yyyy")}</p>
+                  </div>
+                  {selectedQuote.payment_status && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Payment</p>
+                      <p className="text-sm font-medium capitalize">{selectedQuote.payment_status}</p>
+                    </div>
+                  )}
+                  {selectedQuote.payment_amount_usd && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Amount</p>
+                      <p className="text-sm font-medium">${selectedQuote.payment_amount_usd.toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quote Items */}
+                <div>
+                  <Label className="text-sm font-medium">Items</Label>
+                  {itemsLoading ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">Loading items...</p>
+                  ) : selectedQuoteItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No items found</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Compound</TableHead>
+                          <TableHead>Sample</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead className="text-right">Price</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedQuoteItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {item.products?.name || "Unknown"}
+                            </TableCell>
+                            <TableCell>{item.sample || "-"}</TableCell>
+                            <TableCell>{item.client || "-"}</TableCell>
+                            <TableCell className="text-right">
+                              {item.price ? `$${item.price.toFixed(2)}` : "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {selectedQuote.notes && (
+                  <div>
+                    <Label className="text-sm font-medium">Customer Notes</Label>
+                    <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted/50 rounded-md">
+                      {selectedQuote.notes}
                     </p>
                   </div>
-                </>
-              ) : (
-                <Alert>
-                  <Lock className="h-4 w-4" />
-                  <AlertDescription>
-                    You have read-only access. Contact a lab manager or admin to approve or reject quotes.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-            {permissions.canApproveQuotes && (
+                )}
+
+                {/* Lab Response (for historical) */}
+                {selectedQuote.lab_response && (
+                  <div>
+                    <Label className="text-sm font-medium">Lab Response</Label>
+                    <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted/50 rounded-md">
+                      {selectedQuote.lab_response}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action controls for pending quotes */}
+                {selectedQuote.status !== "completed" && selectedQuote.status !== "rejected" && permissions.canApproveQuotes && (
+                  <>
+                    <div>
+                      <Label>Response Notes</Label>
+                      <Textarea
+                        placeholder="Add notes for the customer..."
+                        value={responseNotes}
+                        onChange={(e) => setResponseNotes(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <Label>Modified Discount (%)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={modifiedDiscount}
+                        onChange={(e) => setModifiedDiscount(e.target.value)}
+                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Optional: Offer a discount or modify pricing
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Read-only alert for members */}
+                {selectedQuote.status !== "completed" && selectedQuote.status !== "rejected" && !permissions.canApproveQuotes && (
+                  <Alert>
+                    <Lock className="h-4 w-4" />
+                    <AlertDescription>
+                      You have read-only access. Contact a lab manager or admin to approve or reject quotes.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+            
+            {/* Action buttons for pending quotes */}
+            {selectedQuote && selectedQuote.status !== "completed" && selectedQuote.status !== "rejected" && permissions.canApproveQuotes && (
               <DialogFooter className="flex gap-2">
                 <Button
                   variant="destructive"

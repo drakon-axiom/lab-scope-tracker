@@ -12,7 +12,7 @@ import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
 import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { LabUserManagement } from "@/components/lab/LabUserManagement";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -885,8 +885,6 @@ export default function LabSettings() {
           )}
         </Card>
 
-        {/* Lab User Management - Only for admins */}
-        {permissions.canManageLabUsers && <LabUserManagement />}
         </div>
       </ContentWrapper>
 

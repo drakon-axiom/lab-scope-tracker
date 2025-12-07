@@ -33,6 +33,7 @@ import LabAuth from "./pages/lab/LabAuth";
 import LabOpenRequests from "./pages/lab/LabOpenRequests";
 import LabCompletedRequests from "./pages/lab/LabCompletedRequests";
 import LabSettings from "./pages/lab/LabSettings";
+import LabUsers from "./pages/lab/LabUsers";
 import LabUserManagement from "./pages/LabUserManagement";
 import AdminManagement from "./pages/AdminManagement";
 
@@ -108,6 +109,7 @@ const App = () => {
             <Route path="/lab/requests" element={<LabOpenRequests />} />
             <Route path="/lab/completed" element={<LabCompletedRequests />} />
             <Route path="/lab/settings" element={<LabSettings />} />
+            <Route path="/lab/users" element={<LabUsers />} />
             {/* Legacy redirects */}
             <Route path="/lab/dashboard" element={<LabOpenRequests />} />
             <Route path="/lab/quotes" element={<LabOpenRequests />} />

@@ -1,4 +1,4 @@
-import { FileText, CheckCircle, Settings } from "lucide-react";
+import { FileText, CheckCircle, Settings, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
@@ -10,6 +10,7 @@ export function LabMobileBottomNav() {
   if (!isMobile) return null;
 
   const canAccessSettings = permissions.role === "manager" || permissions.role === "admin";
+  const canManageUsers = permissions.canManageLabUsers;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-lg md:hidden">
@@ -40,6 +41,17 @@ export function LabMobileBottomNav() {
           >
             <Settings className="h-5 w-5" />
             <span className="text-xs">Settings</span>
+          </NavLink>
+        )}
+
+        {canManageUsers && (
+          <NavLink
+            to="/lab/users"
+            className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground transition-colors"
+            activeClassName="text-primary bg-muted/50"
+          >
+            <Users className="h-5 w-5" />
+            <span className="text-xs">Users</span>
           </NavLink>
         )}
       </div>

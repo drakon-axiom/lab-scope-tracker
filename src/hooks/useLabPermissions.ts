@@ -75,7 +75,7 @@ export const useLabPermissions = (): LabPermissions => {
       };
     }
 
-    // Member permissions (read-only)
+    // Member permissions (can submit results, but cannot approve/reject quotes)
     if (role === "member") {
       return {
         canViewQuotes: true,
@@ -83,16 +83,16 @@ export const useLabPermissions = (): LabPermissions => {
         canRejectQuotes: false,
         canModifyQuotePricing: false,
         canViewResults: true,
-        canSubmitResults: false,
+        canSubmitResults: true, // Members can submit results
         canViewPricing: true,
         canEditPricing: false,
         canBulkEditPricing: false,
         canImportExportPricing: false,
-        canViewSettings: true,
+        canViewSettings: false, // Members cannot access settings
         canEditLabSettings: false,
         canManageLabUsers: false,
         role: "member",
-        isReadOnly: true,
+        isReadOnly: false, // Not fully read-only since they can submit results
       };
     }
 

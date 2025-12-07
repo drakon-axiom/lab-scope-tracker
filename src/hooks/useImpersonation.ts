@@ -12,7 +12,7 @@ interface ImpersonatedUser {
 export const useImpersonation = () => {
   const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null);
 
-  useEffect(() => {
+  const checkImpersonationState = () => {
     // Check for customer impersonation
     const customerId = sessionStorage.getItem("impersonatedCustomerId");
     const customerEmail = sessionStorage.getItem("impersonatedCustomerEmail");
@@ -41,6 +41,24 @@ export const useImpersonation = () => {
     } else {
       setImpersonatedUser(null);
     }
+  };
+
+  useEffect(() => {
+    // Check initial state
+    checkImpersonationState();
+
+    // Listen for impersonation changes from other components
+    const handleImpersonationChange = () => {
+      checkImpersonationState();
+    };
+
+    window.addEventListener("impersonation-changed", handleImpersonationChange);
+    window.addEventListener("storage", handleImpersonationChange);
+
+    return () => {
+      window.removeEventListener("impersonation-changed", handleImpersonationChange);
+      window.removeEventListener("storage", handleImpersonationChange);
+    };
   }, []);
 
   const startCustomerImpersonation = (userId: string, email: string, name: string | null) => {

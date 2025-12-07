@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -522,10 +522,16 @@ const Quotes = () => {
   }, [lastTrackingRefresh]);
 
   // Auto-refresh stale tracking data (older than 4 hours)
+  // Track if we've already refreshed stale tracking in this session
+  const hasRefreshedStaleTracking = useRef(false);
+
   useEffect(() => {
     const checkAndRefreshStaleTracking = async () => {
+      // Only run once per session to avoid rate limiting
+      if (hasRefreshedStaleTracking.current) return;
+      
       const staleQuotes = quotes.filter(quote => {
-        if (!quote.tracking_number || quote.status === 'delivered') return false;
+        if (!quote.tracking_number || quote.status === 'delivered' || quote.status === 'completed') return false;
         
         if (!quote.tracking_updated_at) return true; // Never updated
         
@@ -535,29 +541,28 @@ const Quotes = () => {
 
       if (staleQuotes.length > 0) {
         console.log(`Auto-refreshing ${staleQuotes.length} stale tracking records`);
+        hasRefreshedStaleTracking.current = true;
         
-        for (const quote of staleQuotes) {
-          try {
-            await supabase.functions.invoke("update-ups-tracking", {
-              body: { trackingNumber: quote.tracking_number }
-            });
-          } catch (error) {
-            console.error(`Failed to auto-refresh tracking for ${quote.tracking_number}:`, error);
-          }
+        try {
+          // Make a single call to refresh all tracking (not per-quote)
+          await supabase.functions.invoke("update-ups-tracking", {
+            body: {}
+          });
+          
+          // Refresh quotes after updates
+          setTimeout(() => fetchQuotes(), 2000);
+        } catch (error) {
+          console.error('Failed to auto-refresh tracking:', error);
         }
-        
-        // Refresh quotes after updates
-        setTimeout(() => fetchQuotes(), 2000);
       }
     };
 
-    if (quotes.length > 0) {
+    if (quotes.length > 0 && !hasRefreshedStaleTracking.current) {
       checkAndRefreshStaleTracking();
     }
 
-    // Check every 5 minutes
-    const interval = setInterval(checkAndRefreshStaleTracking, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Don't set up an interval - hourly cron handles automatic updates
+    return () => {};
   }, [quotes]);
 
   const fetchQuotes = async () => {

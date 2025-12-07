@@ -119,24 +119,24 @@ serve(async (req) => {
     // Use Gemini with vision to analyze the report image
     const systemPrompt = `You are a lab report data extraction assistant specializing in analytical testing reports from Janoshik and similar labs.
 
-Your job is to extract purity/content percentages and identity confirmation from lab test report images.
+Your job is to extract purity/content percentages, identity confirmation, and variant amounts from lab test report images.
 
 For Janoshik reports, look for:
 - "Content" values shown as percentages (e.g., "99.2%", "98.5%")
 - If there are multiple vials tested for variance, there will be rows showing each vial's content (e.g., "Vial 1", "Vial 2", "Vial 3")
-- Identity confirmation (usually shows the compound name identified)
+- Identity confirmation section showing the compound name and variant amounts in mg (e.g., "Tirzepatide: 5.2 mg, GIP-1: 2.1 mg")
 - The results section typically shows a table with content values
 
-Extract ALL content/purity values found for each vial, in order.`;
+Extract ALL content/purity values found for each vial, in order, plus the full identity with variant mg values.`;
 
     const userPrompt = `Analyze this lab test report image and extract the content/purity results. 
 There should be ${sample_count || 1} sample(s) tested (main vial${(sample_count || 1) > 1 ? ` plus ${(sample_count || 1) - 1} additional vials for variance testing` : ''}).
 
 Look for:
 1. Content percentage values for each vial (e.g., "98.5%", "99.2%")
-2. The identity/compound name confirmed
+2. The identity/compound name confirmed WITH the variant mg amounts (e.g., "Tirzepatide: 5.2 mg, GIP-1: 2.1 mg" or "Semaglutide 4.8 mg")
 
-Return ALL content percentages found (one per vial), and the identity result.`;
+Return ALL content percentages found (one per vial), and the complete identity result including any mg values shown.`;
 
     // Build the messages with base64 image
     const messages = [
@@ -182,7 +182,7 @@ Return ALL content percentages found (one per vial), and the identity result.`;
                   },
                   identity: {
                     type: "string",
-                    description: "Identity confirmation result - the compound name identified"
+                    description: "Full identity confirmation result including compound name AND variant mg amounts (e.g., 'Tirzepatide: 5.2 mg' or 'Semaglutide 4.8 mg, GLP-1 2.1 mg')"
                   }
                 },
                 required: ["purity_values", "identity"],

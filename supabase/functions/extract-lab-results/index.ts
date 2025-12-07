@@ -28,58 +28,72 @@ serve(async (req) => {
       );
     }
 
-    // Fetch the PDF content
-    console.log("Fetching PDF from:", report_url);
-    let pdfContent: string;
+    console.log("Extracting results from:", report_url, "Expected samples:", sample_count);
+
+    // For Janoshik reports, we need to find the actual report image
+    let imageUrl = report_url;
+    let pageContent = "";
     
-    try {
-      const pdfResponse = await fetch(report_url);
-      if (!pdfResponse.ok) {
-        throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
+    // If it's a Janoshik test page URL, try to extract the report image URL
+    if (report_url.includes("janoshik.com/tests/") && !report_url.includes("/img/")) {
+      try {
+        console.log("Fetching Janoshik page to find report image...");
+        const pageResponse = await fetch(report_url);
+        if (pageResponse.ok) {
+          pageContent = await pageResponse.text();
+          
+          // Extract the report image URL from the page
+          // Looking for patterns like: /tests/img/XXXXX.png
+          const imgMatch = pageContent.match(/\/tests\/img\/([A-Z0-9]+)\.png/i);
+          if (imgMatch) {
+            imageUrl = `https://janoshik.com/tests/img/${imgMatch[1]}.png`;
+            console.log("Found report image URL:", imageUrl);
+          }
+        }
+      } catch (e) {
+        console.log("Could not fetch page, will try URL directly:", e);
       }
-      
-      const contentType = pdfResponse.headers.get("content-type") || "";
-      
-      if (contentType.includes("application/pdf")) {
-        // For PDFs, we'll send the URL directly to the AI model which can handle PDFs
-        pdfContent = `PDF document from URL: ${report_url}`;
-      } else if (contentType.includes("text/html") || contentType.includes("text/plain")) {
-        // For HTML/text content, extract the text
-        pdfContent = await pdfResponse.text();
-      } else {
-        // Try to read as text anyway
-        pdfContent = await pdfResponse.text();
-      }
-    } catch (fetchError) {
-      console.error("Error fetching document:", fetchError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Could not fetch the document. Please ensure the URL is accessible.",
-          details: fetchError instanceof Error ? fetchError.message : "Unknown error"
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
-    // Use Lovable AI to extract results from the document
-    const systemPrompt = `You are a lab report data extraction assistant. Your job is to extract purity percentages and identity confirmation from lab test reports.
+    // Use Gemini with vision to analyze the report image
+    const systemPrompt = `You are a lab report data extraction assistant specializing in analytical testing reports from Janoshik and similar labs.
 
-Extract the following information:
-1. Purity values for each sample tested (as percentages like "99.2%")
-2. Identity confirmation (usually "Confirmed", "Positive", or similar)
+Your job is to extract purity/content percentages and identity confirmation from lab test report images.
 
-The report may contain results for multiple samples (for variance testing). Extract ALL purity values found.
+For Janoshik reports, look for:
+- "Content" or "Purity" values shown as percentages (e.g., "99.2%", "98.5%")
+- If there are multiple vials/samples tested for variance, there will be multiple content values (e.g., "Vial 1: 99.2%", "Vial 2: 98.8%", "Vial 3: 99.0%")
+- Identity confirmation (usually shows the compound name identified, or "Confirmed", "Positive")
+- The results section typically shows each sample's content/purity value
 
-If you cannot find specific values, return empty strings for those fields.`;
+Extract ALL purity/content values found, in order (Vial 1 first, then Vial 2, etc.).`;
 
-    const userPrompt = `Extract the purity values and identity from this lab report. There should be ${sample_count || 1} sample(s) tested.
+    const userPrompt = `Analyze this lab test report and extract the purity/content results. 
+There should be ${sample_count || 1} sample(s) tested (main vial plus ${(sample_count || 1) - 1} additional vials for variance testing).
 
-Document content/URL:
-${pdfContent}
+Look for percentage values showing the purity or content of each sample/vial tested.
 
-Return a JSON object with:
-- purity_values: array of purity percentages (one per sample, in order)
-- identity: the identity confirmation result`;
+Return ALL purity percentages found (one per sample/vial), and the identity result.`;
+
+    // Build the messages with image
+    const messages: any[] = [
+      { role: "system", content: systemPrompt },
+      { 
+        role: "user", 
+        content: [
+          { type: "text", text: userPrompt },
+          { 
+            type: "image_url", 
+            image_url: { 
+              url: imageUrl,
+              detail: "high"
+            } 
+          }
+        ]
+      }
+    ];
+
+    console.log("Sending to AI with image URL:", imageUrl);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -89,10 +103,7 @@ Return a JSON object with:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        messages,
         tools: [
           {
             type: "function",
@@ -105,11 +116,11 @@ Return a JSON object with:
                   purity_values: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Array of purity percentages for each sample (e.g., ['99.2%', '98.8%'])"
+                    description: "Array of purity/content percentages for each sample/vial tested (e.g., ['99.2%', '98.8%', '99.0%']). Include the % symbol."
                   },
                   identity: {
                     type: "string",
-                    description: "Identity confirmation result (e.g., 'Confirmed', 'Positive')"
+                    description: "Identity confirmation result - the compound name identified or 'Confirmed'"
                   }
                 },
                 required: ["purity_values", "identity"],
@@ -123,6 +134,9 @@ Return a JSON object with:
     });
 
     if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errorText);
+      
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
@@ -135,10 +149,8 @@ Return a JSON object with:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
+        JSON.stringify({ error: "AI extraction failed", details: errorText }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -149,9 +161,13 @@ Return a JSON object with:
     // Extract the tool call result
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "extract_lab_results") {
+      // Try to parse from text response if no tool call
+      const textContent = aiData.choices?.[0]?.message?.content;
+      console.log("No tool call, text response:", textContent);
+      
       return new Response(
         JSON.stringify({ 
-          error: "Could not extract results from the document",
+          error: "Could not extract results from the document. The AI couldn't parse the report format.",
           purity_values: [],
           identity: ""
         }),
@@ -160,6 +176,7 @@ Return a JSON object with:
     }
 
     const extractedData = JSON.parse(toolCall.function.arguments);
+    console.log("Extracted data:", extractedData);
     
     // Ensure we have the right number of purity values
     const expectedCount = sample_count || 1;

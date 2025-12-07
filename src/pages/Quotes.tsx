@@ -56,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, CheckCircle2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
@@ -83,6 +83,7 @@ interface Quote {
   shipped_date: string | null;
   created_at: string;
   tracking_updated_at: string | null;
+  estimated_delivery: string | null;
   payment_status: string | null;
   payment_amount_usd: number | null;
   payment_amount_crypto: string | null;
@@ -2992,6 +2993,12 @@ const Quotes = () => {
                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             Delivered
+                          </Badge>
+                        )}
+                        {quote.tracking_number && quote.status === 'in_transit' && quote.estimated_delivery && (
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Est. {new Date(quote.estimated_delivery).toLocaleDateString()}
                           </Badge>
                         )}
                         {quote.tracking_number && !['delivered', 'completed', 'testing_in_progress'].includes(quote.status) && (

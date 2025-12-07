@@ -154,7 +154,7 @@ interface TrackingHistory {
 }
 
 const Quotes = () => {
-  const { role, isSubscriber } = useUserRole();
+  const { role, isSubscriber, isAdmin, loading: roleLoading } = useUserRole();
   const { canSendItems, getRemainingItems } = useSubscription();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -448,6 +448,9 @@ const Quotes = () => {
   });
 
   useEffect(() => {
+    // Don't fetch until role is loaded to ensure proper filtering
+    if (roleLoading) return;
+    
     fetchQuotes();
     fetchProducts();
     fetchLabs();
@@ -477,7 +480,7 @@ const Quotes = () => {
     return () => {
       supabase.removeChannel(quotesChannel);
     };
-  }, []);
+  }, [roleLoading, role]);
 
   // Load last tracking refresh timestamp from localStorage
   useEffect(() => {
@@ -564,8 +567,9 @@ const Quotes = () => {
         .from("quotes")
         .select("*, labs(name)");
 
-      // Subscribers only see their own quotes, admins see all quotes
-      if (role !== 'admin') {
+      // Only admins can see all quotes - subscribers must filter by user_id
+      // Important: role must be loaded before this check
+      if (!isAdmin) {
         query = query.eq("user_id", user.id);
       }
 

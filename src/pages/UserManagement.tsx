@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Users, Shield, UserCheck, UserPlus } from "lucide-react";
+import { Users, Shield, UserCheck, UserPlus, Eye } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
+import { useImpersonation } from "@/hooks/useImpersonation";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UserWithRole {
   id: string;
@@ -47,6 +54,7 @@ const UserManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { startCustomerImpersonation } = useImpersonation();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -397,20 +405,48 @@ const UserManagement = () => {
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Select
-                            value={user.role}
-                            onValueChange={(value) => 
-                              handleRoleChange(user.id, value as "admin" | "subscriber")
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="subscriber">Subscriber</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="flex items-center justify-end gap-2">
+                            {user.role === "subscriber" && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        startCustomerImpersonation(user.id, user.email, user.full_name);
+                                        toast({
+                                          title: "Impersonating customer",
+                                          description: `Now viewing as ${user.email}`,
+                                          duration: 3000,
+                                        });
+                                        navigate("/dashboard");
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>View as this customer</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <Select
+                              value={user.role}
+                              onValueChange={(value) => 
+                                handleRoleChange(user.id, value as "admin" | "subscriber")
+                              }
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="subscriber">Subscriber</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

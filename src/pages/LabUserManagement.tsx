@@ -31,8 +31,15 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ToggleLeft, ToggleRight, UserCog } from "lucide-react";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Lab {
   id: string;
@@ -55,6 +62,7 @@ interface LabUser {
 export default function LabUserManagement() {
   const navigate = useNavigate();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { startLabImpersonation } = useImpersonation();
   const [labs, setLabs] = useState<Lab[]>([]);
   const [labUsers, setLabUsers] = useState<LabUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,8 +231,7 @@ export default function LabUserManagement() {
   };
 
   const handleImpersonate = (labId: string, labName: string) => {
-    sessionStorage.setItem("impersonatedLabId", labId);
-    sessionStorage.setItem("impersonatedLabName", labName);
+    startLabImpersonation(labId, labName);
     navigate("/lab/dashboard");
     toast.success(`Now viewing as ${labName}`);
   };
@@ -306,14 +313,22 @@ export default function LabUserManagement() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleImpersonate(labUser.lab_id, (labUser.labs as any)?.name)}
-                            title="View lab portal as this lab"
-                          >
-                            <UserCog className="h-4 w-4" />
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleImpersonate(labUser.lab_id, (labUser.labs as any)?.name)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View lab portal as this lab</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             size="sm"
                             variant="ghost"

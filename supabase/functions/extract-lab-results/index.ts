@@ -56,26 +56,21 @@ serve(async (req) => {
         console.log("Page content length:", pageContent.length);
         
         // Extract the report image URL from the page
-        // The image filename contains alphanumeric characters like 1LCRUYT09HXJQP5EDMOK.png
-        // Pattern 1: Full URL in href (most reliable - the download link)
-        let imgMatch = pageContent.match(/href="(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)"/);
+        // The image href is like: href="./img/2WNDO6CPML4U01GHSERX.png"
+        let imgMatch = pageContent.match(/href="\.\/img\/([A-Za-z0-9]+\.png)"/);
         
-        // Pattern 2: Full URL in src
+        // Fallback: full URL pattern
         if (!imgMatch) {
-          imgMatch = pageContent.match(/src="(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)"/);
-        }
-        
-        // Pattern 3: Any occurrence of the full img path
-        if (!imgMatch) {
-          imgMatch = pageContent.match(/(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)/);
+          imgMatch = pageContent.match(/href="(https:\/\/janoshik\.com\/tests\/img\/[A-Za-z0-9]+\.png)"/);
         }
         
         console.log("Image match result:", imgMatch ? imgMatch[1] : "no match");
         
         if (imgMatch && imgMatch[1]) {
+          // Build full URL from relative path
           const imageUrl = imgMatch[1].startsWith("http") 
             ? imgMatch[1] 
-            : `https://janoshik.com${imgMatch[1]}`;
+            : `https://janoshik.com/tests/img/${imgMatch[1]}`;
           console.log("Found report image URL:", imageUrl);
           
           // Download the image and convert to base64

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
-import { Eye, Check, X, Edit } from "lucide-react";
+import { Eye, Check, X, Edit, Lock } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -28,6 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Quote {
   id: string;
@@ -42,6 +44,7 @@ interface Quote {
 export default function LabQuotes() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
+  const permissions = useLabPermissions();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -185,6 +188,15 @@ export default function LabQuotes() {
           </p>
         </div>
 
+        {permissions.isReadOnly && (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              You have read-only access. Contact a lab admin to approve or reject quotes.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Pending Quotes</CardTitle>
@@ -239,7 +251,7 @@ export default function LabQuotes() {
                             }}
                           >
                             <Eye className="h-4 w-4 mr-1" />
-                            Review
+                            {permissions.canApproveQuotes ? "Review" : "View"}
                           </Button>
                         </div>
                       </TableCell>
@@ -255,56 +267,73 @@ export default function LabQuotes() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Review Quote Request</DialogTitle>
+              <DialogTitle>{permissions.canApproveQuotes ? "Review Quote Request" : "View Quote Request"}</DialogTitle>
               <DialogDescription>
-                Review and respond to this quote request
+                {permissions.canApproveQuotes 
+                  ? "Review and respond to this quote request"
+                  : "View quote details (read-only access)"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>Response Notes</Label>
-                <Textarea
-                  placeholder="Add notes for the customer..."
-                  value={responseNotes}
-                  onChange={(e) => setResponseNotes(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              <div>
-                <Label>Modified Discount (%)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={modifiedDiscount}
-                  onChange={(e) => setModifiedDiscount(e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Optional: Offer a discount or modify pricing
-                </p>
-              </div>
+              {permissions.canApproveQuotes ? (
+                <>
+                  <div>
+                    <Label>Response Notes</Label>
+                    <Textarea
+                      placeholder="Add notes for the customer..."
+                      value={responseNotes}
+                      onChange={(e) => setResponseNotes(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <Label>Modified Discount (%)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={modifiedDiscount}
+                      onChange={(e) => setModifiedDiscount(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Optional: Offer a discount or modify pricing
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <Alert>
+                  <Lock className="h-4 w-4" />
+                  <AlertDescription>
+                    You have read-only access. Contact a lab manager or admin to approve or reject quotes.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-            <DialogFooter className="flex gap-2">
-              <Button
-                variant="destructive"
-                onClick={() => selectedQuote && handleReject(selectedQuote)}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Reject
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => selectedQuote && handleApprove(selectedQuote, true)}
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Approve with Changes
-              </Button>
-              <Button
-                onClick={() => selectedQuote && handleApprove(selectedQuote, false)}
-              >
-                <Check className="h-4 w-4 mr-1" />
-                Approve
-              </Button>
-            </DialogFooter>
+            {permissions.canApproveQuotes && (
+              <DialogFooter className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => selectedQuote && handleReject(selectedQuote)}
+                  disabled={!permissions.canRejectQuotes}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Reject
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => selectedQuote && handleApprove(selectedQuote, true)}
+                  disabled={!permissions.canModifyQuotePricing}
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Approve with Changes
+                </Button>
+                <Button
+                  onClick={() => selectedQuote && handleApprove(selectedQuote, false)}
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Approve
+                </Button>
+              </DialogFooter>
+            )}
           </DialogContent>
         </Dialog>
       </div>

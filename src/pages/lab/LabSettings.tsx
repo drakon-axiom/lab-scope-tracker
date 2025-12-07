@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
+import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search, Upload, Download, Edit, Check, X } from "lucide-react";
+import { Save, DollarSign, History, Search, Upload, Download, Edit, Check, X, Lock } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
 import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
@@ -29,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ProductPricing {
   id: string;
@@ -58,6 +60,7 @@ interface EditedItem {
 
 export default function LabSettings() {
   const { labUser } = useLabUser();
+  const permissions = useLabPermissions();
   const isMobile = useIsMobile();
   const [pricing, setPricing] = useState<ProductPricing[]>([]);
   const [auditLog, setAuditLog] = useState<PricingAudit[]>([]);
@@ -573,10 +576,21 @@ export default function LabSettings() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Lab Settings</h1>
             <p className="text-muted-foreground mt-1 text-sm md:text-base">
-              Manage pricing, test panels, and lab configuration
+              {permissions.canEditPricing 
+                ? "Manage pricing, test panels, and lab configuration"
+                : "View pricing and test panel information (read-only)"}
               {isMobile && <span className="block text-xs mt-1">Pull down to refresh</span>}
             </p>
           </div>
+
+          {permissions.isReadOnly && (
+            <Alert>
+              <Lock className="h-4 w-4" />
+              <AlertDescription>
+                You have read-only access. Contact a lab manager or admin to edit pricing.
+              </AlertDescription>
+            </Alert>
+          )}
 
         {/* Pricing Management */}
         <Card>
@@ -588,82 +602,88 @@ export default function LabSettings() {
                   Test Pricing
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  Edit prices and categories inline. Select items and make changes, then save.
+                  {permissions.canEditPricing 
+                    ? "Edit prices and categories inline. Select items and make changes, then save."
+                    : "View current test pricing (read-only)."}
                 </CardDescription>
               </div>
-              <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadTemplate}
-                  disabled={pricing.length === 0}
-                  className="w-full sm:w-auto"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Download Template</span>
-                  <span className="sm:hidden">Template</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCSV}
-                  disabled={filteredPricing.length === 0}
-                  className="w-full sm:w-auto"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Export CSV</span>
-                  <span className="sm:hidden">Export</span>
-                </Button>
-                <div className="relative w-full sm:w-auto">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImportCSV}
-                    className="hidden"
-                    id="csv-upload"
-                    disabled={isImporting}
-                  />
+              {permissions.canImportExportPricing && (
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => document.getElementById('csv-upload')?.click()}
-                    disabled={isImporting}
-                    className="w-full"
+                    onClick={handleDownloadTemplate}
+                    disabled={pricing.length === 0}
+                    className="w-full sm:w-auto"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {isImporting ? "Importing..." : "Import CSV"}
+                    <Download className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Download Template</span>
+                    <span className="sm:hidden">Template</span>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCSV}
+                    disabled={filteredPricing.length === 0}
+                    className="w-full sm:w-auto"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Export CSV</span>
+                    <span className="sm:hidden">Export</span>
+                  </Button>
+                  {permissions.canEditPricing && (
+                    <div className="relative w-full sm:w-auto">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImportCSV}
+                        className="hidden"
+                        id="csv-upload"
+                        disabled={isImporting}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('csv-upload')?.click()}
+                        disabled={isImporting}
+                        className="w-full"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {isImporting ? "Importing..." : "Import CSV"}
+                      </Button>
+                    </div>
+                  )}
+                  {hasChanges && permissions.canEditPricing && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleSaveChanges}
+                        disabled={isSaving}
+                        className="w-full sm:w-auto"
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        {isSaving ? "Saving..." : `Save Changes (${Object.keys(editedItems).length})`}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDiscardChanges}
+                        disabled={isSaving}
+                        className="w-full sm:w-auto"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Discard
+                      </Button>
+                    </>
+                  )}
                 </div>
-                {hasChanges && (
-                  <>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleSaveChanges}
-                      disabled={isSaving}
-                      className="w-full sm:w-auto"
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {isSaving ? "Saving..." : `Save Changes (${Object.keys(editedItems).length})`}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDiscardChanges}
-                      disabled={isSaving}
-                      className="w-full sm:w-auto"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Discard
-                    </Button>
-                  </>
-                )}
-              </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            {/* Apply to Selected Section */}
-            {selectedIds.size > 0 && (
+            {/* Apply to Selected Section - only for users with edit permissions */}
+            {permissions.canBulkEditPricing && selectedIds.size > 0 && (
               <div className="mb-4 p-4 rounded-lg border bg-muted/30">
                 <div className="flex items-center gap-2 mb-3">
                   <Badge variant="secondary">{selectedIds.size} selected</Badge>

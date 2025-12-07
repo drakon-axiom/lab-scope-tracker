@@ -71,6 +71,8 @@ export default function LabSettings() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editedItems, setEditedItems] = useState<Record<string, EditedItem>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [applyPrice, setApplyPrice] = useState<string>("");
+  const [applyCategory, setApplyCategory] = useState<string>("");
 
   const fetchData = async () => {
     if (!labUser?.lab_id) return;
@@ -218,6 +220,37 @@ export default function LabSettings() {
       ...prev,
       [id]: { ...prev[id], category }
     }));
+  };
+
+  const handleApplyPriceToSelected = () => {
+    const numPrice = parseFloat(applyPrice);
+    if (isNaN(numPrice) || numPrice < 0) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+    
+    const newEditedItems = { ...editedItems };
+    selectedIds.forEach(id => {
+      newEditedItems[id] = { ...newEditedItems[id], price: numPrice };
+    });
+    setEditedItems(newEditedItems);
+    setApplyPrice("");
+    toast.success(`Applied $${numPrice.toFixed(2)} to ${selectedIds.size} item(s)`);
+  };
+
+  const handleApplyCategoryToSelected = () => {
+    if (!applyCategory) {
+      toast.error("Please select a category");
+      return;
+    }
+    
+    const newEditedItems = { ...editedItems };
+    selectedIds.forEach(id => {
+      newEditedItems[id] = { ...newEditedItems[id], category: applyCategory };
+    });
+    setEditedItems(newEditedItems);
+    setApplyCategory("");
+    toast.success(`Applied "${applyCategory}" to ${selectedIds.size} item(s)`);
   };
 
   const hasChanges = Object.keys(editedItems).length > 0;
@@ -629,6 +662,62 @@ export default function LabSettings() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Apply to Selected Section */}
+            {selectedIds.size > 0 && (
+              <div className="mb-4 p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <Badge variant="secondary">{selectedIds.size} selected</Badge>
+                  <span className="text-sm text-muted-foreground">Apply to selected:</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex gap-2 flex-1">
+                    <div className="flex items-center gap-1 flex-1">
+                      <span className="text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Price"
+                        value={applyPrice}
+                        onChange={(e) => setApplyPrice(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleApplyPriceToSelected}
+                      disabled={!applyPrice}
+                    >
+                      Apply Price
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 flex-1">
+                    <Select value={applyCategory} onValueChange={setApplyCategory}>
+                      <SelectTrigger className="flex-1 bg-background">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50">
+                        {allCategories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleApplyCategoryToSelected}
+                      disabled={!applyCategory}
+                    >
+                      Apply Category
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="mb-4 flex flex-col gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

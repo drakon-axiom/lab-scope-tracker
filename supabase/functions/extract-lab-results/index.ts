@@ -1,5 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Helper function to encode ArrayBuffer to base64
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,29 +40,72 @@ serve(async (req) => {
 
     console.log("Extracting results from:", report_url, "Expected samples:", sample_count);
 
-    // For Janoshik reports, we need to find the actual report image
-    let imageUrl = report_url;
-    let pageContent = "";
+    let imageBase64 = "";
+    let mimeType = "image/png";
     
-    // If it's a Janoshik test page URL, try to extract the report image URL
+    // For Janoshik reports, extract the actual image URL from the page
     if (report_url.includes("janoshik.com/tests/") && !report_url.includes("/img/")) {
       try {
         console.log("Fetching Janoshik page to find report image...");
         const pageResponse = await fetch(report_url);
-        if (pageResponse.ok) {
-          pageContent = await pageResponse.text();
+        if (!pageResponse.ok) {
+          throw new Error(`Failed to fetch page: ${pageResponse.status}`);
+        }
+        
+        const pageContent = await pageResponse.text();
+        
+        // Extract the report image URL from the page
+        // Looking for patterns like: /tests/img/XXXXX.png or full URL
+        const imgMatch = pageContent.match(/https?:\/\/janoshik\.com\/tests\/img\/([A-Z0-9]+)\.png/i) ||
+                        pageContent.match(/\/tests\/img\/([A-Z0-9]+)\.png/i);
+        
+        if (imgMatch) {
+          const imageUrl = imgMatch[0].startsWith("http") 
+            ? imgMatch[0] 
+            : `https://janoshik.com${imgMatch[0]}`;
+          console.log("Found report image URL:", imageUrl);
           
-          // Extract the report image URL from the page
-          // Looking for patterns like: /tests/img/XXXXX.png
-          const imgMatch = pageContent.match(/\/tests\/img\/([A-Z0-9]+)\.png/i);
-          if (imgMatch) {
-            imageUrl = `https://janoshik.com/tests/img/${imgMatch[1]}.png`;
-            console.log("Found report image URL:", imageUrl);
+          // Download the image and convert to base64
+          const imageResponse = await fetch(imageUrl);
+          if (imageResponse.ok) {
+            const imageBuffer = await imageResponse.arrayBuffer();
+            imageBase64 = arrayBufferToBase64(imageBuffer);
+            console.log("Image downloaded, base64 length:", imageBase64.length);
+          } else {
+            console.log("Failed to download image:", imageResponse.status);
           }
+        } else {
+          console.log("Could not find image URL in page content");
         }
       } catch (e) {
-        console.log("Could not fetch page, will try URL directly:", e);
+        console.error("Error fetching Janoshik page:", e);
       }
+    } else if (report_url.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+      // Direct image URL - download it
+      try {
+        console.log("Downloading image from direct URL...");
+        const imageResponse = await fetch(report_url);
+        if (imageResponse.ok) {
+          const contentType = imageResponse.headers.get("content-type") || "image/png";
+          mimeType = contentType.split(";")[0].trim();
+          const imageBuffer = await imageResponse.arrayBuffer();
+          imageBase64 = arrayBufferToBase64(imageBuffer);
+          console.log("Image downloaded, base64 length:", imageBase64.length);
+        }
+      } catch (e) {
+        console.error("Error downloading image:", e);
+      }
+    }
+
+    if (!imageBase64) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Could not retrieve the report image. Please ensure the URL is a valid Janoshik test page or direct image URL.",
+          purity_values: [],
+          identity: ""
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Use Gemini with vision to analyze the report image
@@ -61,22 +114,24 @@ serve(async (req) => {
 Your job is to extract purity/content percentages and identity confirmation from lab test report images.
 
 For Janoshik reports, look for:
-- "Content" or "Purity" values shown as percentages (e.g., "99.2%", "98.5%")
-- If there are multiple vials/samples tested for variance, there will be multiple content values (e.g., "Vial 1: 99.2%", "Vial 2: 98.8%", "Vial 3: 99.0%")
-- Identity confirmation (usually shows the compound name identified, or "Confirmed", "Positive")
-- The results section typically shows each sample's content/purity value
+- "Content" values shown as percentages (e.g., "99.2%", "98.5%")
+- If there are multiple vials tested for variance, there will be rows showing each vial's content (e.g., "Vial 1", "Vial 2", "Vial 3")
+- Identity confirmation (usually shows the compound name identified)
+- The results section typically shows a table with content values
 
-Extract ALL purity/content values found, in order (Vial 1 first, then Vial 2, etc.).`;
+Extract ALL content/purity values found for each vial, in order.`;
 
-    const userPrompt = `Analyze this lab test report and extract the purity/content results. 
-There should be ${sample_count || 1} sample(s) tested (main vial plus ${(sample_count || 1) - 1} additional vials for variance testing).
+    const userPrompt = `Analyze this lab test report image and extract the content/purity results. 
+There should be ${sample_count || 1} sample(s) tested (main vial${(sample_count || 1) > 1 ? ` plus ${(sample_count || 1) - 1} additional vials for variance testing` : ''}).
 
-Look for percentage values showing the purity or content of each sample/vial tested.
+Look for:
+1. Content percentage values for each vial (e.g., "98.5%", "99.2%")
+2. The identity/compound name confirmed
 
-Return ALL purity percentages found (one per sample/vial), and the identity result.`;
+Return ALL content percentages found (one per vial), and the identity result.`;
 
-    // Build the messages with image
-    const messages: any[] = [
+    // Build the messages with base64 image
+    const messages = [
       { role: "system", content: systemPrompt },
       { 
         role: "user", 
@@ -85,15 +140,14 @@ Return ALL purity percentages found (one per sample/vial), and the identity resu
           { 
             type: "image_url", 
             image_url: { 
-              url: imageUrl,
-              detail: "high"
+              url: `data:${mimeType};base64,${imageBase64}`,
             } 
           }
         ]
       }
     ];
 
-    console.log("Sending to AI with image URL:", imageUrl);
+    console.log("Sending to AI with base64 image...");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -116,11 +170,11 @@ Return ALL purity percentages found (one per sample/vial), and the identity resu
                   purity_values: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Array of purity/content percentages for each sample/vial tested (e.g., ['99.2%', '98.8%', '99.0%']). Include the % symbol."
+                    description: "Array of content/purity percentages for each vial tested (e.g., ['99.2%', '98.8%', '99.0%']). Include the % symbol."
                   },
                   identity: {
                     type: "string",
-                    description: "Identity confirmation result - the compound name identified or 'Confirmed'"
+                    description: "Identity confirmation result - the compound name identified"
                   }
                 },
                 required: ["purity_values", "identity"],
@@ -161,7 +215,6 @@ Return ALL purity percentages found (one per sample/vial), and the identity resu
     // Extract the tool call result
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "extract_lab_results") {
-      // Try to parse from text response if no tool call
       const textContent = aiData.choices?.[0]?.message?.content;
       console.log("No tool call, text response:", textContent);
       

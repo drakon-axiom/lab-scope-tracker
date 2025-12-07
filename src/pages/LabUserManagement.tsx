@@ -245,10 +245,10 @@ export default function LabUserManagement() {
     }
   };
 
-  const handleImpersonate = (labId: string, labName: string) => {
-    startLabImpersonation(labId, labName);
+  const handleImpersonate = (labId: string, labName: string, labRole: string) => {
+    startLabImpersonation(labId, labName, labRole);
     navigate("/lab/dashboard");
-    toast.success(`Now viewing as ${labName}`);
+    toast.success(`Now viewing as ${labName} (${labRole})`);
   };
 
   const handleEditClick = (labUser: LabUser) => {
@@ -390,7 +390,7 @@ export default function LabUserManagement() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleImpersonate(labUser.lab_id, (labUser.labs as any)?.name)}
+                                  onClick={() => handleImpersonate(labUser.lab_id, (labUser.labs as any)?.name, labUser.role)}
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>

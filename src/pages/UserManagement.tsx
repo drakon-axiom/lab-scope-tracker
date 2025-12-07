@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Users, UserCheck, UserPlus, Eye } from "lucide-react";
+import { Users, UserCheck, UserPlus, Eye, Pencil, Trash2, KeyRound } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,8 +67,24 @@ const UserManagement = () => {
     fullName: "",
   });
 
+  // Edit user state
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [editUserData, setEditUserData] = useState({ email: "", fullName: "" });
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Delete user state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Password reset state
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
   useEffect(() => {
-    // Redirect non-admins
     if (!roleLoading && !isAdmin) {
       navigate("/dashboard");
       return;
@@ -73,7 +99,6 @@ const UserManagement = () => {
     try {
       setLoading(true);
 
-      // Call edge function to get users (requires admin privileges)
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -150,15 +175,8 @@ const UserManagement = () => {
         duration: 3000,
       });
 
-      // Reset form and close dialog
-      setNewUser({
-        email: "",
-        password: "",
-        fullName: "",
-      });
+      setNewUser({ email: "", password: "", fullName: "" });
       setIsAddUserOpen(false);
-
-      // Refresh the users list
       fetchUsers();
     } catch (error: any) {
       console.error("Error creating user:", error);
@@ -170,6 +188,184 @@ const UserManagement = () => {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleEditClick = (user: UserWithRole) => {
+    setEditingUser(user);
+    setEditUserData({ email: user.email, fullName: user.full_name || "" });
+    setIsEditUserOpen(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      setIsUpdating(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) throw new Error("Not authenticated");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      // Update email if changed
+      if (editUserData.email !== editingUser.email) {
+        const emailResponse = await fetch(
+          `${supabaseUrl}/functions/v1/update-user-email`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ userId: editingUser.id, newEmail: editUserData.email }),
+          }
+        );
+
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          throw new Error(errorData.error || "Failed to update email");
+        }
+      }
+
+      // Update full name in profiles table
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ full_name: editUserData.fullName || null })
+        .eq("id", editingUser.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "User updated",
+        description: `User ${editUserData.email} has been updated successfully`,
+        duration: 3000,
+      });
+
+      setIsEditUserOpen(false);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteClick = (user: UserWithRole) => {
+    setUserToDelete(user);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) throw new Error("Not authenticated");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/delete-user`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: userToDelete.id }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete user");
+      }
+
+      toast({
+        title: "User deleted",
+        description: `User ${userToDelete.email} has been deleted`,
+        duration: 3000,
+      });
+
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePasswordClick = (user: UserWithRole) => {
+    setPasswordUser(user);
+    setNewPassword("");
+    setIsPasswordDialogOpen(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordUser) return;
+
+    try {
+      setIsResettingPassword(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) throw new Error("Not authenticated");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/reset-user-password`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: passwordUser.id, newPassword }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to reset password");
+      }
+
+      toast({
+        title: "Password reset",
+        description: `Password for ${passwordUser.email} has been reset`,
+        duration: 3000,
+      });
+
+      setIsPasswordDialogOpen(false);
+      setPasswordUser(null);
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset password",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -190,7 +386,7 @@ const UserManagement = () => {
   return (
     <Layout>
       <PullToRefreshWrapper onRefresh={handleRefresh}>
-          <div className="space-y-6">
+        <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Customer Management</h2>
@@ -314,28 +510,76 @@ const UserManagement = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    startCustomerImpersonation(user.id, user.email, user.full_name);
-                                    toast({
-                                      title: "Impersonating customer",
-                                      description: `Now viewing as ${user.email}`,
-                                      duration: 3000,
-                                    });
-                                    navigate("/dashboard");
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View as this customer</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <div className="flex items-center justify-end gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      startCustomerImpersonation(user.id, user.email, user.full_name);
+                                      toast({
+                                        title: "Impersonating customer",
+                                        description: `Now viewing as ${user.email}`,
+                                        duration: 3000,
+                                      });
+                                      navigate("/dashboard");
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>View as this customer</p>
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditClick(user)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit customer</p>
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handlePasswordClick(user)}
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Reset password</p>
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteClick(user)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Delete customer</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                           </TooltipProvider>
                         </TableCell>
                       </TableRow>
@@ -354,6 +598,113 @@ const UserManagement = () => {
           </Card>
         </div>
       </PullToRefreshWrapper>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Customer</DialogTitle>
+            <DialogDescription>
+              Update customer information.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editUserData.email}
+                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-fullName">Full Name</Label>
+              <Input
+                id="edit-fullName"
+                type="text"
+                value={editUserData.fullName}
+                onChange={(e) => setEditUserData({ ...editUserData, fullName: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditUserOpen(false)}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {passwordUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPasswordDialogOpen(false)}
+                disabled={isResettingPassword}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isResettingPassword}>
+                {isResettingPassword ? "Resetting..." : "Reset Password"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {userToDelete?.email}? This action cannot be undone and will remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

@@ -894,10 +894,15 @@ const Quotes = () => {
         }
       }
 
+      // When impersonating a customer, use the impersonated user's ID
+      const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
       const payload = {
         ...formData,
         status: updatedStatus,
-        user_id: user.id,
+        user_id: effectiveUserId,
         quote_number: formData.quote_number || null,
         notes: formData.notes || null,
         tracking_number: formData.tracking_number || null,

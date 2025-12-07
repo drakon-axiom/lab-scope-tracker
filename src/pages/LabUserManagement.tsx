@@ -161,6 +161,8 @@ export default function LabUserManagement() {
       });
 
       if (error) throw error;
+      // Handle error responses from the edge function (e.g., 409 duplicate email)
+      if (data?.error) throw new Error(data.error);
       if (!data?.user) throw new Error("User creation failed");
 
       // Link to lab

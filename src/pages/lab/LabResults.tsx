@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
-import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp } from "lucide-react";
+import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -80,6 +80,7 @@ export default function LabResults() {
   const [uploading, setUploading] = useState(false);
   const [sortBy, setSortBy] = useState<"progress" | "quote" | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [extractingIndex, setExtractingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -257,6 +258,61 @@ export default function LabResults() {
       updated[resultIndex] = { ...updated[resultIndex], purity_values: newPurityValues };
       return updated;
     });
+  };
+
+  const handleExtractFromUrl = async (index: number) => {
+    const result = itemResults[index];
+    if (!result.report_url.trim()) {
+      toast.error("Please enter a report URL first");
+      return;
+    }
+
+    setExtractingIndex(index);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-lab-results", {
+        body: {
+          report_url: result.report_url,
+          sample_count: result.sample_count,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.success) {
+        // Update purity values
+        if (data.purity_values && data.purity_values.length > 0) {
+          const hasValues = data.purity_values.some((v: string) => v && v.trim());
+          if (hasValues) {
+            setItemResults(prev => {
+              const updated = [...prev];
+              updated[index] = {
+                ...updated[index],
+                purity_values: data.purity_values,
+                identity: data.identity || updated[index].identity,
+              };
+              return updated;
+            });
+            toast.success("Results extracted successfully!");
+          } else {
+            toast.info("Could not find purity values in the document");
+          }
+        } else {
+          toast.info("No results found in the document");
+        }
+      }
+    } catch (error) {
+      console.error("Error extracting results:", error);
+      toast.error("Failed to extract results from URL");
+    } finally {
+      setExtractingIndex(null);
+    }
   };
 
   const handleSubmitResults = async () => {
@@ -717,9 +773,32 @@ export default function LabResults() {
                             placeholder="https://lab.example.com/report/12345"
                             value={result.report_url}
                             onChange={(e) => updateItemResult(index, "report_url", e.target.value)}
-                            className="text-sm"
+                            className="text-sm flex-1"
                           />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={!result.report_url.trim() || extractingIndex === index}
+                            onClick={() => handleExtractFromUrl(index)}
+                            className="whitespace-nowrap"
+                          >
+                            {extractingIndex === index ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                Extracting...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-1" />
+                                Extract Results
+                              </>
+                            )}
+                          </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter the report URL and click "Extract Results" to auto-fill purity and identity
+                        </p>
                       </div>
 
                       {/* Purity fields - one per sample */}

@@ -119,14 +119,23 @@ export default function LabUserManagement() {
 
       if (labUsersError) throw labUsersError;
 
-      // Fetch user emails from auth
+      // Fetch user emails from auth via edge function
       const usersWithEmails = await Promise.all(
         (labUsersData || []).map(async (labUser) => {
-          const { data: { user } } = await supabase.auth.admin.getUserById(labUser.user_id);
-          return {
-            ...labUser,
-            email: user?.email || "Unknown",
-          };
+          try {
+            const { data, error } = await supabase.functions.invoke("get-user-email", {
+              body: { userId: labUser.user_id },
+            });
+            return {
+              ...labUser,
+              email: error ? "Unknown" : (data?.email || "Unknown"),
+            };
+          } catch {
+            return {
+              ...labUser,
+              email: "Unknown",
+            };
+          }
         })
       );
 

@@ -210,22 +210,29 @@ serve(async (req) => {
     let quotesToUpdate;
 
     if (singleTracking) {
-      // Update single tracking number
-      const { data } = await supabase
+      // Update single tracking number - find quotes that need tracking updates
+      // (not already delivered or completed)
+      const { data, error } = await supabase
         .from('quotes')
         .select('*')
         .eq('tracking_number', singleTracking)
-        .single();
+        .in('status', ['paid_awaiting_shipping', 'in_transit']);
       
-      quotesToUpdate = data ? [data] : [];
+      if (error) {
+        console.error('Error fetching quotes:', error);
+      }
+      quotesToUpdate = data || [];
     } else {
-      // Update all quotes with tracking numbers that aren't delivered
-      const { data } = await supabase
+      // Update all quotes with tracking numbers that need updates
+      const { data, error } = await supabase
         .from('quotes')
         .select('*')
         .not('tracking_number', 'is', null)
-        .neq('status', 'delivered');
+        .in('status', ['paid_awaiting_shipping', 'in_transit']);
       
+      if (error) {
+        console.error('Error fetching quotes:', error);
+      }
       quotesToUpdate = data || [];
     }
 

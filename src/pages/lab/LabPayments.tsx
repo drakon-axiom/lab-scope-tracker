@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { format } from "date-fns";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -39,21 +40,25 @@ interface Quote {
 
 export default function LabPayments() {
   const { labUser } = useLabUser();
+  const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notes, setNotes] = useState("");
 
+  // Use impersonated lab ID if available, otherwise use the lab user's lab ID
+  const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
+
   useEffect(() => {
-    if (!labUser?.lab_id) return;
+    if (!effectiveLabId) return;
 
     const fetchPayments = async () => {
       try {
         const { data, error } = await supabase
           .from("quotes")
           .select("id, quote_number, payment_status, payment_amount_usd, payment_amount_crypto, payment_date, transaction_id")
-          .eq("lab_id", labUser.lab_id)
+          .eq("lab_id", effectiveLabId)
           .eq("status", "approved_payment_pending")
           .order("created_at", { ascending: false });
 
@@ -68,7 +73,7 @@ export default function LabPayments() {
     };
 
     fetchPayments();
-  }, [labUser?.lab_id]);
+  }, [effectiveLabId]);
 
   const handleMarkReceived = async (quote: Quote) => {
     try {

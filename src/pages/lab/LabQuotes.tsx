@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { format } from "date-fns";
 import { Eye, Check, X, Edit } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ interface Quote {
 
 export default function LabQuotes() {
   const { labUser } = useLabUser();
+  const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -47,15 +49,18 @@ export default function LabQuotes() {
   const [responseNotes, setResponseNotes] = useState("");
   const [modifiedDiscount, setModifiedDiscount] = useState("");
 
+  // Use impersonated lab ID if available, otherwise use the lab user's lab ID
+  const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
+
   useEffect(() => {
-    if (!labUser?.lab_id) return;
+    if (!effectiveLabId) return;
 
     const fetchQuotes = async () => {
       try {
         const { data, error } = await supabase
           .from("quotes")
           .select("*")
-          .eq("lab_id", labUser.lab_id)
+          .eq("lab_id", effectiveLabId)
           .in("status", ["sent_to_vendor", "awaiting_customer_approval"])
           .order("created_at", { ascending: false });
 
@@ -80,7 +85,7 @@ export default function LabQuotes() {
           event: "*",
           schema: "public",
           table: "quotes",
-          filter: `lab_id=eq.${labUser.lab_id}`,
+          filter: `lab_id=eq.${effectiveLabId}`,
         },
         () => {
           fetchQuotes();
@@ -91,7 +96,7 @@ export default function LabQuotes() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [labUser?.lab_id]);
+  }, [effectiveLabId]);
 
   const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
     try {

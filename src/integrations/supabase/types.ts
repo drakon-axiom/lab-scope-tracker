@@ -759,6 +759,7 @@ export type Database = {
           created_at: string | null
           discount_amount: number | null
           discount_type: string | null
+          estimated_delivery: string | null
           id: string
           lab_id: string
           lab_quote_number: string | null
@@ -781,6 +782,7 @@ export type Database = {
           created_at?: string | null
           discount_amount?: number | null
           discount_type?: string | null
+          estimated_delivery?: string | null
           id?: string
           lab_id: string
           lab_quote_number?: string | null
@@ -803,6 +805,7 @@ export type Database = {
           created_at?: string | null
           discount_amount?: number | null
           discount_type?: string | null
+          estimated_delivery?: string | null
           id?: string
           lab_id?: string
           lab_quote_number?: string | null

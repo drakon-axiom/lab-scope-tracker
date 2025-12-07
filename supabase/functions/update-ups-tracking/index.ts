@@ -107,6 +107,21 @@ function determineStatus(trackingData: UPSTrackingResponse): string {
   return 'in_transit'; // Default
 }
 
+function getEstimatedDelivery(trackingData: UPSTrackingResponse): string | null {
+  const deliveryDate = trackingData.trackResponse?.shipment?.[0]?.package?.[0]?.deliveryDate?.[0]?.date;
+  
+  if (!deliveryDate) {
+    return null;
+  }
+
+  // UPS returns date in YYYYMMDD format, convert to YYYY-MM-DD
+  if (deliveryDate.length === 8) {
+    return `${deliveryDate.slice(0, 4)}-${deliveryDate.slice(4, 6)}-${deliveryDate.slice(6, 8)}`;
+  }
+  
+  return deliveryDate;
+}
+
 async function sendDeliveryNotification(quote: any, supabase: any): Promise<void> {
   try {
     // Get user profile for customer email
@@ -245,9 +260,15 @@ serve(async (req) => {
       try {
         const trackingData = await getTrackingInfo(quote.tracking_number, accessToken);
         const newStatus = determineStatus(trackingData);
+        const estimatedDelivery = getEstimatedDelivery(trackingData);
 
         // Update status and tracking timestamp
         const updateData: any = { tracking_updated_at: new Date().toISOString() };
+        
+        // Add estimated delivery if available
+        if (estimatedDelivery) {
+          updateData.estimated_delivery = estimatedDelivery;
+        }
         
         // Only update status if it changed
         if (newStatus !== quote.status) {

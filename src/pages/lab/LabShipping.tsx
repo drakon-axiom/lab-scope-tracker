@@ -39,8 +39,8 @@ export default function LabShipping() {
           .from("quotes")
           .select("id, quote_number, tracking_number, status, shipped_date")
           .eq("lab_id", labUser.lab_id)
-          .in("status", ["in_transit", "delivered"])
-          .order("shipped_date", { ascending: false });
+          .in("status", ["paid_awaiting_shipping", "in_transit", "delivered"])
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
         setQuotes(data || []);

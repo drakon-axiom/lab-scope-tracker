@@ -65,6 +65,7 @@ export const useImpersonation = () => {
     // Clear any lab impersonation first
     sessionStorage.removeItem("impersonatedLabId");
     sessionStorage.removeItem("impersonatedLabName");
+    sessionStorage.removeItem("impersonatedLabRole");
     
     sessionStorage.setItem("impersonatedCustomerId", userId);
     sessionStorage.setItem("impersonatedCustomerEmail", email);
@@ -76,6 +77,9 @@ export const useImpersonation = () => {
       name,
       type: "customer",
     });
+
+    // Dispatch custom event for same-tab listeners
+    window.dispatchEvent(new CustomEvent("impersonation-changed"));
   };
 
   const startLabImpersonation = (labId: string, labName: string, labRole?: string) => {

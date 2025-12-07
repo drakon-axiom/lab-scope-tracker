@@ -3,17 +3,15 @@ import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search, Upload, Download, Edit, ListChecks } from "lucide-react";
+import { Save, DollarSign, History, Search, Upload, Download, Edit, Check, X } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
 import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
-import { BulkPriceEditDialog } from "@/components/lab/BulkPriceEditDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -53,6 +51,11 @@ interface PricingAudit {
   };
 }
 
+interface EditedItem {
+  price?: number;
+  category?: string;
+}
+
 export default function LabSettings() {
   const { labUser } = useLabUser();
   const isMobile = useIsMobile();
@@ -65,7 +68,9 @@ export default function LabSettings() {
   const [isImporting, setIsImporting] = useState(false);
   const [editingItem, setEditingItem] = useState<ProductPricing | null>(null);
   const [swipedRowId, setSwipedRowId] = useState<string | null>(null);
-  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editedItems, setEditedItems] = useState<Record<string, EditedItem>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchData = async () => {
     if (!labUser?.lab_id) return;
@@ -178,41 +183,108 @@ export default function LabSettings() {
     }
   };
 
-  const handleBulkPriceUpdate = async (updates: { id: string; product_id: string; oldPrice: number; newPrice: number }[]) => {
-    if (!labUser?.lab_id) return;
+  const allCategories = ["Peptides", "SARMs", "AAS", "Analysis", "Small Molecules", "SERMs"];
+  
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredPricing.map(p => p.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
 
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handlePriceChange = (id: string, value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setEditedItems(prev => ({
+        ...prev,
+        [id]: { ...prev[id], price: numValue }
+      }));
+    }
+  };
+
+  const handleCategoryChange = (id: string, category: string) => {
+    setEditedItems(prev => ({
+      ...prev,
+      [id]: { ...prev[id], category }
+    }));
+  };
+
+  const hasChanges = Object.keys(editedItems).length > 0;
+
+  const handleSaveChanges = async () => {
+    if (!labUser?.lab_id || !hasChanges) return;
+
+    setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      for (const update of updates) {
-        // Update price
-        const { error: updateError } = await supabase
-          .from("product_vendor_pricing")
-          .update({ price: update.newPrice })
-          .eq("id", update.id);
+      let successCount = 0;
 
-        if (updateError) throw updateError;
+      for (const [id, changes] of Object.entries(editedItems)) {
+        const item = pricing.find(p => p.id === id);
+        if (!item) continue;
 
-        // Log change
-        await supabase
-          .from("pricing_audit_log")
-          .insert({
-            product_id: update.product_id,
-            lab_id: labUser.lab_id,
-            old_price: update.oldPrice,
-            new_price: update.newPrice,
-            changed_by: user.id,
-            change_reason: "Bulk price update",
-          });
+        // Update price if changed
+        if (changes.price !== undefined && changes.price !== item.price) {
+          const { error: updateError } = await supabase
+            .from("product_vendor_pricing")
+            .update({ price: changes.price })
+            .eq("id", id);
+
+          if (updateError) throw updateError;
+
+          // Log price change
+          await supabase
+            .from("pricing_audit_log")
+            .insert({
+              product_id: item.product_id,
+              lab_id: labUser.lab_id,
+              old_price: item.price,
+              new_price: changes.price,
+              changed_by: user.id,
+              change_reason: "Inline bulk edit",
+            });
+        }
+
+        // Update category if changed
+        if (changes.category && changes.category !== item.products.category) {
+          const { error: categoryError } = await supabase
+            .from("products")
+            .update({ category: changes.category })
+            .eq("id", item.product_id);
+
+          if (categoryError) throw categoryError;
+        }
+
+        successCount++;
       }
 
-      toast.success(`Successfully updated ${updates.length} price(s)`);
+      toast.success(`Successfully updated ${successCount} item(s)`);
+      setEditedItems({});
+      setSelectedIds(new Set());
       await fetchData();
     } catch (error) {
-      console.error("Error updating prices:", error);
-      toast.error("Failed to update prices");
+      console.error("Error saving changes:", error);
+      toast.error("Failed to save changes");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleDiscardChanges = () => {
+    setEditedItems({});
   };
 
   const SwipeableRow = ({ item }: { item: ProductPricing }) => {
@@ -223,39 +295,61 @@ export default function LabSettings() {
     });
 
     const isSwiped = swipedRowId === item.id;
+    const isSelected = selectedIds.has(item.id);
+    const editedItem = editedItems[item.id];
+    const currentPrice = editedItem?.price ?? item.price;
+    const currentCategory = editedItem?.category ?? item.products.category ?? "";
 
     return (
       <div {...handlers} className="relative">
-        <TableRow className={`transition-transform duration-200 ${isSwiped ? '-translate-x-20' : ''}`}>
-          <TableCell className="font-medium">
-            <div>
-              <div className="font-medium">{item.products.name}</div>
-              <div className="md:hidden">
-                <Badge variant="outline" className="text-xs mt-1">
-                  {item.products.category || "Uncategorized"}
-                </Badge>
-              </div>
-            </div>
+        <TableRow className={`transition-transform duration-200 ${isSwiped ? '-translate-x-20' : ''} ${isSelected ? 'bg-muted/50' : ''}`}>
+          <TableCell className="w-10">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => handleSelectItem(item.id, checked as boolean)}
+            />
           </TableCell>
-          <TableCell className="hidden md:table-cell">
-            <Badge variant="outline">
-              {item.products.category || "Uncategorized"}
-            </Badge>
+          <TableCell className="font-medium">
+            <div className="font-medium">{item.products.name}</div>
           </TableCell>
           <TableCell>
-            <span className="font-semibold text-base md:text-lg">
-              ${item.price.toFixed(2)}
-            </span>
+            <Select
+              value={currentCategory}
+              onValueChange={(value) => handleCategoryChange(item.id, value)}
+            >
+              <SelectTrigger className="w-[140px] h-8 text-sm bg-background">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {allCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </TableCell>
+          <TableCell>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">$</span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={currentPrice}
+                onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                className="w-24 h-8 text-sm"
+              />
+            </div>
           </TableCell>
           <TableCell className="text-right">
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={() => setEditingItem(item)}
-              className="whitespace-nowrap"
+              className="h-8 w-8 p-0"
             >
-              <span className="hidden sm:inline">Update Price</span>
-              <span className="sm:hidden">Update</span>
+              <Edit className="h-4 w-4" />
             </Button>
           </TableCell>
         </TableRow>
@@ -461,7 +555,7 @@ export default function LabSettings() {
                   Test Pricing
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  Manage your test panel pricing. Changes are logged in the audit trail.
+                  Edit prices and categories inline. Select items and make changes, then save.
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row flex-wrap gap-2">
@@ -507,17 +601,30 @@ export default function LabSettings() {
                     {isImporting ? "Importing..." : "Import CSV"}
                   </Button>
                 </div>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setBulkEditOpen(true)}
-                  disabled={pricing.length === 0}
-                  className="w-full sm:w-auto"
-                >
-                  <ListChecks className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Bulk Edit</span>
-                  <span className="sm:hidden">Bulk</span>
-                </Button>
+                {hasChanges && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleSaveChanges}
+                      disabled={isSaving}
+                      className="w-full sm:w-auto"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {isSaving ? "Saving..." : `Save Changes (${Object.keys(editedItems).length})`}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDiscardChanges}
+                      disabled={isSaving}
+                      className="w-full sm:w-auto"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Discard
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -551,10 +658,16 @@ export default function LabSettings() {
                 <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filteredPricing.length > 0 && selectedIds.size === filteredPricing.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead className="min-w-[150px]">Test / Compound</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-16"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -682,14 +795,6 @@ export default function LabSettings() {
         />
       )}
 
-      {/* Bulk Price Edit Dialog */}
-      <BulkPriceEditDialog
-        open={bulkEditOpen}
-        onOpenChange={setBulkEditOpen}
-        pricing={pricing}
-        categories={categories}
-        onSave={handleBulkPriceUpdate}
-      />
     </LabLayout>
   );
 }

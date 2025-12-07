@@ -11,6 +11,7 @@ import {
   Beaker,
   Eye,
   X,
+  Users,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,8 +41,13 @@ const coreNavItems = [
 ];
 
 // Additional nav items for managers and admins
-const adminNavItems = [
+const managerNavItems = [
   { icon: Settings, label: "Settings", path: "/lab/settings" },
+];
+
+// Admin-only nav items
+const adminOnlyNavItems = [
+  { icon: Users, label: "Lab Users", path: "/lab/users" },
 ];
 
 export default function LabLayout({ children }: LabLayoutProps) {
@@ -99,10 +105,16 @@ export default function LabLayout({ children }: LabLayoutProps) {
   }
 
   const canAccessSettings = permissions.role === "manager" || permissions.role === "admin";
+  const canManageUsers = permissions.canManageLabUsers;
   
-  const navItems = canAccessSettings 
-    ? [...coreNavItems, ...adminNavItems]
-    : coreNavItems;
+  // Build nav items based on permissions
+  let navItems = [...coreNavItems];
+  if (canAccessSettings) {
+    navItems = [...navItems, ...managerNavItems];
+  }
+  if (canManageUsers) {
+    navItems = [...navItems, ...adminOnlyNavItems];
+  }
 
   const NavContent = () => (
     <>

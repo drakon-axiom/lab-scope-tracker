@@ -697,10 +697,22 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Use impersonated user's ID for filtering when impersonating
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
+      let query = supabase
         .from("clients")
         .select("id, name")
         .order("name");
+
+      // Clients are scoped to ownership - filter by user_id unless admin viewing all
+      if (!isAdmin || isImpersonatingCustomer) {
+        query = query.eq("user_id", targetUserId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setClients(data || []);
@@ -714,10 +726,22 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Use impersonated user's ID for filtering when impersonating
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
+      let query = supabase
         .from("manufacturers")
         .select("id, name")
         .order("name");
+
+      // Manufacturers are scoped to ownership - filter by user_id unless admin viewing all
+      if (!isAdmin || isImpersonatingCustomer) {
+        query = query.eq("user_id", targetUserId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setManufacturers(data || []);
@@ -779,10 +803,22 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Use impersonated user's ID for filtering when impersonating
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
+      let query = supabase
         .from("quote_templates")
         .select("*")
         .order("created_at", { ascending: false });
+
+      // Templates are scoped to ownership - filter by user_id unless admin viewing all
+      if (!isAdmin || isImpersonatingCustomer) {
+        query = query.eq("user_id", targetUserId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setTemplates(data || []);
@@ -1184,10 +1220,15 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Use impersonated user's ID when impersonating
+      const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
       const { error } = await supabase
         .from("quote_templates")
         .insert({
-          user_id: user.id,
+          user_id: effectiveUserId,
           name: templateName,
           description: templateDescription || null,
           lab_id: formData.lab_id || null,
@@ -1431,13 +1472,18 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Use impersonated user's ID when impersonating
+      const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
       // Create client if it doesn't exist
       let clientName = itemFormData.client;
       const existingClient = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
       if (!existingClient && clientName) {
         const { error } = await supabase
           .from("clients")
-          .insert([{ name: clientName, user_id: user.id }]);
+          .insert([{ name: clientName, user_id: effectiveUserId }]);
         if (!error) {
           await fetchClients(); // Refresh clients list
         }
@@ -1449,7 +1495,7 @@ const Quotes = () => {
       if (!existingManufacturer && manufacturerName) {
         const { error } = await supabase
           .from("manufacturers")
-          .insert([{ name: manufacturerName, user_id: user.id }]);
+          .insert([{ name: manufacturerName, user_id: effectiveUserId }]);
         if (!error) {
           await fetchManufacturers(); // Refresh manufacturers list
         }
@@ -1857,8 +1903,13 @@ const Quotes = () => {
       // Log to email history
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Use impersonated user's ID when impersonating for email history
+        const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id 
+          ? impersonatedUser.id 
+          : user.id;
+          
         await supabase.from("email_history").insert({
-          user_id: user.id,
+          user_id: effectiveUserId,
           quote_id: selectedQuote.id,
           lab_id: selectedQuote.lab_id,
           recipient_email: labData.contact_email,
@@ -1868,15 +1919,16 @@ const Quotes = () => {
           status: "sent",
         });
         
-        // Log quote activity
+        // Log quote activity (audit trail - use real user ID)
         await supabase.from('quote_activity_log').insert({
           quote_id: selectedQuote.id,
           user_id: user.id,
           activity_type: 'email_sent',
-          description: `Quote sent to ${lab.name}`,
+          description: `Quote sent to ${lab.name}${isImpersonatingCustomer ? ' (impersonated by admin)' : ''}`,
           metadata: {
             recipient: labData.contact_email,
-            lab_name: lab.name
+            lab_name: lab.name,
+            impersonated_user: isImpersonatingCustomer ? impersonatedUser?.id : null
           }
         });
       }
@@ -1887,15 +1939,21 @@ const Quotes = () => {
         .update({ status: "sent_to_vendor" })
         .eq("id", selectedQuote.id);
 
-      // Track usage for subscribers
-      if (isSubscriber) {
-        const itemCount = quoteItems.length;
-        await supabase.functions.invoke("track-usage", {
-          body: {
-            userId: user.id,
-            itemCount: itemCount,
-          },
-        });
+      // Track usage for subscribers (use effective user ID)
+      if (isSubscriber || isImpersonatingCustomer) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id 
+            ? impersonatedUser.id 
+            : currentUser.id;
+          const itemCount = quoteItems.length;
+          await supabase.functions.invoke("track-usage", {
+            body: {
+              userId: effectiveUserId,
+              itemCount: itemCount,
+            },
+          });
+        }
       }
 
       toast({
@@ -2186,10 +2244,15 @@ const Quotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Use impersonated user's ID when impersonating
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
       const { data, error } = await supabase
         .from("payment_methods")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .eq("method_type", "credit_card")
         .eq("is_validated", true)
         .limit(1);

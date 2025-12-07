@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Save, DollarSign, History, Search, Upload, Download, Edit } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
-import { MobilePriceEditDialog } from "@/components/lab/MobilePriceEditDialog";
+import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
@@ -212,22 +212,7 @@ export default function LabSettings() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                if (isMobile) {
-                  setEditingItem(item);
-                } else {
-                  const newPrice = prompt(
-                    `Enter new price for ${item.products.name}:`,
-                    item.price.toString()
-                  );
-                  if (newPrice) {
-                    const parsed = parseFloat(newPrice);
-                    if (!isNaN(parsed) && parsed > 0) {
-                      handlePriceUpdate(item.id, item.product_id, item.price, parsed);
-                    }
-                  }
-                }
-              }}
+              onClick={() => setEditingItem(item)}
               className="whitespace-nowrap"
             >
               <span className="hidden sm:inline">Update Price</span>
@@ -629,9 +614,9 @@ export default function LabSettings() {
         </div>
       </ContentWrapper>
 
-      {/* Mobile Price Edit Dialog */}
+      {/* Price Edit Dialog */}
       {editingItem && (
-        <MobilePriceEditDialog
+        <PriceEditDialog
           open={!!editingItem}
           onOpenChange={(open) => !open && setEditingItem(null)}
           compoundName={editingItem.products.name}

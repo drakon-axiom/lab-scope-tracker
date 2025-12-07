@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function LabOpenRequests() {
+  const navigate = useNavigate();
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
@@ -642,9 +644,12 @@ export default function LabOpenRequests() {
                 )}
 
                 {selectedQuote.status === "testing_in_progress" && permissions.canSubmitResults && (
-                  <Button onClick={() => handleMarkTestingComplete(selectedQuote)}>
-                    <Check className="h-4 w-4 mr-1" />
-                    Mark Testing Complete
+                  <Button onClick={() => {
+                    setDialogOpen(false);
+                    navigate("/lab/results");
+                  }}>
+                    <Upload className="h-4 w-4 mr-1" />
+                    Submit Results
                   </Button>
                 )}
               </DialogFooter>

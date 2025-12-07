@@ -32,6 +32,7 @@ import SplashScreen from "./components/SplashScreen";
 import LabAuth from "./pages/lab/LabAuth";
 import LabOpenRequests from "./pages/lab/LabOpenRequests";
 import LabCompletedRequests from "./pages/lab/LabCompletedRequests";
+import LabResults from "./pages/lab/LabResults";
 import LabSettings from "./pages/lab/LabSettings";
 import LabUsers from "./pages/lab/LabUsers";
 import LabUserManagement from "./pages/LabUserManagement";
@@ -115,7 +116,7 @@ const App = () => {
             <Route path="/lab/quotes" element={<LabOpenRequests />} />
             <Route path="/lab/payments" element={<LabOpenRequests />} />
             <Route path="/lab/shipping" element={<LabOpenRequests />} />
-            <Route path="/lab/results" element={<LabOpenRequests />} />
+            <Route path="/lab/results" element={<LabResults />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -10,6 +10,8 @@ import StatusBadge from "@/components/StatusBadge";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { UsageWidget } from "@/components/UsageWidget";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import { useImpersonation } from "@/hooks/useImpersonation";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Quote {
   id: string;
@@ -31,6 +33,8 @@ interface ShipmentInProgress {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [activeQuotes, setActiveQuotes] = useState<Quote[]>([]);
   const [shipmentsInProgress, setShipmentsInProgress] = useState<ShipmentInProgress[]>([]);
@@ -43,11 +47,16 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Determine which user_id to filter by
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
       // Fetch active quotes (not completed)
       const { data: quotesData, error: quotesError } = await supabase
         .from("quotes")
         .select("id, quote_number, status, created_at, labs(name), shipped_date")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .neq("status", "completed")
         .order("created_at", { ascending: false })
         .limit(10);
@@ -66,7 +75,7 @@ const Dashboard = () => {
       const { data: shipmentsData, error: shipmentsError } = await supabase
         .from("quotes")
         .select("id, quote_number, status, tracking_number, shipped_date, labs(name)")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .in("status", ["shipped", "in_transit", "delivered", "testing_in_progress"])
         .order("shipped_date", { ascending: false });
 
@@ -80,7 +89,7 @@ const Dashboard = () => {
       const { data: completedQuotes, error: completedError } = await supabase
         .from("quotes")
         .select("id, shipped_date, updated_at, status")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .eq("status", "completed")
         .gte("updated_at", ninetyDaysAgo.toISOString());
 
@@ -107,6 +116,8 @@ const Dashboard = () => {
         if (validCount > 0) {
           setAvgCompletionDays(Math.round(totalDays / validCount));
         }
+      } else {
+        setAvgCompletionDays(null);
       }
 
       setLoading(false);
@@ -117,6 +128,8 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    if (roleLoading) return;
+    
     fetchDashboardData();
     checkOnboardingStatus();
 
@@ -139,7 +152,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [roleLoading, isImpersonatingCustomer, impersonatedUser?.id]);
 
   const checkOnboardingStatus = async () => {
     try {

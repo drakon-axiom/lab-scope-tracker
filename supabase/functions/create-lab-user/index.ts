@@ -37,25 +37,29 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Check if user is a SafeBatch admin
+    const { data: adminRoleData } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    const isSafeBatchAdmin = adminRoleData?.role === 'admin'
+
     // Check if user is a lab admin for their lab
-    const { data: labUserData, error: labUserError } = await supabaseAdmin
+    const { data: labUserData } = await supabaseAdmin
       .from('lab_users')
       .select('lab_id, role')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single()
 
-    if (labUserError || !labUserData) {
-      console.error('Lab user not found:', labUserError?.message)
-      return new Response(JSON.stringify({ error: 'Not a lab user' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    const isLabAdmin = labUserData?.role === 'admin'
 
-    // Only lab admins can create users
-    if (labUserData.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Only lab admins can create users' }), {
+    // Must be either a SafeBatch admin or a lab admin
+    if (!isSafeBatchAdmin && !isLabAdmin) {
+      console.error('User is not an admin:', user.id)
+      return new Response(JSON.stringify({ error: 'Only admins can create users' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -63,8 +67,9 @@ Deno.serve(async (req) => {
 
     const { email, password, role, labId } = await req.json()
 
-    // Validate labId matches the admin's lab
-    if (labId !== labUserData.lab_id) {
+    // Lab admins can only create users for their own lab
+    // SafeBatch admins can create users for any lab
+    if (!isSafeBatchAdmin && labUserData && labId !== labUserData.lab_id) {
       return new Response(JSON.stringify({ error: 'Cannot create users for other labs' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

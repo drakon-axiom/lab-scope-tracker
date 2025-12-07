@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 export interface Subscription {
   id: string;
@@ -23,6 +24,7 @@ export const useSubscription = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageTracking | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isImpersonatingCustomer, impersonatedUser } = useImpersonation();
 
   useEffect(() => {
     const fetchSubscriptionData = async () => {
@@ -33,11 +35,16 @@ export const useSubscription = () => {
           return;
         }
 
+        // Use impersonated user's ID if impersonating
+        const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+          ? impersonatedUser.id 
+          : user.id;
+
         // Fetch subscription
         const { data: subData, error: subError } = await supabase
           .from("subscriptions")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", targetUserId)
           .single();
 
         if (subError) {
@@ -54,7 +61,7 @@ export const useSubscription = () => {
         const { data: usageData, error: usageError } = await supabase
           .from("usage_tracking")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", targetUserId)
           .gte("period_start", currentMonth.toISOString())
           .single();
 
@@ -80,7 +87,7 @@ export const useSubscription = () => {
     return () => {
       authSubscription.unsubscribe();
     };
-  }, []);
+  }, [isImpersonatingCustomer, impersonatedUser?.id]);
 
   const canSendItems = (itemCount: number): boolean => {
     if (!subscription || !usage) return false;

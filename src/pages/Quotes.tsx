@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { ResponsiveDialog } from "@/components/ResponsiveDialog";
@@ -155,6 +156,7 @@ interface TrackingHistory {
 
 const Quotes = () => {
   const { role, isSubscriber, isAdmin, loading: roleLoading } = useUserRole();
+  const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { canSendItems, getRemainingItems } = useSubscription();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -480,7 +482,7 @@ const Quotes = () => {
     return () => {
       supabase.removeChannel(quotesChannel);
     };
-  }, [roleLoading, role]);
+  }, [roleLoading, role, isImpersonatingCustomer, impersonatedUser?.id]);
 
   // Load last tracking refresh timestamp from localStorage
   useEffect(() => {
@@ -567,9 +569,11 @@ const Quotes = () => {
         .from("quotes")
         .select("*, labs(name)");
 
-      // Only admins can see all quotes - subscribers must filter by user_id
-      // Important: role must be loaded before this check
-      if (!isAdmin) {
+      // When impersonating a customer, filter by impersonated user's ID
+      // Otherwise, only admins can see all quotes
+      if (isImpersonatingCustomer && impersonatedUser?.id) {
+        query = query.eq("user_id", impersonatedUser.id);
+      } else if (!isAdmin) {
         query = query.eq("user_id", user.id);
       }
 

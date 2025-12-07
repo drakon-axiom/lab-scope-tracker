@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DollarSign } from "lucide-react";
 
-interface MobilePriceEditDialogProps {
+interface PriceEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   compoundName: string;
@@ -20,13 +20,13 @@ interface MobilePriceEditDialogProps {
   onSave: (newPrice: number) => void;
 }
 
-export function MobilePriceEditDialog({
+export function PriceEditDialog({
   open,
   onOpenChange,
   compoundName,
   currentPrice,
   onSave,
-}: MobilePriceEditDialogProps) {
+}: PriceEditDialogProps) {
   const [price, setPrice] = useState(currentPrice.toString());
 
   const handleSave = () => {

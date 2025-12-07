@@ -53,16 +53,32 @@ serve(async (req) => {
         }
         
         const pageContent = await pageResponse.text();
+        console.log("Page content length:", pageContent.length);
         
         // Extract the report image URL from the page
-        // Looking for patterns like: /tests/img/XXXXX.png or full URL
-        const imgMatch = pageContent.match(/https?:\/\/janoshik\.com\/tests\/img\/([A-Z0-9]+)\.png/i) ||
-                        pageContent.match(/\/tests\/img\/([A-Z0-9]+)\.png/i);
+        // Try multiple patterns to find the image URL
+        // Pattern 1: Full URL in href or src
+        let imgMatch = pageContent.match(/href="(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)"/i) ||
+                       pageContent.match(/src="(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)"/i);
         
-        if (imgMatch) {
-          const imageUrl = imgMatch[0].startsWith("http") 
-            ? imgMatch[0] 
-            : `https://janoshik.com${imgMatch[0]}`;
+        // Pattern 2: Relative URL
+        if (!imgMatch) {
+          imgMatch = pageContent.match(/href="(\/tests\/img\/[A-Z0-9]+\.png)"/i) ||
+                     pageContent.match(/src="(\/tests\/img\/[A-Z0-9]+\.png)"/i);
+        }
+        
+        // Pattern 3: Any occurrence of the img path
+        if (!imgMatch) {
+          imgMatch = pageContent.match(/(https:\/\/janoshik\.com\/tests\/img\/[A-Z0-9]+\.png)/i) ||
+                     pageContent.match(/(\/tests\/img\/[A-Z0-9]+\.png)/i);
+        }
+        
+        console.log("Image match result:", imgMatch ? imgMatch[1] : "no match");
+        
+        if (imgMatch && imgMatch[1]) {
+          const imageUrl = imgMatch[1].startsWith("http") 
+            ? imgMatch[1] 
+            : `https://janoshik.com${imgMatch[1]}`;
           console.log("Found report image URL:", imageUrl);
           
           // Download the image and convert to base64

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Shield, UserPlus, Trash2, Pencil } from "lucide-react";
+import { Shield, UserPlus, Trash2, Pencil, KeyRound } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -234,6 +234,30 @@ const AdminManagement = () => {
     }
   };
 
+  const handlePasswordReset = async (admin: AdminUser) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(admin.email, {
+        redirectTo: `${window.location.origin}/overseer-alpha/auth`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password reset email sent",
+        description: `A password reset link has been sent to ${admin.email}`,
+        duration: 4000,
+      });
+    } catch (error: any) {
+      console.error("Error sending password reset:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+        duration: 4000,
+      });
+    }
+  };
+
   const handleDemoteAdmin = async (admin: AdminUser) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -425,6 +449,22 @@ const AdminManagement = () => {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>Edit admin</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handlePasswordReset(admin)}
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Send password reset</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>

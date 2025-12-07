@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 import {
   Sidebar,
@@ -56,25 +57,29 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
   const location = useLocation();
   const collapsed = state === "collapsed";
   const { role, isAdmin } = useUserRole();
+  const { isImpersonatingCustomer, impersonatedUser } = useImpersonation();
 
   const getInitials = (email: string) => {
     return email.charAt(0).toUpperCase();
   };
 
-  // Filter nav items based on role
+  // When impersonating a customer, show subscriber-level navigation
+  const effectiveIsAdmin = isAdmin && !isImpersonatingCustomer;
+
+  // Filter nav items based on role (or impersonated role)
   const visibleMainNavItems = mainNavItems.filter(item => {
-    if (isAdmin) return true; // Admins see everything
+    if (effectiveIsAdmin) return true; // Admins (not impersonating) see everything
     // Subscribers can only see Dashboard and Quotes
-    return item.url === "/" || item.url === "/quotes";
+    return item.url === "/dashboard" || item.url === "/quotes";
   });
 
   const visibleUtilityNavItems = utilityNavItems.filter(item => {
-    if (isAdmin) return true; // Admins see everything
+    if (effectiveIsAdmin) return true; // Admins (not impersonating) see everything
     // Subscribers can see Notifications but not Bulk Import
     return item.url === "/notifications";
   });
 
-  const visibleAdminNavItems = isAdmin ? adminNavItems : [];
+  const visibleAdminNavItems = effectiveIsAdmin ? adminNavItems : [];
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
@@ -175,15 +180,21 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
                 <div className="flex items-center gap-3 w-full">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(user.email || "U")}
+                      {getInitials(isImpersonatingCustomer ? (impersonatedUser?.email || "U") : (user.email || "U"))}
                     </AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex-1 overflow-hidden text-left">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">{user.email}</p>
+                        <p className="text-sm font-medium truncate">
+                          {isImpersonatingCustomer ? impersonatedUser?.email : user.email}
+                        </p>
                       </div>
-                      {role && (
+                      {isImpersonatingCustomer ? (
+                        <Badge variant="outline" className="mt-1 text-xs border-amber-500 text-amber-600">
+                          Viewing as Subscriber
+                        </Badge>
+                      ) : role && (
                         <Badge 
                           variant={role === "admin" ? "default" : "secondary"} 
                           className="mt-1 text-xs"

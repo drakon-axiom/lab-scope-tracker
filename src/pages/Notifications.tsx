@@ -7,11 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Code, Mail, ChevronDown, History } from "lucide-react";
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 const Notifications = () => {
   const [isVariablesOpen, setIsVariablesOpen] = useState(true);
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
   const { isAdmin } = useUserRole();
+  const { isImpersonatingCustomer } = useImpersonation();
+  
+  // When impersonating, hide admin-only features
+  const effectiveIsAdmin = isAdmin && !isImpersonatingCustomer;
 
   return (
     <Layout>
@@ -23,8 +28,8 @@ const Notifications = () => {
           </p>
         </div>
 
-        {/* Template Variables Documentation - Collapsible - Admin Only */}
-        {isAdmin && (
+        {/* Template Variables Documentation - Collapsible - Admin Only (not when impersonating) */}
+        {effectiveIsAdmin && (
           <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
           <Card>
             <CollapsibleTrigger className="w-full">
@@ -134,8 +139,8 @@ const Notifications = () => {
           </CardContent>
         </Card>
         
-        {/* Email Templates Manager - Admin Only */}
-        {isAdmin && <EmailTemplatesManager />}
+        {/* Email Templates Manager - Admin Only (not when impersonating) */}
+        {effectiveIsAdmin && <EmailTemplatesManager />}
 
         {/* Email History Dialog */}
         <EmailHistoryDialog

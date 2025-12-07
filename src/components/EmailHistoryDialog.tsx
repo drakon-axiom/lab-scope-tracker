@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Eye, CheckCircle2, XCircle, Mail, MailOpen, MousePointerClick } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useImpersonation } from "@/hooks/useImpersonation";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface EmailHistory {
   id: string;
@@ -39,20 +41,33 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
   const [loading, setLoading] = useState(true);
   const [viewingEmail, setViewingEmail] = useState<EmailHistory | null>(null);
   const { toast } = useToast();
+  const { isImpersonatingCustomer, impersonatedUser } = useImpersonation();
+  const { isAdmin } = useUserRole();
 
   useEffect(() => {
     if (open) {
       fetchHistory();
     }
-  }, [open, quoteId]);
+  }, [open, quoteId, isImpersonatingCustomer, impersonatedUser?.id]);
 
   const fetchHistory = async () => {
     setLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       let query = supabase
         .from("email_history")
         .select("*, quotes(quote_number), labs(name)")
         .order("sent_at", { ascending: false });
+
+      // Filter by impersonated user when impersonating
+      if (isImpersonatingCustomer && impersonatedUser?.id) {
+        query = query.eq("user_id", impersonatedUser.id);
+      } else if (!isAdmin) {
+        // Non-admins only see their own emails
+        query = query.eq("user_id", user.id);
+      }
 
       if (quoteId) {
         query = query.eq("quote_id", quoteId);

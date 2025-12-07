@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye } from "lucide-react";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye, Pencil } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -67,6 +67,8 @@ export default function LabUserManagement() {
   const [labUsers, setLabUsers] = useState<LabUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingLabUser, setEditingLabUser] = useState<LabUser | null>(null);
   
   // Form state
   const [email, setEmail] = useState("");
@@ -74,6 +76,7 @@ export default function LabUserManagement() {
   const [selectedLabId, setSelectedLabId] = useState("");
   const [selectedRole, setSelectedRole] = useState("member");
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -238,6 +241,44 @@ export default function LabUserManagement() {
     toast.success(`Now viewing as ${labName}`);
   };
 
+  const handleEditClick = (labUser: LabUser) => {
+    setEditingLabUser(labUser);
+    setSelectedLabId(labUser.lab_id);
+    setSelectedRole(labUser.role);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateLabUser = async () => {
+    if (!editingLabUser || !selectedLabId) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("lab_users")
+        .update({
+          lab_id: selectedLabId,
+          role: selectedRole,
+        })
+        .eq("id", editingLabUser.id);
+
+      if (error) throw error;
+
+      toast.success("Lab user updated successfully");
+      setEditDialogOpen(false);
+      setEditingLabUser(null);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating lab user:", error);
+      toast.error(error.message || "Failed to update lab user");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
@@ -328,6 +369,22 @@ export default function LabUserManagement() {
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>View lab portal as this lab</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditClick(labUser)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit lab user</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -424,6 +481,62 @@ export default function LabUserManagement() {
               </Button>
               <Button onClick={handleCreateLabUser} disabled={creating}>
                 {creating ? "Creating..." : "Create Lab User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Lab User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            setEditingLabUser(null);
+            resetForm();
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Lab User</DialogTitle>
+              <DialogDescription>
+                Update lab assignment and role for {editingLabUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-lab">Lab</Label>
+                <Select value={selectedLabId} onValueChange={setSelectedLabId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labs.map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id}>
+                        {lab.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-role">Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateLabUser} disabled={updating}>
+                {updating ? "Updating..." : "Update Lab User"}
               </Button>
             </DialogFooter>
           </DialogContent>

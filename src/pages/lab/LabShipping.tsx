@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { format } from "date-fns";
-import { Package, CheckCircle2 } from "lucide-react";
+import { Package, CheckCircle2, Clock, Truck } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -27,18 +28,22 @@ interface Quote {
 
 export default function LabShipping() {
   const { labUser } = useLabUser();
+  const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Use impersonated lab ID if available, otherwise use the lab user's lab ID
+  const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
+
   useEffect(() => {
-    if (!labUser?.lab_id) return;
+    if (!effectiveLabId) return;
 
     const fetchShipments = async () => {
       try {
         const { data, error } = await supabase
           .from("quotes")
           .select("id, quote_number, tracking_number, status, shipped_date")
-          .eq("lab_id", labUser.lab_id)
+          .eq("lab_id", effectiveLabId)
           .in("status", ["paid_awaiting_shipping", "in_transit", "delivered"])
           .order("created_at", { ascending: false });
 
@@ -53,7 +58,7 @@ export default function LabShipping() {
     };
 
     fetchShipments();
-  }, [labUser?.lab_id]);
+  }, [effectiveLabId]);
 
   const handleMarkReceived = async (quoteId: string) => {
     try {
@@ -78,6 +83,84 @@ export default function LabShipping() {
     }
   };
 
+  const awaitingShipment = quotes.filter(q => q.status === "paid_awaiting_shipping");
+  const inTransit = quotes.filter(q => q.status === "in_transit");
+  const delivered = quotes.filter(q => q.status === "delivered");
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "paid_awaiting_shipping":
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" />Awaiting Shipment</Badge>;
+      case "in_transit":
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20"><Truck className="h-3 w-3 mr-1" />In Transit</Badge>;
+      case "delivered":
+        return <Badge variant="default"><Package className="h-3 w-3 mr-1" />Delivered</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const renderQuoteTable = (quoteList: Quote[], emptyMessage: string, showMarkReceived: boolean) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Quote #</TableHead>
+          <TableHead>Tracking Number</TableHead>
+          <TableHead>Shipped Date</TableHead>
+          <TableHead>Status</TableHead>
+          {showMarkReceived && <TableHead className="text-right">Actions</TableHead>}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {loading ? (
+          <TableRow>
+            <TableCell colSpan={showMarkReceived ? 5 : 4} className="text-center">
+              Loading...
+            </TableCell>
+          </TableRow>
+        ) : quoteList.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={showMarkReceived ? 5 : 4} className="text-center text-muted-foreground">
+              {emptyMessage}
+            </TableCell>
+          </TableRow>
+        ) : (
+          quoteList.map((quote) => (
+            <TableRow key={quote.id}>
+              <TableCell className="font-medium">
+                {quote.quote_number || "N/A"}
+              </TableCell>
+              <TableCell className="font-mono text-sm">
+                {quote.tracking_number || "-"}
+              </TableCell>
+              <TableCell>
+                {quote.shipped_date
+                  ? format(new Date(quote.shipped_date), "MMM d, yyyy")
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                {getStatusBadge(quote.status)}
+              </TableCell>
+              {showMarkReceived && (
+                <TableCell className="text-right">
+                  {quote.status === "delivered" && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleMarkReceived(quote.id)}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Mark Received
+                    </Button>
+                  )}
+                </TableCell>
+              )}
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  );
+
   return (
     <LabLayout>
       <div className="space-y-6">
@@ -88,69 +171,42 @@ export default function LabShipping() {
           </p>
         </div>
 
+        {/* Awaiting Shipment Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Incoming Shipments</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              Awaiting Shipment from Customer ({awaitingShipment.length})
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Quote #</TableHead>
-                  <TableHead>Tracking Number</TableHead>
-                  <TableHead>Shipped Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      Loading...
-                    </TableCell>
-                  </TableRow>
-                ) : quotes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No incoming shipments
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  quotes.map((quote) => (
-                    <TableRow key={quote.id}>
-                      <TableCell className="font-medium">
-                        {quote.quote_number || "N/A"}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {quote.tracking_number || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {quote.shipped_date
-                          ? format(new Date(quote.shipped_date), "MMM d, yyyy")
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={quote.status === "delivered" ? "default" : "outline"}>
-                          {quote.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {quote.status === "delivered" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleMarkReceived(quote.id)}
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Mark Received
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            {renderQuoteTable(awaitingShipment, "No quotes awaiting shipment", false)}
+          </CardContent>
+        </Card>
+
+        {/* In Transit Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-blue-500" />
+              In Transit ({inTransit.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderQuoteTable(inTransit, "No shipments in transit", false)}
+          </CardContent>
+        </Card>
+
+        {/* Delivered Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Delivered - Awaiting Confirmation ({delivered.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderQuoteTable(delivered, "No delivered shipments pending confirmation", true)}
           </CardContent>
         </Card>
       </div>

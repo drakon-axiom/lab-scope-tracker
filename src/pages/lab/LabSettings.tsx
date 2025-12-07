@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { toast } from "sonner";
-import { Save, DollarSign, History, Search, Upload, Download, Edit } from "lucide-react";
+import { Save, DollarSign, History, Search, Upload, Download, Edit, ListChecks } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 import PullToRefresh from "react-pull-to-refresh";
 import { PriceEditDialog } from "@/components/lab/PriceEditDialog";
+import { BulkPriceEditDialog } from "@/components/lab/BulkPriceEditDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
@@ -64,6 +65,7 @@ export default function LabSettings() {
   const [isImporting, setIsImporting] = useState(false);
   const [editingItem, setEditingItem] = useState<ProductPricing | null>(null);
   const [swipedRowId, setSwipedRowId] = useState<string | null>(null);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   const fetchData = async () => {
     if (!labUser?.lab_id) return;
@@ -173,6 +175,43 @@ export default function LabSettings() {
     } catch (error) {
       console.error("Error updating price:", error);
       toast.error("Failed to update price");
+    }
+  };
+
+  const handleBulkPriceUpdate = async (updates: { id: string; product_id: string; oldPrice: number; newPrice: number }[]) => {
+    if (!labUser?.lab_id) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      for (const update of updates) {
+        // Update price
+        const { error: updateError } = await supabase
+          .from("product_vendor_pricing")
+          .update({ price: update.newPrice })
+          .eq("id", update.id);
+
+        if (updateError) throw updateError;
+
+        // Log change
+        await supabase
+          .from("pricing_audit_log")
+          .insert({
+            product_id: update.product_id,
+            lab_id: labUser.lab_id,
+            old_price: update.oldPrice,
+            new_price: update.newPrice,
+            changed_by: user.id,
+            change_reason: "Bulk price update",
+          });
+      }
+
+      toast.success(`Successfully updated ${updates.length} price(s)`);
+      await fetchData();
+    } catch (error) {
+      console.error("Error updating prices:", error);
+      toast.error("Failed to update prices");
     }
   };
 
@@ -468,6 +507,17 @@ export default function LabSettings() {
                     {isImporting ? "Importing..." : "Import CSV"}
                   </Button>
                 </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setBulkEditOpen(true)}
+                  disabled={pricing.length === 0}
+                  className="w-full sm:w-auto"
+                >
+                  <ListChecks className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Bulk Edit</span>
+                  <span className="sm:hidden">Bulk</span>
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -631,6 +681,15 @@ export default function LabSettings() {
           }
         />
       )}
+
+      {/* Bulk Price Edit Dialog */}
+      <BulkPriceEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        pricing={pricing}
+        categories={categories}
+        onSave={handleBulkPriceUpdate}
+      />
     </LabLayout>
   );
 }

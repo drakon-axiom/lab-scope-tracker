@@ -1923,6 +1923,8 @@ const Quotes = () => {
   };
 
   const canRefreshTracking = () => {
+    // Admins can refresh as often as they want
+    if (isAdmin) return true;
     if (!lastTrackingRefresh) return true;
     const elapsed = Date.now() - lastTrackingRefresh;
     return elapsed >= 60 * 60 * 1000; // 60 minutes in milliseconds

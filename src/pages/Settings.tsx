@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const profileSchema = z.object({
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -477,9 +479,9 @@ const Settings = () => {
   };
 
   const handleUpdateTracking = async () => {
-    // Check if 60 minutes have passed since last manual refresh
+    // Admins can refresh as often as they want, others are throttled to 60 minutes
     const now = Date.now();
-    if (lastTrackingRefresh) {
+    if (!isAdmin && lastTrackingRefresh) {
       const elapsed = now - lastTrackingRefresh;
       const sixtyMinutes = 60 * 60 * 1000;
       if (elapsed < sixtyMinutes) {
@@ -524,6 +526,8 @@ const Settings = () => {
   };
 
   const canRefreshTracking = () => {
+    // Admins can refresh as often as they want
+    if (isAdmin) return true;
     if (!lastTrackingRefresh) return true;
     const now = Date.now();
     const elapsed = now - lastTrackingRefresh;

@@ -100,20 +100,27 @@ Deno.serve(async (req) => {
     console.log('User created successfully:', newUser.user.id)
 
     // Note: Profile is automatically created by handle_new_user trigger
+    // Note: Subscriber role may be auto-created by handle_new_user_role trigger
     
-    // Create user role entry
+    // Create or update user role entry (upsert to handle trigger-created roles)
     const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: newUser.user.id,
         role: role,
+      }, { 
+        onConflict: 'user_id,role',
+        ignoreDuplicates: role === 'subscriber' // If subscriber, just ignore since trigger created it
       })
 
     if (roleInsertError) {
       console.error('Error creating user role:', roleInsertError)
-      // Try to clean up
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
-      throw new Error('Failed to create user role')
+      // If subscriber role already exists from trigger, that's fine
+      if (roleInsertError.code !== '23505') {
+        // Try to clean up only for non-duplicate errors
+        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
+        throw new Error('Failed to create user role')
+      }
     }
 
     console.log('User setup completed successfully')

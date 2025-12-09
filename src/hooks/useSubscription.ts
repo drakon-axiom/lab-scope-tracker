@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Subscription {
   id: string;
@@ -21,73 +22,66 @@ export interface UsageTracking {
 }
 
 export const useSubscription = () => {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [usage, setUsage] = useState<UsageTracking | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
   const { isImpersonatingCustomer, impersonatedUser } = useImpersonation();
 
-  useEffect(() => {
-    const fetchSubscriptionData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+  // Determine which user_id to query
+  const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+    ? impersonatedUser.id 
+    : user?.id;
 
-        // Use impersonated user's ID if impersonating
-        const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
-          ? impersonatedUser.id 
-          : user.id;
+  const { data: subscription, isLoading: subLoading } = useQuery({
+    queryKey: ["subscription", targetUserId],
+    queryFn: async () => {
+      if (!targetUserId) return null;
+      
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
 
-        // Fetch subscription
-        const { data: subData, error: subError } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", targetUserId)
-          .single();
-
-        if (subError) {
-          console.error("Error fetching subscription:", subError);
-        } else {
-          setSubscription(subData as Subscription);
-        }
-
-        // Fetch current usage
-        const currentMonth = new Date();
-        currentMonth.setDate(1);
-        currentMonth.setHours(0, 0, 0, 0);
-
-        const { data: usageData, error: usageError } = await supabase
-          .from("usage_tracking")
-          .select("*")
-          .eq("user_id", targetUserId)
-          .gte("period_start", currentMonth.toISOString())
-          .single();
-
-        if (usageError) {
-          console.error("Error fetching usage:", usageError);
-        } else {
-          setUsage(usageData as UsageTracking);
-        }
-      } catch (error) {
-        console.error("Error in fetchSubscriptionData:", error);
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error("Error fetching subscription:", error);
+        return null;
       }
-    };
+      
+      return data as Subscription | null;
+    },
+    enabled: !!targetUserId && !authLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,
+  });
 
-    fetchSubscriptionData();
+  const { data: usage, isLoading: usageLoading } = useQuery({
+    queryKey: ["usage", targetUserId],
+    queryFn: async () => {
+      if (!targetUserId) return null;
 
-    // Listen to changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchSubscriptionData();
-    });
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
 
-    return () => {
-      authSubscription.unsubscribe();
-    };
-  }, [isImpersonatingCustomer, impersonatedUser?.id]);
+      const { data, error } = await supabase
+        .from("usage_tracking")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .gte("period_start", currentMonth.toISOString())
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching usage:", error);
+        return null;
+      }
+      
+      return data as UsageTracking | null;
+    },
+    enabled: !!targetUserId && !authLoading,
+    staleTime: 2 * 60 * 1000, // 2 minutes - usage changes more often
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const loading = authLoading || subLoading || usageLoading;
 
   const canSendItems = (itemCount: number): boolean => {
     if (!subscription || !usage) return false;

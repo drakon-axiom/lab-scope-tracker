@@ -3,42 +3,57 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { Suspense, useEffect, useState } from "react";
-import Index from "./pages/Index";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import AdminAuth from "./pages/AdminAuth";
-import MFASetup from "./pages/MFASetup";
-import Dashboard from "./pages/Dashboard";
-import Compounds from "./pages/Compounds";
-import CompoundDetails from "./pages/CompoundDetails";
-import Labs from "./pages/Labs";
-import Quotes from "./pages/Quotes";
-import BulkImport from "./pages/BulkImport";
-import QuoteConfirm from "./pages/QuoteConfirm";
-import Settings from "./pages/Settings";
-import SecuritySettings from "./pages/SecuritySettings";
-import Notifications from "./pages/Notifications";
-import ImportChromatePricing from "./pages/ImportChromatePricing";
-import UserManagement from "./pages/UserManagement";
-import Waitlist from "./pages/Waitlist";
-import WaitlistManagement from "./pages/WaitlistManagement";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import FAQ from "./pages/FAQ";
-import NotFound from "./pages/NotFound";
+import { Suspense, lazy, useEffect, useState } from "react";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
-import LabAuth from "./pages/lab/LabAuth";
-import LabOpenRequests from "./pages/lab/LabOpenRequests";
-import LabCompletedRequests from "./pages/lab/LabCompletedRequests";
-import LabResults from "./pages/lab/LabResults";
-import LabSettings from "./pages/lab/LabSettings";
-import LabUsers from "./pages/lab/LabUsers";
-import LabUserManagement from "./pages/LabUserManagement";
-import AdminManagement from "./pages/AdminManagement";
 
-const queryClient = new QueryClient();
+// Eagerly load auth and landing pages (common entry points)
+import Landing from "./pages/Landing";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+
+// Lazy load all other pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const AdminAuth = lazy(() => import("./pages/AdminAuth"));
+const MFASetup = lazy(() => import("./pages/MFASetup"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Compounds = lazy(() => import("./pages/Compounds"));
+const CompoundDetails = lazy(() => import("./pages/CompoundDetails"));
+const Labs = lazy(() => import("./pages/Labs"));
+const Quotes = lazy(() => import("./pages/Quotes"));
+const BulkImport = lazy(() => import("./pages/BulkImport"));
+const QuoteConfirm = lazy(() => import("./pages/QuoteConfirm"));
+const Settings = lazy(() => import("./pages/Settings"));
+const SecuritySettings = lazy(() => import("./pages/SecuritySettings"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const ImportChromatePricing = lazy(() => import("./pages/ImportChromatePricing"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const Waitlist = lazy(() => import("./pages/Waitlist"));
+const WaitlistManagement = lazy(() => import("./pages/WaitlistManagement"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const LabAuth = lazy(() => import("./pages/lab/LabAuth"));
+const LabOpenRequests = lazy(() => import("./pages/lab/LabOpenRequests"));
+const LabCompletedRequests = lazy(() => import("./pages/lab/LabCompletedRequests"));
+const LabResults = lazy(() => import("./pages/lab/LabResults"));
+const LabSettings = lazy(() => import("./pages/lab/LabSettings"));
+const LabUsers = lazy(() => import("./pages/lab/LabUsers"));
+const LabUserManagement = lazy(() => import("./pages/LabUserManagement"));
+const AdminManagement = lazy(() => import("./pages/AdminManagement"));
+
+// Optimized QueryClient configuration with caching
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 minutes default stale time
+      gcTime: 10 * 60 * 1000, // 10 minutes cache time
+      retry: 1,
+      refetchOnWindowFocus: false, // Disable automatic refetch on window focus
+      refetchOnMount: false, // Don't refetch if data is not stale
+    },
+  },
+});
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();

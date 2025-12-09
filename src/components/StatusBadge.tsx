@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -5,8 +6,8 @@ interface StatusBadgeProps {
   status: string;
 }
 
-const StatusBadge = ({ status }: StatusBadgeProps) => {
-const getStatusColor = (status: string) => {
+const StatusBadge = memo(({ status }: StatusBadgeProps) => {
+  const statusColor = useMemo(() => {
     switch (status.toLowerCase()) {
       case "completed":
         return "bg-success text-white";
@@ -35,13 +36,15 @@ const getStatusColor = (status: string) => {
       default:
         return "bg-muted text-muted-foreground";
     }
-  };
+  }, [status]);
 
   return (
-    <Badge className={cn("capitalize", getStatusColor(status))}>
+    <Badge className={cn("capitalize", statusColor)}>
       {status.replace(/_/g, ' ')}
     </Badge>
   );
-};
+});
+
+StatusBadge.displayName = "StatusBadge";
 
 export default StatusBadge;

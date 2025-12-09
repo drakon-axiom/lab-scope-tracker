@@ -1,53 +1,43 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
 
 export type UserRole = "admin" | "subscriber" | "lab" | null;
 
 export const useUserRole = () => {
-  const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    const fetchRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setRole(null);
-          setLoading(false);
-          return;
-        }
+  const { data: role, isLoading } = useQuery({
+    queryKey: ["user-role", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return "subscriber" as UserRole;
+      
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching user role:", error);
-          setRole("subscriber"); // Default to subscriber
-        } else {
-          setRole(data?.role || "subscriber");
-        }
-      } catch (error) {
-        console.error("Error in fetchRole:", error);
-        setRole("subscriber");
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return "subscriber" as UserRole;
       }
-    };
+      
+      return (data?.role || "subscriber") as UserRole;
+    },
+    enabled: !!user?.id && !authLoading,
+    staleTime: 10 * 60 * 1000, // 10 minutes - role rarely changes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
 
-    fetchRole();
+  const loading = authLoading || isLoading;
+  const resolvedRole = role ?? null;
 
-    // Listen to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchRole();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  return { role, loading, isAdmin: role === "admin", isSubscriber: role === "subscriber", isLab: role === "lab" };
+  return { 
+    role: resolvedRole, 
+    loading, 
+    isAdmin: resolvedRole === "admin", 
+    isSubscriber: resolvedRole === "subscriber", 
+    isLab: resolvedRole === "lab" 
+  };
 };

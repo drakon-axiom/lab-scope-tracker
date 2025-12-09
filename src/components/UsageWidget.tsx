@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -5,7 +6,20 @@ import { Clock, Package, TrendingUp } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const UsageWidget = () => {
+const UsageWidgetSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-4 w-48 mt-2" />
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-8 w-full" />
+    </CardContent>
+  </Card>
+);
+
+export const UsageWidget = memo(() => {
   const {
     subscription,
     usage,
@@ -15,34 +29,28 @@ export const UsageWidget = () => {
     getDaysUntilReset,
   } = useSubscription();
 
+  // Memoize computed values
+  const usageData = useMemo(() => {
+    if (!subscription || !usage) return null;
+    
+    const percentage = getUsagePercentage();
+    const remaining = getRemainingItems();
+    const daysReset = getDaysUntilReset();
+    
+    let color = "text-success";
+    if (percentage >= 90) color = "text-destructive";
+    else if (percentage >= 70) color = "text-warning";
+    
+    return { percentage, remaining, daysReset, color };
+  }, [subscription, usage, getUsagePercentage, getRemainingItems, getDaysUntilReset]);
+
   if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-48 mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <UsageWidgetSkeleton />;
   }
 
-  if (!subscription || !usage) {
+  if (!subscription || !usage || !usageData) {
     return null;
   }
-
-  const usagePercentage = getUsagePercentage();
-  const remainingItems = getRemainingItems();
-  const daysUntilReset = getDaysUntilReset();
-
-  const getUsageColor = () => {
-    if (usagePercentage >= 90) return "text-destructive";
-    if (usagePercentage >= 70) return "text-warning";
-    return "text-success";
-  };
 
   return (
     <Card>
@@ -64,11 +72,11 @@ export const UsageWidget = () => {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">Usage</span>
-            <span className={`text-sm font-medium ${getUsageColor()}`}>
-              {usagePercentage.toFixed(0)}%
+            <span className={`text-sm font-medium ${usageData.color}`}>
+              {usageData.percentage.toFixed(0)}%
             </span>
           </div>
-          <Progress value={usagePercentage} className="h-2" />
+          <Progress value={usageData.percentage} className="h-2" />
         </div>
 
         <div className="grid grid-cols-2 gap-4 pt-2">
@@ -76,28 +84,30 @@ export const UsageWidget = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
             <div>
               <div className="text-sm text-muted-foreground">Remaining</div>
-              <div className="text-lg font-semibold">{remainingItems}</div>
+              <div className="text-lg font-semibold">{usageData.remaining}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <div>
               <div className="text-sm text-muted-foreground">Reset in</div>
-              <div className="text-lg font-semibold">{daysUntilReset}d</div>
+              <div className="text-lg font-semibold">{usageData.daysReset}d</div>
             </div>
           </div>
         </div>
 
-        {usagePercentage >= 80 && (
+        {usageData.percentage >= 80 && (
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              {usagePercentage >= 100
+              {usageData.percentage >= 100
                 ? "You've reached your monthly limit. Upgrade to Pro for unlimited items."
-                : `You're approaching your monthly limit. Only ${remainingItems} items remaining.`}
+                : `You're approaching your monthly limit. Only ${usageData.remaining} items remaining.`}
             </p>
           </div>
         )}
       </CardContent>
     </Card>
   );
-};
+});
+
+UsageWidget.displayName = "UsageWidget";

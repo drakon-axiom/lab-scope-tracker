@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     const smtpHost = Deno.env.get('SMTP_HOST');
     const smtpUser = Deno.env.get('SMTP_USER');
     const smtpPassword = Deno.env.get('SMTP_PASSWORD');
-    const smtpPort = Deno.env.get('SMTP_PORT') || '587';
+    const smtpPort = Deno.env.get('SMTP_PORT') || '465';
 
     if (!smtpHost || !smtpUser || !smtpPassword) {
       throw new Error('SMTP credentials not configured');

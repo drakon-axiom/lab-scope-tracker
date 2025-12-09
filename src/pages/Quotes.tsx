@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -71,6 +71,7 @@ import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
 import { useSubscription } from "@/hooks/useSubscription";
+import { QuotesVirtualTable } from "@/components/QuotesVirtualTable";
 
 interface Quote {
   id: string;
@@ -2868,351 +2869,88 @@ const Quotes = () => {
           )}
         </div>
 
-            <div className="border rounded-lg overflow-x-auto">
-                <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[100px]">Quote #</TableHead>
-                <TableHead>Lab</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tracking</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(() => {
-                // Apply filters
-                let filteredQuotes = quotes;
+            {/* Virtualized Quotes Table */}
+            {(() => {
+              // Apply filters (memoized for performance)
+              let filteredQuotes = quotes;
 
-                // Search filter
-                if (searchQuery.trim()) {
-                  const query = searchQuery.toLowerCase();
-                  filteredQuotes = filteredQuotes.filter(
-                    (quote) =>
-                      quote.quote_number?.toLowerCase().includes(query) ||
-                      quote.notes?.toLowerCase().includes(query) ||
-                      quote.tracking_number?.toLowerCase().includes(query) ||
-                      quote.labs.name.toLowerCase().includes(query)
-                  );
-                }
+              // Search filter
+              if (searchQuery.trim()) {
+                const query = searchQuery.toLowerCase();
+                filteredQuotes = filteredQuotes.filter(
+                  (quote) =>
+                    quote.quote_number?.toLowerCase().includes(query) ||
+                    quote.notes?.toLowerCase().includes(query) ||
+                    quote.tracking_number?.toLowerCase().includes(query) ||
+                    quote.labs.name.toLowerCase().includes(query)
+                );
+              }
 
-                // Status filter
-                if (filterStatus !== "all") {
-                  filteredQuotes = filteredQuotes.filter(
-                    (quote) => quote.status === filterStatus
-                  );
-                }
+              // Status filter
+              if (filterStatus !== "all") {
+                filteredQuotes = filteredQuotes.filter(
+                  (quote) => quote.status === filterStatus
+                );
+              }
 
-                // Lab filter
-                if (filterLab !== "all") {
-                  filteredQuotes = filteredQuotes.filter(
-                    (quote) => quote.lab_id === filterLab
-                  );
-                }
+              // Lab filter
+              if (filterLab !== "all") {
+                filteredQuotes = filteredQuotes.filter(
+                  (quote) => quote.lab_id === filterLab
+                );
+              }
 
-                // Lock status filter
-                if (filterLockStatus !== "all") {
-                  filteredQuotes = filteredQuotes.filter(
-                    (quote) => {
-                      const locked = isQuoteLocked(quote.status);
-                      return filterLockStatus === "locked" ? locked : !locked;
-                    }
-                  );
-                }
+              // Lock status filter
+              if (filterLockStatus !== "all") {
+                filteredQuotes = filteredQuotes.filter(
+                  (quote) => {
+                    const locked = isQuoteLocked(quote.status);
+                    return filterLockStatus === "locked" ? locked : !locked;
+                  }
+                );
+              }
 
-                // Note: Product filter would require pre-fetching quote items
-                // For now, it's available in the UI but needs server-side implementation
-                // to work efficiently with large datasets
-
-                return filteredQuotes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      {quotes.length === 0
-                        ? "No quotes yet. Create your first quote to get started."
-                        : "No quotes match your filters."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredQuotes.map((quote) => (
-                  <TableRow 
-                    key={quote.id}
-                    className={`${isQuoteLocked(quote.status) ? "opacity-75" : ""} ${quote.status === 'awaiting_customer_approval' ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {isQuoteLocked(quote.status) && (
-                          <Lock className="h-3 w-3 text-muted-foreground" />
-                        )}
-                        <span>{quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}</span>
-                        {quote.quote_number?.startsWith('QT-') && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                                  Auto
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Auto-generated quote number</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{quote.labs.name}</TableCell>
-                        <TableCell>
-                          {quote.status === 'awaiting_customer_approval' ? (
-                            <button
-                              onClick={() => {
-                                fetchQuoteItems(quote.id).then(() => {
-                                  setSelectedQuoteForApproval(quote);
-                                  setApprovalDialogOpen(true);
-                                });
-                              }}
-                              className="hover:opacity-80 transition-opacity"
-                            >
-                              <StatusBadge status={quote.status} />
-                            </button>
-                          ) : (
-                            <StatusBadge status={quote.status} />
-                          )}
-                        </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col">
-                          <span className="truncate max-w-[120px]">{quote.tracking_number || "—"}</span>
-                          {quote.tracking_number && quote.tracking_updated_at && (
-                            <span className="text-xs text-muted-foreground">
-                              Updated: {new Date(quote.tracking_updated_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                        {quote.tracking_number && ['delivered', 'completed', 'testing_in_progress'].includes(quote.status) && (
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Delivered
-                          </Badge>
-                        )}
-                        {quote.tracking_number && quote.status === 'in_transit' && quote.estimated_delivery && (
-                          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Est. {new Date(quote.estimated_delivery).toLocaleDateString()}
-                          </Badge>
-                        )}
-                        {quote.tracking_number && !['delivered', 'completed', 'testing_in_progress'].includes(quote.status) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 flex-shrink-0"
-                                  onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                                  disabled={!canRefreshTracking()}
-                                >
-                                  <RefreshCw className="h-3 w-3" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {canRefreshTracking() ? "Refresh UPS tracking" : timeUntilNextRefresh}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {new Date(quote.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(() => {
-                        const actions = getAvailableActions(quote);
-                        return (
-                          <div className="flex justify-end gap-1">
-                            {/* View - Always available */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleView(quote)}
-                              title="View quote details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            {/* Approve/Reject - For awaiting_customer_approval */}
-                            {actions.approveReject && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="h-8 hidden sm:inline-flex"
-                                onClick={() => {
-                                  fetchQuoteItems(quote.id).then(() => {
-                                    setSelectedQuoteForApproval(quote);
-                                    setApprovalDialogOpen(true);
-                                  });
-                                }}
-                                title="Review and approve/reject vendor changes"
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Review
-                              </Button>
-                            )}
-
-                            {/* Add Payment - For approved_payment_pending */}
-                            {actions.addPayment && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="h-8 hidden sm:inline-flex"
-                                onClick={() => {
-                                  setSelectedQuoteForPayment(quote);
-                                  setPaymentDialogOpen(true);
-                                }}
-                                title="Record payment information"
-                              >
-                                💳 Pay
-                              </Button>
-                            )}
-
-                            {/* Manage Items - For draft, delivered, testing_in_progress */}
-                            {actions.manageItems && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hidden sm:inline-flex"
-                                onClick={() => handleManageItems(quote)}
-                                title={quote.status === 'draft' ? "Manage quote items" : "Update test results"}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Send to Vendor - For draft */}
-                            {actions.sendToVendor && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="h-8 hidden md:inline-flex"
-                                onClick={() => handleView(quote)}
-                                title="Send quote to vendor"
-                              >
-                                <Mail className="h-4 w-4 mr-1" />
-                                Send
-                              </Button>
-                            )}
-
-                            {/* Add Shipping - For paid_awaiting_shipping without tracking */}
-                            {actions.addShipping && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 hidden sm:inline-flex"
-                                  onClick={() => {
-                                    setSelectedQuoteForShipping(quote);
-                                    setShippingDialogOpen(true);
-                                  }}
-                                  title="Add shipping information manually"
-                                >
-                                  Add Shipping
-                                </Button>
-                                {hasValidatedCreditCard && (
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="h-8 hidden sm:inline-flex"
-                                    onClick={() => {
-                                      setSelectedQuoteForLabel(quote);
-                                      setShippingLabelDialogOpen(true);
-                                    }}
-                                    title="Generate UPS shipping label (requires validated credit card)"
-                                  >
-                                    📦 Generate Label
-                                  </Button>
-                                )}
-                              </>
-                            )}
-
-                            {/* Refresh Tracking - For shipped/in_transit */}
-                            {actions.refreshTracking && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 hidden sm:inline-flex"
-                                      onClick={() => handleRefreshTracking(quote.tracking_number!)}
-                                      disabled={!canRefreshTracking()}
-                                    >
-                                      <RefreshCw className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {canRefreshTracking() ? "Refresh tracking information" : timeUntilNextRefresh}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-
-                            {/* Export PDF - For completed workflow stages */}
-                            {actions.exportPDF && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hidden lg:inline-flex"
-                                onClick={() => {
-                                  const quoteWithItems = {
-                                    ...quote,
-                                    quote_items: [] // Will be fetched in export
-                                  };
-                                  handleExportPDF(quoteWithItems);
-                                }}
-                                title="Export as PDF"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Edit - Context-dependent */}
-                            {actions.edit && !actions.addPayment && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hidden md:inline-flex"
-                                onClick={() => handleEdit(quote)}
-                                title="Edit quote"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Delete - For draft and admins */}
-                            {actions.delete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hidden lg:inline-flex"
-                                onClick={() => handleDelete(quote.id)}
-                                title="Delete quote"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                  </TableRow>
-                    ))
-                  );
-              })()}
-            </TableBody>
-          </Table>
-        </div>
+              return (
+                <QuotesVirtualTable
+                  quotes={filteredQuotes}
+                  allQuotesCount={quotes.length}
+                  isQuoteLocked={isQuoteLocked}
+                  getAvailableActions={getAvailableActions}
+                  onView={handleView}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onManageItems={handleManageItems}
+                  onApproveReject={(quote) => {
+                    fetchQuoteItems(quote.id).then(() => {
+                      setSelectedQuoteForApproval(quote);
+                      setApprovalDialogOpen(true);
+                    });
+                  }}
+                  onAddPayment={(quote) => {
+                    setSelectedQuoteForPayment(quote);
+                    setPaymentDialogOpen(true);
+                  }}
+                  onAddShipping={(quote) => {
+                    setSelectedQuoteForShipping(quote);
+                    setShippingDialogOpen(true);
+                  }}
+                  onGenerateLabel={(quote) => {
+                    setSelectedQuoteForLabel(quote);
+                    setShippingLabelDialogOpen(true);
+                  }}
+                  onRefreshTracking={handleRefreshTracking}
+                  onExportPDF={(quote) => {
+                    handleExportPDF({
+                      ...quote,
+                      quote_items: []
+                    });
+                  }}
+                  canRefreshTracking={canRefreshTracking}
+                  timeUntilNextRefresh={timeUntilNextRefresh}
+                  hasValidatedCreditCard={hasValidatedCreditCard}
+                />
+              );
+            })()}
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>

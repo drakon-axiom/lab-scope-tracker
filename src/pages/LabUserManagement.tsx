@@ -44,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Mail } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -97,6 +98,7 @@ export default function LabUserManagement() {
   const [passwordUser, setPasswordUser] = useState<LabUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -299,7 +301,7 @@ export default function LabUserManagement() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success("Password reset successfully");
+      toast.success("Password set successfully");
       setIsPasswordDialogOpen(false);
       setPasswordUser(null);
       setNewPassword("");
@@ -309,6 +311,30 @@ export default function LabUserManagement() {
       toast.error(message);
     } finally {
       setIsResettingPassword(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!passwordUser) return;
+
+    setIsSendingResetEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-password-reset-email", {
+        body: { userId: passwordUser.user_id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Password reset email sent successfully");
+      setIsPasswordDialogOpen(false);
+      setPasswordUser(null);
+    } catch (error: unknown) {
+      console.error("Error sending reset email:", error);
+      const message = error instanceof Error ? error.message : "Failed to send reset email";
+      toast.error(message);
+    } finally {
+      setIsSendingResetEmail(false);
     }
   };
 
@@ -691,27 +717,70 @@ export default function LabUserManagement() {
             <DialogHeader>
               <DialogTitle>Reset Password</DialogTitle>
               <DialogDescription>
-                Set a new password for {passwordUser?.email}
+                Choose how to reset the password for {passwordUser?.email}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="Minimum 8 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
+            <div className="space-y-6">
+              {/* Send Reset Email Option */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  <h4 className="font-medium">Send Reset Email</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Send a password reset link to the user's email. They can choose their own new password.
+                </p>
+                <Button 
+                  onClick={handleSendResetEmail} 
+                  disabled={isSendingResetEmail}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isSendingResetEmail ? "Sending..." : "Send Reset Email"}
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+
+              {/* Set Password Manually Option */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-primary" />
+                  <h4 className="font-medium">Set Password Manually</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Set a specific password for the user. You'll need to share this password with them.
+                </p>
+                <div>
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Minimum 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  onClick={handleResetPassword} 
+                  disabled={isResettingPassword || !newPassword}
+                  className="w-full"
+                >
+                  {isResettingPassword ? "Setting..." : "Set Password"}
+                </Button>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
                 Cancel
-              </Button>
-              <Button onClick={handleResetPassword} disabled={isResettingPassword}>
-                {isResettingPassword ? "Resetting..." : "Reset Password"}
               </Button>
             </DialogFooter>
           </DialogContent>

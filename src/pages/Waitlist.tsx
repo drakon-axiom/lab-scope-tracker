@@ -34,6 +34,15 @@ export default function Waitlist() {
           throw error;
         }
       } else {
+        // Send confirmation email (don't fail if email fails)
+        try {
+          await supabase.functions.invoke('send-waitlist-confirmation', {
+            body: { email: formData.email, full_name: formData.full_name }
+          });
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+        }
+        
         toast.success("You've been added to the waitlist! We'll notify you when a spot opens up.");
         setFormData({ email: "", full_name: "", reason: "" });
       }

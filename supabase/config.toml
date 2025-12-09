@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.send-security-alert]
 verify_jwt = true
+
+[functions.send-waitlist-confirmation]
+verify_jwt = false
+
+[functions.send-waitlist-approval]
+verify_jwt = true

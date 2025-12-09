@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Users, UserCheck, UserPlus, Eye, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Users, UserCheck, UserPlus, Eye, Pencil, Trash2, KeyRound, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -83,6 +83,7 @@ const UserManagement = () => {
   const [passwordUser, setPasswordUser] = useState<UserWithRole | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -369,6 +370,54 @@ const UserManagement = () => {
     }
   };
 
+  const handleSendResetEmail = async () => {
+    if (!passwordUser) return;
+
+    try {
+      setIsSendingResetEmail(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) throw new Error("Not authenticated");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/send-password-reset-email`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: passwordUser.id }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to send reset email");
+      }
+
+      toast({
+        title: "Reset email sent",
+        description: `Password reset email sent to ${passwordUser.email}`,
+        duration: 3000,
+      });
+
+      setIsPasswordDialogOpen(false);
+      setPasswordUser(null);
+    } catch (error: any) {
+      console.error("Error sending reset email:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
+
   if (roleLoading || !isAdmin) {
     return null;
   }
@@ -651,36 +700,64 @@ const UserManagement = () => {
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
             <DialogDescription>
-              Set a new password for {passwordUser?.email}
+              Reset password for {passwordUser?.email}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleResetPassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
+          <div className="space-y-6">
+            {/* Option 1: Send Reset Email */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Label className="font-medium">Send Reset Email</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Send an email with a password reset link to the user.
+              </p>
               <Button
-                type="button"
+                onClick={handleSendResetEmail}
+                disabled={isSendingResetEmail || isResettingPassword}
                 variant="outline"
-                onClick={() => setIsPasswordDialogOpen(false)}
-                disabled={isResettingPassword}
+                className="w-full"
               >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isResettingPassword}>
-                {isResettingPassword ? "Resetting..." : "Reset Password"}
+                {isSendingResetEmail ? "Sending..." : "Send Reset Email"}
               </Button>
             </div>
-          </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            {/* Option 2: Set Password Manually */}
+            <form onSubmit={handleResetPassword} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-muted-foreground" />
+                <Label className="font-medium">Set Password Manually</Label>
+              </div>
+              <div className="space-y-2">
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={isResettingPassword || isSendingResetEmail || !newPassword}
+                className="w-full"
+              >
+                {isResettingPassword ? "Setting..." : "Set Password"}
+              </Button>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
 

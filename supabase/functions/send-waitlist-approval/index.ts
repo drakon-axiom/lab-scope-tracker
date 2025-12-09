@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     const smtpHost = Deno.env.get('SMTP_HOST');
     const smtpUser = Deno.env.get('SMTP_USER');
     const smtpPassword = Deno.env.get('SMTP_PASSWORD');
-    const smtpPort = Deno.env.get('SMTP_PORT') || '587';
+    const smtpPort = Deno.env.get('SMTP_PORT') || '465';
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 

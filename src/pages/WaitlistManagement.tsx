@@ -80,7 +80,18 @@ export default function WaitlistManagement() {
 
       if (error) throw error;
 
-      toast.success(`Approved ${email}. They can now sign up!`);
+      // Send approval email
+      try {
+        const entry = entries.find(e => e.id === id);
+        await supabase.functions.invoke('send-waitlist-approval', {
+          body: { email, full_name: entry?.full_name || '' }
+        });
+        toast.success(`Approved ${email}. Approval email sent!`);
+      } catch (emailError) {
+        console.error("Failed to send approval email:", emailError);
+        toast.success(`Approved ${email}. They can now sign up! (Email notification failed)`);
+      }
+      
       fetchEntries();
     } catch (error) {
       console.error("Error approving entry:", error);

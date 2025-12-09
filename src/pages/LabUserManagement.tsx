@@ -33,7 +33,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye, Pencil } from "lucide-react";
+import { UserPlus, Trash2, ToggleLeft, ToggleRight, Eye, Pencil, KeyRound } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -76,6 +86,17 @@ export default function LabUserManagement() {
   const [password, setPassword] = useState("");
   const [selectedLabId, setSelectedLabId] = useState("");
   const [selectedRole, setSelectedRole] = useState("member");
+  
+  // Delete dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<LabUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Password reset state
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<LabUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -219,29 +240,75 @@ export default function LabUserManagement() {
     }
   };
 
-  const handleDeleteLabUser = async (labUserId: string, userId: string) => {
-    if (!confirm("Are you sure you want to delete this lab user? This will also delete their auth account.")) {
+  const handleDeleteClick = (labUser: LabUser) => {
+    setUserToDelete(labUser);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteLabUser = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId: userToDelete.user_id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Lab user deleted successfully");
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
+      fetchData();
+    } catch (error: unknown) {
+      console.error("Error deleting lab user:", error);
+      const message = error instanceof Error ? error.message : "Failed to delete lab user";
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePasswordClick = (labUser: LabUser) => {
+    setPasswordUser(labUser);
+    setNewPassword("");
+    setIsPasswordDialogOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!passwordUser || !newPassword) {
+      toast.error("Please enter a new password");
       return;
     }
 
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    setIsResettingPassword(true);
     try {
-      // Delete lab_users record
-      const { error: labUserError } = await supabase
-        .from("lab_users")
-        .delete()
-        .eq("id", labUserId);
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: {
+          userId: passwordUser.user_id,
+          newPassword,
+        },
+      });
 
-      if (labUserError) throw labUserError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Delete auth user
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
-
-      toast.success("Lab user deleted");
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting lab user:", error);
-      toast.error("Failed to delete lab user");
+      toast.success("Password reset successfully");
+      setIsPasswordDialogOpen(false);
+      setPasswordUser(null);
+      setNewPassword("");
+    } catch (error: unknown) {
+      console.error("Error resetting password:", error);
+      const message = error instanceof Error ? error.message : "Failed to reset password";
+      toast.error(message);
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -416,6 +483,22 @@ export default function LabUserManagement() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handlePasswordClick(labUser)}
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Reset password</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -430,7 +513,7 @@ export default function LabUserManagement() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleDeleteLabUser(labUser.id, labUser.user_id)}
+                            onClick={() => handleDeleteClick(labUser)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -574,6 +657,61 @@ export default function LabUserManagement() {
               </Button>
               <Button onClick={handleUpdateLabUser} disabled={updating}>
                 {updating ? "Updating..." : "Update Lab User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Lab User</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {userToDelete?.email}? This will permanently remove
+                their account and access to the lab portal. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteLabUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete User"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Password Reset Dialog */}
+        <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Set a new password for {passwordUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Minimum 8 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleResetPassword} disabled={isResettingPassword}>
+                {isResettingPassword ? "Resetting..." : "Reset Password"}
               </Button>
             </DialogFooter>
           </DialogContent>

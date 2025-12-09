@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
-import { Check, X, Loader2, Users } from "lucide-react";
+import { Check, X, Loader2, Users, RefreshCw, UserCheck, UserX } from "lucide-react";
 import { format } from "date-fns";
 
 interface WaitlistEntry {
@@ -34,6 +34,8 @@ export default function WaitlistManagement() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -55,12 +57,35 @@ export default function WaitlistManagement() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setEntries((data || []) as WaitlistEntry[]);
+      const entriesData = (data || []) as WaitlistEntry[];
+      setEntries(entriesData);
+      
+      // Check registration status for approved entries
+      const approvedEmails = entriesData
+        .filter(e => e.status === "approved")
+        .map(e => e.email);
+      
+      if (approvedEmails.length > 0) {
+        await checkRegistrationStatus(approvedEmails);
+      }
     } catch (error) {
       console.error("Error fetching waitlist:", error);
       toast.error("Failed to load waitlist entries");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkRegistrationStatus = async (emails: string[]) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-waitlist-registration', {
+        body: { emails }
+      });
+      
+      if (error) throw error;
+      setRegistrationStatus(data.registrationStatus || {});
+    } catch (error) {
+      console.error("Error checking registration status:", error);
     }
   };
 
@@ -132,6 +157,51 @@ export default function WaitlistManagement() {
     }
   };
 
+  const handleResendApproval = async (entry: WaitlistEntry) => {
+    setResending(entry.id);
+    try {
+      await supabase.functions.invoke('send-waitlist-approval', {
+        body: { email: entry.email, full_name: entry.full_name }
+      });
+      
+      // Update invited_at timestamp
+      await supabase
+        .from("waitlist")
+        .update({ invited_at: new Date().toISOString() })
+        .eq("id", entry.id);
+      
+      toast.success(`Approval email resent to ${entry.email}`);
+      fetchEntries();
+    } catch (error) {
+      console.error("Error resending approval email:", error);
+      toast.error("Failed to resend approval email");
+    } finally {
+      setResending(null);
+    }
+  };
+
+  const getRegistrationBadge = (entry: WaitlistEntry) => {
+    if (entry.status !== "approved") return null;
+    
+    const isRegistered = registrationStatus[entry.email.toLowerCase()];
+    
+    if (isRegistered) {
+      return (
+        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+          <UserCheck className="h-3 w-3 mr-1" />
+          Registered
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+        <UserX className="h-3 w-3 mr-1" />
+        Pending Signup
+      </Badge>
+    );
+  };
+
   if (roleLoading || loading) {
     return (
       <Layout>
@@ -144,6 +214,9 @@ export default function WaitlistManagement() {
 
   const pendingCount = entries.filter((e) => e.status === "pending").length;
   const approvedCount = entries.filter((e) => e.status === "approved").length;
+  const registeredCount = entries.filter(
+    (e) => e.status === "approved" && registrationStatus[e.email.toLowerCase()]
+  ).length;
 
   return (
     <Layout>
@@ -158,7 +231,7 @@ export default function WaitlistManagement() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
@@ -183,6 +256,14 @@ export default function WaitlistManagement() {
               <div className="text-2xl font-bold text-success">{approvedCount}</div>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Registered</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{registeredCount}</div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
@@ -200,6 +281,7 @@ export default function WaitlistManagement() {
                   <TableHead>Email</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Registration</TableHead>
                   <TableHead>Requested</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -207,7 +289,7 @@ export default function WaitlistManagement() {
               <TableBody>
                 {entries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       No waitlist entries yet
                     </TableCell>
                   </TableRow>
@@ -232,34 +314,54 @@ export default function WaitlistManagement() {
                           {entry.status}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {getRegistrationBadge(entry)}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(entry.created_at), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.status === "pending" && (
-                          <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2">
+                          {entry.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleApprove(entry.id, entry.email)}
+                                disabled={processing === entry.id}
+                              >
+                                {processing === entry.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReject(entry.id, entry.email)}
+                                disabled={processing === entry.id}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          {entry.status === "approved" && !registrationStatus[entry.email.toLowerCase()] && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleApprove(entry.id, entry.email)}
-                              disabled={processing === entry.id}
+                              onClick={() => handleResendApproval(entry)}
+                              disabled={resending === entry.id}
+                              title="Resend approval email"
                             >
-                              {processing === entry.id ? (
+                              {resending === entry.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Check className="h-4 w-4" />
+                                <RefreshCw className="h-4 w-4" />
                               )}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReject(entry.id, entry.email)}
-                              disabled={processing === entry.id}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

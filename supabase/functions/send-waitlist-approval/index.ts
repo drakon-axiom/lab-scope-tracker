@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getEmailSignature } from '../_shared/emailSignature.ts';
 
 const corsHeaders = {
@@ -28,7 +29,8 @@ Deno.serve(async (req) => {
     const smtpUser = Deno.env.get('SMTP_USER');
     const smtpPassword = Deno.env.get('SMTP_PASSWORD');
     const smtpPort = Deno.env.get('SMTP_PORT') || '587';
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     if (!smtpHost || !smtpUser || !smtpPassword) {
       throw new Error('SMTP credentials not configured');
@@ -36,70 +38,96 @@ Deno.serve(async (req) => {
 
     const signupUrl = supabaseUrl ? `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/auth` : 'https://safebatch.com/auth';
 
-    const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { text-align: center; margin-bottom: 32px; }
-          .logo { width: 64px; height: 64px; border-radius: 12px; }
-          .content { background-color: #f9fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
-          .celebration { background: linear-gradient(135deg, #22c55e 0%, #10b981 100%); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 24px 0; }
-          .cta-button { display: inline-block; background-color: #43bccd; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin-top: 16px; }
-          .features { display: grid; gap: 12px; margin: 24px 0; }
-          .feature { background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <img src="https://obbvohtcglpfnqbthnga.supabase.co/storage/v1/object/public/lab-reports/logo.png" alt="SafeBatch" class="logo" />
-            <h1 style="margin: 16px 0 0 0; color: #111827;">🎉 You're Approved!</h1>
-          </div>
+    // Try to fetch custom template from database
+    let htmlContent: string;
+    let textContent: string;
+    let subject = "🎉 You're Approved! Welcome to SafeBatch Beta";
 
-          <div class="celebration">
-            <h2 style="margin: 0 0 8px 0;">Welcome to the SafeBatch Beta</h2>
-            <p style="margin: 0; opacity: 0.9;">Congratulations ${full_name}! Your application has been approved.</p>
-          </div>
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-          <div class="content">
-            <p>Great news! We've reviewed your application and we're excited to welcome you to the SafeBatch beta program.</p>
-            <p>You now have access to our laboratory testing management platform with:</p>
-            
-            <div class="features">
-              <div class="feature">
-                <strong>✅ 10 Free Items/Month</strong>
-                <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Send up to 10 testing items per month during beta</p>
+    const { data: template } = await supabase
+      .from('email_templates')
+      .select('subject, body')
+      .eq('name', 'Waitlist Approval')
+      .single();
+
+    if (template) {
+      // Use custom template with variable replacement
+      subject = template.subject
+        .replace(/{{full_name}}/g, full_name)
+        .replace(/{{email}}/g, email)
+        .replace(/{{signup_url}}/g, signupUrl);
+      htmlContent = template.body
+        .replace(/{{full_name}}/g, full_name)
+        .replace(/{{email}}/g, email)
+        .replace(/{{signup_url}}/g, signupUrl);
+      textContent = htmlContent.replace(/<[^>]*>/g, '');
+    } else {
+      // Default template
+      htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; margin-bottom: 32px; }
+            .logo { width: 64px; height: 64px; border-radius: 12px; }
+            .content { background-color: #f9fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+            .celebration { background: linear-gradient(135deg, #22c55e 0%, #10b981 100%); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 24px 0; }
+            .cta-button { display: inline-block; background-color: #43bccd; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin-top: 16px; }
+            .features { display: grid; gap: 12px; margin: 24px 0; }
+            .feature { background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="https://obbvohtcglpfnqbthnga.supabase.co/storage/v1/object/public/lab-reports/logo.png" alt="SafeBatch" class="logo" />
+              <h1 style="margin: 16px 0 0 0; color: #111827;">🎉 You're Approved!</h1>
+            </div>
+
+            <div class="celebration">
+              <h2 style="margin: 0 0 8px 0;">Welcome to the SafeBatch Beta</h2>
+              <p style="margin: 0; opacity: 0.9;">Congratulations ${full_name}! Your application has been approved.</p>
+            </div>
+
+            <div class="content">
+              <p>Great news! We've reviewed your application and we're excited to welcome you to the SafeBatch beta program.</p>
+              <p>You now have access to our laboratory testing management platform with:</p>
+              
+              <div class="features">
+                <div class="feature">
+                  <strong>✅ 10 Free Items/Month</strong>
+                  <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Send up to 10 testing items per month during beta</p>
+                </div>
+                <div class="feature">
+                  <strong>📊 Quote Management</strong>
+                  <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Create, track, and manage all your lab testing quotes</p>
+                </div>
+                <div class="feature">
+                  <strong>📦 Shipment Tracking</strong>
+                  <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Automated UPS tracking for your lab shipments</p>
+                </div>
               </div>
-              <div class="feature">
-                <strong>📊 Quote Management</strong>
-                <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Create, track, and manage all your lab testing quotes</p>
-              </div>
-              <div class="feature">
-                <strong>📦 Shipment Tracking</strong>
-                <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Automated UPS tracking for your lab shipments</p>
+
+              <div style="text-align: center; margin-top: 24px;">
+                <a href="${signupUrl}" class="cta-button">Create Your Account</a>
               </div>
             </div>
 
-            <div style="text-align: center; margin-top: 24px;">
-              <a href="${signupUrl}" class="cta-button">Create Your Account</a>
+            <div style="text-align: center; color: #6b7280; font-size: 14px;">
+              <p>Questions? We're here to help at <a href="mailto:support@safebatch.com" style="color: #43bccd;">support@safebatch.com</a></p>
             </div>
+
+            ${getEmailSignature()}
           </div>
+        </body>
+      </html>
+      `;
 
-          <div style="text-align: center; color: #6b7280; font-size: 14px;">
-            <p>Questions? We're here to help at <a href="mailto:support@safebatch.com" style="color: #43bccd;">support@safebatch.com</a></p>
-          </div>
-
-          ${getEmailSignature()}
-        </div>
-      </body>
-    </html>
-    `;
-
-    const textContent = `
+      textContent = `
 Congratulations ${full_name}!
 
 You're Approved! Welcome to the SafeBatch Beta
@@ -118,14 +146,15 @@ Questions? We're here to help at support@safebatch.com
 
 Best regards,
 The SafeBatch Team
-    `;
+      `;
+    }
 
     // Build email payload
     const boundary = '----=_Part_' + Math.random().toString(36).substring(2);
     const emailPayload = [
       `From: SafeBatch <${smtpUser}>`,
       `To: ${email}`,
-      `Subject: 🎉 You're Approved! Welcome to SafeBatch Beta`,
+      `Subject: ${subject}`,
       'MIME-Version: 1.0',
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',

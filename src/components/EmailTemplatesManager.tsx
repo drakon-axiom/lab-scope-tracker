@@ -569,12 +569,26 @@ Batch: BATCH-002
             </div>
             <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
               <p className="font-semibold mb-2">Available variables:</p>
-              <ul className="space-y-1">
-                <li>• {"{"}{"{"} lab_name {"}"}{"}"}  - Lab name</li>
-                <li>• {"{"}{"{"} quote_number {"}"}{"}"}  - Quote number</li>
-                <li>• {"{"}{"{"} quote_items {"}"}{"}"}  - List of quote items</li>
-                <li>• {"{"}{"{"} total {"}"}{"}"}  - Total amount</li>
-              </ul>
+              <div className="space-y-3">
+                <div>
+                  <p className="font-medium text-foreground">Quote Templates:</p>
+                  <ul className="space-y-1 ml-2">
+                    <li>• {"{"}{"{"} lab_name {"}"}{"}"}  - Lab name</li>
+                    <li>• {"{"}{"{"} quote_number {"}"}{"}"}  - Quote number</li>
+                    <li>• {"{"}{"{"} quote_items {"}"}{"}"}  - List of quote items</li>
+                    <li>• {"{"}{"{"} total {"}"}{"}"}  - Total amount</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Waitlist Templates:</p>
+                  <p className="text-xs italic mb-1">Use exact names: "Waitlist Confirmation", "Waitlist Approval", "Waitlist Rejection"</p>
+                  <ul className="space-y-1 ml-2">
+                    <li>• {"{"}{"{"} full_name {"}"}{"}"}  - User's full name</li>
+                    <li>• {"{"}{"{"} email {"}"}{"}"}  - User's email address</li>
+                    <li>• {"{"}{"{"} signup_url {"}"}{"}"}  - Signup link (approval only)</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

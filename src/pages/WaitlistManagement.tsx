@@ -101,7 +101,7 @@ export default function WaitlistManagement() {
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (id: string, email: string) => {
     setProcessing(id);
     try {
       const { error } = await supabase
@@ -111,7 +111,18 @@ export default function WaitlistManagement() {
 
       if (error) throw error;
 
-      toast.success("Entry rejected");
+      // Send rejection email
+      try {
+        const entry = entries.find(e => e.id === id);
+        await supabase.functions.invoke('send-waitlist-rejection', {
+          body: { email, full_name: entry?.full_name || '' }
+        });
+        toast.success(`Entry rejected. Notification email sent to ${email}`);
+      } catch (emailError) {
+        console.error("Failed to send rejection email:", emailError);
+        toast.success("Entry rejected (Email notification failed)");
+      }
+      
       fetchEntries();
     } catch (error) {
       console.error("Error rejecting entry:", error);
@@ -242,7 +253,7 @@ export default function WaitlistManagement() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleReject(entry.id)}
+                              onClick={() => handleReject(entry.id, entry.email)}
                               disabled={processing === entry.id}
                             >
                               <X className="h-4 w-4" />

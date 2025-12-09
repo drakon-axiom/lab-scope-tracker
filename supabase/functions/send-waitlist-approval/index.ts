@@ -36,7 +36,9 @@ Deno.serve(async (req) => {
       throw new Error('SMTP credentials not configured');
     }
 
-    const signupUrl = supabaseUrl ? `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/auth` : 'https://safebatch.com/auth';
+    // Use configured APP_URL or default to production URL
+    const appUrl = Deno.env.get('APP_URL') || 'https://safebatch.com';
+    const signupUrl = `${appUrl}/auth`;
 
     // Try to fetch custom template from database
     let htmlContent: string;

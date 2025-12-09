@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const smtpHost = Deno.env.get('SMTP_HOST');
     const smtpUser = Deno.env.get('SMTP_USER');
     const smtpPassword = Deno.env.get('SMTP_PASSWORD');
-    const smtpPort = Deno.env.get('SMTP_PORT') || '465';
+    const smtpPort = Deno.env.get('SMTP_PORT') || '587';
 
     if (!smtpHost || !smtpUser || !smtpPassword) {
       console.error('Missing SMTP configuration');
@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
       htmlContent = template.body.replace(/{{full_name}}/g, full_name).replace(/{{email}}/g, email);
       textContent = htmlContent.replace(/<[^>]*>/g, '');
     } else {
-      // Default template
       htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -136,8 +135,8 @@ The SafeBatch Team
       `--${boundary}--`,
     ].join('\r\n');
 
-    // Send via SMTP
-    const conn = await Deno.connectTls({
+    // Connect to SMTP server using STARTTLS (port 587)
+    const conn = await Deno.connect({
       hostname: smtpHost,
       port: parseInt(smtpPort),
     });
@@ -145,36 +144,98 @@ The SafeBatch Team
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
-    const readResponse = async (): Promise<string> => {
+    async function readResponse(connection: Deno.Conn): Promise<string> {
       const buffer = new Uint8Array(1024);
-      const n = await conn.read(buffer);
-      return decoder.decode(buffer.subarray(0, n || 0));
-    };
+      let fullResponse = '';
+      
+      while (true) {
+        const n = await connection.read(buffer);
+        if (!n) throw new Error("Connection closed unexpectedly");
+        
+        const chunk = decoder.decode(buffer.subarray(0, n));
+        fullResponse += chunk;
+        
+        const lines = fullResponse.split('\r\n');
+        const lastLine = lines[lines.length - 2];
+        if (lastLine && /^\d{3} /.test(lastLine)) {
+          break;
+        }
+      }
+      
+      return fullResponse.trim();
+    }
 
-    const sendCommand = async (command: string): Promise<string> => {
-      await conn.write(encoder.encode(command + '\r\n'));
-      return await readResponse();
-    };
+    async function sendCommand(connection: Deno.Conn, command: string): Promise<string> {
+      await connection.write(encoder.encode(command + '\r\n'));
+      return await readResponse(connection);
+    }
 
-    await readResponse();
-    await sendCommand(`EHLO ${smtpHost}`);
-    await sendCommand('AUTH LOGIN');
-    await sendCommand(btoa(smtpUser));
-    await sendCommand(btoa(smtpPassword));
-    await sendCommand(`MAIL FROM:<${smtpUser}>`);
-    await sendCommand(`RCPT TO:<${email}>`);
-    await sendCommand('DATA');
-    await conn.write(encoder.encode(emailPayload + '\r\n.\r\n'));
-    await readResponse();
-    await sendCommand('QUIT');
-    conn.close();
+    try {
+      // Read greeting
+      let response = await readResponse(conn);
+      console.log('SMTP greeting:', response);
 
-    console.log(`Waitlist rejection email sent to ${email}`);
+      // Send EHLO
+      response = await sendCommand(conn, `EHLO ${smtpHost}`);
+      console.log('EHLO response:', response);
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      // Start TLS
+      response = await sendCommand(conn, 'STARTTLS');
+      console.log('STARTTLS response:', response);
+
+      if (!response.startsWith('220')) {
+        throw new Error(`STARTTLS failed: ${response}`);
+      }
+
+      // Upgrade to TLS
+      const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
+
+      // Send EHLO again after TLS
+      response = await sendCommand(tlsConn, `EHLO ${smtpHost}`);
+      console.log('EHLO (after TLS) response:', response);
+
+      // Authenticate using AUTH PLAIN
+      const authString = btoa(`\0${smtpUser}\0${smtpPassword}`);
+      response = await sendCommand(tlsConn, `AUTH PLAIN ${authString}`);
+      console.log('AUTH response:', response);
+
+      if (!response.startsWith('235')) {
+        throw new Error(`Authentication failed: ${response}`);
+      }
+
+      // Send email
+      response = await sendCommand(tlsConn, `MAIL FROM:<${smtpUser}>`);
+      console.log('MAIL FROM response:', response);
+
+      response = await sendCommand(tlsConn, `RCPT TO:<${email}>`);
+      console.log('RCPT TO response:', response);
+
+      response = await sendCommand(tlsConn, 'DATA');
+      console.log('DATA response:', response);
+
+      // Send email data
+      await tlsConn.write(encoder.encode(emailPayload + '\r\n.\r\n'));
+      response = await readResponse(tlsConn);
+      console.log('Email sent response:', response);
+
+      if (!response.startsWith('250')) {
+        throw new Error(`Email sending failed: ${response}`);
+      }
+
+      // Quit
+      await sendCommand(tlsConn, 'QUIT');
+      tlsConn.close();
+
+      console.log(`Waitlist rejection email sent to ${email}`);
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (error) {
+      conn.close();
+      throw error;
+    }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error sending waitlist rejection email:', errorMessage);

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Plus, Pencil, Trash2, Eye, History, Download, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import DOMPurify from "dompurify";
 
 interface EmailTemplate {
   id: string;
@@ -623,7 +624,7 @@ Batch: BATCH-002
               <Label className="text-sm font-semibold">Body:</Label>
               <div 
                 className="mt-1 p-4 bg-background rounded border"
-                dangerouslySetInnerHTML={{ __html: previewContent.body.replace(/\n/g, '<br/>') }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewContent.body.replace(/\n/g, '<br/>')) }}
               />
             </div>
             <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded">

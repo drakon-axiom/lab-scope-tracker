@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSwipeable } from "react-swipeable";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 const QuotePayment = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -30,6 +31,16 @@ const QuotePayment = () => {
     payment_amount_crypto: "",
     payment_date: new Date().toISOString().split("T")[0],
     transaction_id: "",
+  });
+
+  // Swipe handlers for navigation
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: () => {
+      navigate(`/quotes/${quoteId}`);
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50,
   });
 
   useEffect(() => {
@@ -133,7 +144,7 @@ const QuotePayment = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 pb-24">
+      <div {...swipeHandlers} className="space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button
@@ -149,6 +160,12 @@ const QuotePayment = () => {
               {quote?.quote_number || `Quote ${quoteId?.slice(0, 8)}`}
             </p>
           </div>
+        </div>
+
+        {/* Swipe hint */}
+        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+          <ChevronLeft className="h-3 w-3" />
+          <span>Swipe right for Quote Details</span>
         </div>
 
         {/* Form */}

@@ -1,9 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-signature',
 };
 
 interface DeliveryEvent {
@@ -16,6 +18,43 @@ interface DeliveryEvent {
   failure_reason?: string;
 }
 
+// Verify HMAC signature
+async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    
+    const signatureBytes = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(payload)
+    );
+    
+    const expectedSignature = new TextDecoder().decode(encode(new Uint8Array(signatureBytes)));
+    
+    // Constant-time comparison to prevent timing attacks
+    if (signature.length !== expectedSignature.length) {
+      return false;
+    }
+    
+    let result = 0;
+    for (let i = 0; i < signature.length; i++) {
+      result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    }
+    
+    return result === 0;
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,12 +62,49 @@ serve(async (req) => {
   }
 
   try {
+    const webhookSecret = Deno.env.get('EMAIL_WEBHOOK_SECRET');
+    
+    if (!webhookSecret) {
+      console.error('EMAIL_WEBHOOK_SECRET not configured');
+      return new Response(
+        JSON.stringify({ error: 'Webhook not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get the raw body for signature verification
+    const rawBody = await req.text();
+    
+    // Get signature from header
+    const signature = req.headers.get('x-webhook-signature');
+    
+    if (!signature) {
+      console.error('Missing webhook signature header');
+      return new Response(
+        JSON.stringify({ error: 'Missing signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the signature
+    const isValid = await verifySignature(rawBody, signature, webhookSecret);
+    
+    if (!isValid) {
+      console.error('Invalid webhook signature');
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Webhook signature verified successfully');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const event: DeliveryEvent = await req.json();
+    const event: DeliveryEvent = JSON.parse(rawBody);
     console.log('Received delivery event:', event);
 
     // Find the email history record by recipient email

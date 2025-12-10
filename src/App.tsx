@@ -22,6 +22,9 @@ const CompoundDetails = lazy(() => import("./pages/CompoundDetails"));
 const Labs = lazy(() => import("./pages/Labs"));
 const Quotes = lazy(() => import("./pages/Quotes"));
 const QuoteCreate = lazy(() => import("./pages/QuoteCreate"));
+const QuoteView = lazy(() => import("./pages/QuoteView"));
+const QuotePayment = lazy(() => import("./pages/QuotePayment"));
+const QuoteShipping = lazy(() => import("./pages/QuoteShipping"));
 const BulkImport = lazy(() => import("./pages/BulkImport"));
 const QuoteConfirm = lazy(() => import("./pages/QuoteConfirm"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -107,6 +110,9 @@ const App = () => {
             <Route path="/labs" element={<Labs />} />
             <Route path="/quotes" element={<Quotes />} />
             <Route path="/quotes/new" element={<QuoteCreate />} />
+            <Route path="/quotes/:quoteId" element={<QuoteView />} />
+            <Route path="/quotes/:quoteId/payment" element={<QuotePayment />} />
+            <Route path="/quotes/:quoteId/shipping" element={<QuoteShipping />} />
             <Route path="/bulk-import" element={<BulkImport />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/quote-confirm/:quoteId" element={<QuoteConfirm />} />

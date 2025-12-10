@@ -1166,10 +1166,14 @@ const Quotes = () => {
   };
 
   const handleView = (quote: Quote) => {
-    setSelectedQuote(quote);
-    fetchQuoteItems(quote.id);
-    fetchTrackingHistory(quote.id);
-    setViewDialogOpen(true);
+    if (isMobile) {
+      navigate(`/quotes/${quote.id}`);
+    } else {
+      setSelectedQuote(quote);
+      fetchQuoteItems(quote.id);
+      fetchTrackingHistory(quote.id);
+      setViewDialogOpen(true);
+    }
   };
 
   const handleManageItems = (quote: Quote) => {
@@ -2952,12 +2956,20 @@ const Quotes = () => {
                     });
                   }}
                   onAddPayment={(quote) => {
-                    setSelectedQuoteForPayment(quote);
-                    setPaymentDialogOpen(true);
+                    if (isMobile) {
+                      navigate(`/quotes/${quote.id}/payment`);
+                    } else {
+                      setSelectedQuoteForPayment(quote);
+                      setPaymentDialogOpen(true);
+                    }
                   }}
                   onAddShipping={(quote) => {
-                    setSelectedQuoteForShipping(quote);
-                    setShippingDialogOpen(true);
+                    if (isMobile) {
+                      navigate(`/quotes/${quote.id}/shipping`);
+                    } else {
+                      setSelectedQuoteForShipping(quote);
+                      setShippingDialogOpen(true);
+                    }
                   }}
                   onGenerateLabel={(quote) => {
                     setSelectedQuoteForLabel(quote);

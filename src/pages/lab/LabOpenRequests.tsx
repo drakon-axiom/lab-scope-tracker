@@ -519,7 +519,7 @@ export default function LabOpenRequests() {
 
                 {/* Items Table */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Test Items</Label>
+                  <Label className="text-sm font-medium mb-2 block">Test Items ({selectedQuoteItems.length})</Label>
                   {itemsLoading ? (
                     <div className="space-y-2">
                       <Skeleton className="h-10 w-full" />
@@ -528,30 +528,67 @@ export default function LabOpenRequests() {
                   ) : selectedQuoteItems.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No items found</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Compound</TableHead>
-                          <TableHead>Sample</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead className="text-right">Price</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedQuoteItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">
-                              {item.products?.name || "Unknown"}
-                            </TableCell>
-                            <TableCell>{item.sample || "-"}</TableCell>
-                            <TableCell>{item.client || "-"}</TableCell>
-                            <TableCell className="text-right">
+                    <div className="space-y-4">
+                      {selectedQuoteItems.map((item, index) => (
+                        <div key={item.id} className="border rounded-lg p-4 bg-muted/30">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="font-medium">{item.products?.name || "Unknown Compound"}</h4>
+                              {item.products?.category && (
+                                <Badge variant="secondary" className="mt-1 text-xs">
+                                  {item.products.category}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-lg font-semibold">
                               {item.price ? `$${item.price.toFixed(2)}` : "-"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Client</p>
+                              <p className="font-medium">{item.client || "-"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Sample</p>
+                              <p className="font-medium">{item.sample || "-"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Manufacturer</p>
+                              <p className="font-medium">{item.manufacturer || "-"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Batch</p>
+                              <p className="font-medium">{item.batch || "-"}</p>
+                            </div>
+                          </div>
+                          {(item.additional_samples || item.additional_report_headers) && (
+                            <div className="mt-3 pt-3 border-t flex gap-4 text-sm">
+                              {item.additional_samples ? (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">+{item.additional_samples} variance samples</Badge>
+                                </div>
+                              ) : null}
+                              {item.additional_report_headers ? (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">+{item.additional_report_headers} report headers</Badge>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {/* Total Section */}
+                      <div className="flex justify-end pt-2 border-t">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Total</p>
+                          <p className="text-xl font-bold">
+                            ${selectedQuoteItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 

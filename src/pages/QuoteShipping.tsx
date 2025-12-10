@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSwipeable } from "react-swipeable";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 
 const QuoteShipping = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
@@ -20,6 +21,16 @@ const QuoteShipping = () => {
   const [formData, setFormData] = useState({
     tracking_number: "",
     shipped_date: new Date().toISOString().split("T")[0],
+  });
+
+  // Swipe handlers for navigation
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: () => {
+      navigate(`/quotes/${quoteId}`);
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50,
   });
 
   useEffect(() => {
@@ -128,7 +139,7 @@ const QuoteShipping = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 pb-24">
+      <div {...swipeHandlers} className="space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button
@@ -144,6 +155,12 @@ const QuoteShipping = () => {
               {quote?.quote_number || `Quote ${quoteId?.slice(0, 8)}`}
             </p>
           </div>
+        </div>
+
+        {/* Swipe hint */}
+        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+          <ChevronLeft className="h-3 w-3" />
+          <span>Swipe right for Quote Details</span>
         </div>
 
         {/* Form */}

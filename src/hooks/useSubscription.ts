@@ -84,9 +84,8 @@ export const useSubscription = () => {
   const loading = authLoading || subLoading || usageLoading;
 
   const canSendItems = (itemCount: number): boolean => {
-    if (!subscription || !usage) return false;
-    const remainingItems = subscription.monthly_item_limit - usage.items_sent_this_month;
-    return remainingItems >= itemCount;
+    // Beta testing: remove limit for approved users
+    return true;
   };
 
   const getRemainingItems = (): number => {

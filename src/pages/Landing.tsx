@@ -8,43 +8,38 @@ import { ProductTourCarousel } from "@/components/ProductTourCarousel";
 import heroBackground from "@/assets/hero-background.jpg";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
-
 const Landing = () => {
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [showBetaBanner, setShowBetaBanner] = useState(true);
   const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
-
   useEffect(() => {
     const fetchWaitlistCount = async () => {
-      const { count } = await supabase
-        .from('waitlist')
-        .select('*', { count: 'exact', head: true });
+      const {
+        count
+      } = await supabase.from('waitlist').select('*', {
+        count: 'exact',
+        head: true
+      });
       setWaitlistCount(count);
     };
     fetchWaitlistCount();
   }, []);
-
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 400);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -52,24 +47,20 @@ const Landing = () => {
       const header = document.querySelector('header');
       const headerHeight = header ? header.offsetHeight : 64;
       const extraOffset = 20; // Extra padding for better visibility
-      
+
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       const offsetPosition = elementPosition - headerHeight - extraOffset;
-
       window.scrollTo({
         top: offsetPosition,
         behavior: "smooth"
       });
     }
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <LandingHeader />
       
       {/* Beta Waitlist Banner */}
-      {showBetaBanner && (
-        <div className="relative bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground">
+      {showBetaBanner && <div className="relative bg-gradient-to-r from-primary via-primary/90 to-accent text-primary-foreground">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-center gap-3 text-sm md:text-base">
               <Sparkles className="h-5 w-5 shrink-0 animate-pulse" />
@@ -77,33 +68,22 @@ const Landing = () => {
                 🎉 <span className="hidden sm:inline">We're in Public Beta!</span><span className="sm:hidden">Beta Access!</span> Join the waitlist for{" "}
                 <span className="font-bold underline underline-offset-2">free early access</span> + exclusive launch pricing
               </span>
-              <Button 
-                size="sm" 
-                variant="secondary" 
-                onClick={() => navigate("/waitlist")}
-                className="shrink-0 font-semibold"
-              >
+              <Button size="sm" variant="secondary" onClick={() => navigate("/waitlist")} className="shrink-0 font-semibold">
                 Join Now
               </Button>
             </div>
           </div>
-          <button 
-            onClick={() => setShowBetaBanner(false)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-primary-foreground/10 rounded-full transition-colors"
-            aria-label="Dismiss banner"
-          >
+          <button onClick={() => setShowBetaBanner(false)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-primary-foreground/10 rounded-full transition-colors" aria-label="Dismiss banner">
             <X className="h-4 w-4" />
           </button>
-        </div>
-      )}
+        </div>}
       
       {/* Hero Section */}
       <section className="relative min-h-[500px] md:min-h-[600px] flex items-center overflow-hidden">
         {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroBackground})` }}
-        >
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{
+        backgroundImage: `url(${heroBackground})`
+      }}>
           {/* Dark Overlay for Text Readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/80 to-black/60" />
         </div>
@@ -111,48 +91,61 @@ const Landing = () => {
         {/* Content */}
         <div className="relative container mx-auto px-4 py-20 md:py-32 z-10">
           <div className="max-w-3xl">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6
+          }}>
               <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
                 Welcome to SafeBatch
               </Badge>
             </motion.div>
             
-            <motion.h1 
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
-              style={{ textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)' }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
+            <motion.h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white" style={{
+            textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+          }} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.2
+          }}>
               Test Submission & Tracking Platform
             </motion.h1>
             
-            <motion.p 
-              className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
+            <motion.p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl leading-relaxed" initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.4
+          }}>
               Streamline your testing workflow. Submit compounds to certified labs, track progress, and manage results—all in one place. 
               Perfect for businesses and researchers who need testing guidance or handle high volumes.
             </motion.p>
             
-            <motion.div 
-              className="space-y-6 mb-12"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
+            <motion.div className="space-y-6 mb-12" initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.6
+          }}>
               {/* Prominent CTA Button */}
-              <Button 
-                size="lg" 
-                onClick={() => navigate("/waitlist")} 
-                className="text-xl px-12 py-7 h-auto shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105"
-              >
+              <Button size="lg" onClick={() => navigate("/waitlist")} className="text-xl px-12 py-7 h-auto shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105">
                 Join Waitlist - Get Early Access
               </Button>
               
@@ -174,24 +167,23 @@ const Landing = () => {
               
               {/* Secondary CTA */}
               <div className="pt-2">
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  onClick={() => scrollToSection("contact")} 
-                  className="text-base px-6 bg-background/50 backdrop-blur-sm hover:bg-background/80"
-                >
+                <Button size="lg" variant="outline" onClick={() => scrollToSection("contact")} className="text-base px-6 bg-background/50 backdrop-blur-sm hover:bg-background/80">
                   Contact Us
                 </Button>
               </div>
             </motion.div>
             
             {/* Trust Indicators */}
-            <motion.div 
-              className="flex flex-wrap items-center gap-6 text-sm"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-            >
+            <motion.div className="flex flex-wrap items-center gap-6 text-sm" initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.8
+          }}>
               <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5 text-primary" />
                 <span className="font-medium">Certified Labs</span>
@@ -210,15 +202,17 @@ const Landing = () => {
       </section>
 
       {/* Social Proof Section */}
-      {waitlistCount !== null && waitlistCount > 0 && (
-        <section className="py-8 md:py-12 bg-muted/30 border-y border-border/50">
+      {waitlistCount !== null && waitlistCount > 0 && <section className="py-8 md:py-12 bg-muted/30 border-y border-border/50">
           <div className="container mx-auto px-4">
-            <motion.div 
-              className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+            <motion.div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12" initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.5
+        }}>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-primary/10">
                   <Users className="h-6 w-6 text-primary" />
@@ -243,16 +237,12 @@ const Landing = () => {
                 </div>
               </div>
               
-              <Button 
-                onClick={() => navigate("/waitlist")} 
-                className="md:ml-4"
-              >
+              <Button onClick={() => navigate("/waitlist")} className="md:ml-4">
                 Get Early Access
               </Button>
             </motion.div>
           </div>
-        </section>
-      )}
+        </section>}
 
       {/* Interactive Demo Section */}
       <section id="demo" className="py-16 md:py-24">
@@ -548,9 +538,7 @@ const Landing = () => {
                   <Mail className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle className="text-lg">Email</CardTitle>
-                <CardDescription className="mt-2">
-                  support@safebatch.com
-                </CardDescription>
+                <CardDescription className="mt-2">support@safebatch.io</CardDescription>
               </CardHeader>
             </Card>
 
@@ -665,25 +653,13 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>&copy; 2025 SafeBatch. All rights reserved.</p>
             <div className="flex gap-6">
-              <Button
-                variant="link"
-                className="text-muted-foreground p-0 h-auto"
-                onClick={() => navigate("/terms")}
-              >
+              <Button variant="link" className="text-muted-foreground p-0 h-auto" onClick={() => navigate("/terms")}>
                 Terms of Service
               </Button>
-              <Button
-                variant="link"
-                className="text-muted-foreground p-0 h-auto"
-                onClick={() => navigate("/privacy")}
-              >
+              <Button variant="link" className="text-muted-foreground p-0 h-auto" onClick={() => navigate("/privacy")}>
                 Privacy Policy
               </Button>
-              <Button
-                variant="link"
-                className="text-muted-foreground p-0 h-auto"
-                onClick={() => navigate("/faq")}
-              >
+              <Button variant="link" className="text-muted-foreground p-0 h-auto" onClick={() => navigate("/faq")}>
                 FAQ
               </Button>
             </div>
@@ -692,23 +668,19 @@ const Landing = () => {
       </footer>
 
       {/* Back to Top Button */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: showBackToTop ? 1 : 0, scale: showBackToTop ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-        className="fixed bottom-8 right-8 z-50"
-      >
-        <Button
-          onClick={scrollToTop}
-          size="icon"
-          className="h-12 w-12 rounded-full shadow-lg"
-          aria-label="Back to top"
-        >
+      <motion.div initial={{
+      opacity: 0,
+      scale: 0
+    }} animate={{
+      opacity: showBackToTop ? 1 : 0,
+      scale: showBackToTop ? 1 : 0
+    }} transition={{
+      duration: 0.2
+    }} className="fixed bottom-8 right-8 z-50">
+        <Button onClick={scrollToTop} size="icon" className="h-12 w-12 rounded-full shadow-lg" aria-label="Back to top">
           <ArrowUp className="h-5 w-5" />
         </Button>
       </motion.div>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;

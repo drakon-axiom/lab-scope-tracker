@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mail } from "lucide-react";
+import DOMPurify from "dompurify";
 
 interface EmailPreviewDialogProps {
   open: boolean;
@@ -40,7 +41,7 @@ export function EmailPreviewDialog({
             </div>
           </div>
           <ScrollArea className="h-[500px] w-full rounded-md border p-4">
-            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }} />
           </ScrollArea>
         </div>
         <DialogFooter>

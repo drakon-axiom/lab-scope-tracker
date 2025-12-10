@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useUserRole } from "@/hooks/useUserRole";
+import DOMPurify from "dompurify";
 
 interface EmailHistory {
   id: string;
@@ -306,7 +307,7 @@ export function EmailHistoryDialog({ open, onOpenChange, quoteId }: EmailHistory
                 )}
               </div>
               <ScrollArea className="h-[500px] w-full rounded-md border p-4">
-                <div dangerouslySetInnerHTML={{ __html: viewingEmail.body }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingEmail.body) }} />
               </ScrollArea>
             </div>
           )}

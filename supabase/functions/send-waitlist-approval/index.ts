@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     // Use configured APP_URL or default to production URL
-    const appUrl = Deno.env.get('APP_URL') || 'https://safebatch.com';
+    const appUrl = Deno.env.get('APP_URL') || 'https://safebatch.io';
     const signupUrl = `${appUrl}/auth`;
 
     // Try to fetch custom template from database

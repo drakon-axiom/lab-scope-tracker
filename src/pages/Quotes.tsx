@@ -72,6 +72,7 @@ import { z } from "zod";
 import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
 import { useSubscription } from "@/hooks/useSubscription";
 import { QuotesVirtualTable } from "@/components/QuotesVirtualTable";
+import { QuoteCreationDialog } from "@/components/QuoteCreationDialog";
 
 interface Quote {
   id: string;
@@ -2374,155 +2375,173 @@ const Quotes = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm} size="sm" className="text-xs sm:text-sm">
-                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
-                  <span className="hidden xs:inline">New Quote</span>
-                  <span className="xs:hidden">New</span>
-                </Button>
-              </DialogTrigger>
+            {/* New Quote Button - Opens unified creation dialog */}
+            <Button onClick={() => setDialogOpen(true)} size="sm" className="text-xs sm:text-sm">
+              <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+              <span className="hidden xs:inline">New Quote</span>
+              <span className="xs:hidden">New</span>
+            </Button>
+
+            {/* Unified Quote Creation Dialog */}
+            <QuoteCreationDialog
+              open={dialogOpen && !editingId}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setDialogOpen(false);
+                  resetForm();
+                }
+              }}
+              labs={labs}
+              onSuccess={() => {
+                fetchQuotes();
+                setDialogOpen(false);
+              }}
+            />
+
+            {/* Edit Quote Dialog - kept for editing existing quotes */}
+            <Dialog open={dialogOpen && !!editingId} onOpenChange={(open) => {
+              if (!open) {
+                setDialogOpen(false);
+                resetForm();
+              }
+            }}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>
-                    {editingId ? "Edit Quote" : "New Quote"}
-                  </DialogTitle>
-                <DialogDescription>
-                  {editingId ? "Update quote information" : "Create a new quote request for lab testing"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lab_id">Lab *</Label>
-                  <Select
-                    value={formData.lab_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, lab_id: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select lab" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {labs.map((lab) => (
-                        <SelectItem key={lab.id} value={lab.id}>
-                          {lab.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DialogTitle>Edit Quote</DialogTitle>
+                  <DialogDescription>
+                    Update quote information
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="quote_number">Internal Quote Number</Label>
-                    <Input
-                      id="quote_number"
-                      value={formData.quote_number}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quote_number: e.target.value })
+                    <Label htmlFor="lab_id">Lab *</Label>
+                    <Select
+                      value={formData.lab_id}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, lab_id: value })
                       }
-                      placeholder="Your internal tracking number"
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select lab" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {labs.map((lab) => (
+                          <SelectItem key={lab.id} value={lab.id}>
+                            {lab.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="quote_number">Internal Quote Number</Label>
+                      <Input
+                        id="quote_number"
+                        value={formData.quote_number}
+                        onChange={(e) =>
+                          setFormData({ ...formData, quote_number: e.target.value })
+                        }
+                        placeholder="Your internal tracking number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lab_quote_number">Lab Quote Number</Label>
+                      <Input
+                        id="lab_quote_number"
+                        value={formData.lab_quote_number}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lab_quote_number: e.target.value })
+                        }
+                        placeholder="Vendor's quote number"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
+                      placeholder="Additional notes about this quote"
+                      rows={3}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lab_quote_number">Lab Quote Number</Label>
-                    <Input
-                      id="lab_quote_number"
-                      value={formData.lab_quote_number}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lab_quote_number: e.target.value })
-                      }
-                      placeholder="Vendor's quote number"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder="Additional notes about this quote"
-                    rows={3}
-                  />
-                </div>
 
-                {/* Show additional fields only when editing approved or later quotes */}
-                {editingId && formData.status !== "draft" && formData.status !== "sent_to_vendor" && (
-                  <>
-                    <div className="border-t pt-4 space-y-4">
-                      <h3 className="font-medium text-sm">Fulfillment Details</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="status">Status *</Label>
-                          <Select
-                            value={formData.status}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, status: value })
-                            }
-                            required
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
-                              <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
-                              <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="paid_awaiting_shipping">Paid - Awaiting Shipping</SelectItem>
-                              <SelectItem value="in_transit">In Transit</SelectItem>
-                              <SelectItem value="delivered">Delivered</SelectItem>
-                              <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="shipped_date">Shipped Date</Label>
-                          <Input
-                            id="shipped_date"
-                            type="date"
-                            value={formData.shipped_date}
-                            onChange={(e) =>
-                              setFormData({ ...formData, shipped_date: e.target.value })
-                            }
-                          />
+                  {/* Show additional fields only when editing approved or later quotes */}
+                  {editingId && formData.status !== "draft" && formData.status !== "sent_to_vendor" && (
+                    <>
+                      <div className="border-t pt-4 space-y-4">
+                        <h3 className="font-medium text-sm">Fulfillment Details</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Status *</Label>
+                            <Select
+                              value={formData.status}
+                              onValueChange={(value) =>
+                                setFormData({ ...formData, status: value })
+                              }
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="sent_to_vendor">Sent to Vendor</SelectItem>
+                                <SelectItem value="awaiting_customer_approval">Awaiting Approval</SelectItem>
+                                <SelectItem value="approved_payment_pending">Approved - Payment Pending</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                                <SelectItem value="paid_awaiting_shipping">Paid - Awaiting Shipping</SelectItem>
+                                <SelectItem value="in_transit">In Transit</SelectItem>
+                                <SelectItem value="delivered">Delivered</SelectItem>
+                                <SelectItem value="testing_in_progress">Testing in Progress</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="shipped_date">Shipped Date</Label>
+                            <Input
+                              id="shipped_date"
+                              type="date"
+                              value={formData.shipped_date}
+                              onChange={(e) =>
+                                setFormData({ ...formData, shipped_date: e.target.value })
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setTemplateDialogOpen(true)}
-                    disabled={quoteItems.length === 0}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save as Template
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingId ? "Update" : "Create"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                    </>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setTemplateDialogOpen(true)}
+                      disabled={quoteItems.length === 0}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save as Template
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">Update</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

@@ -189,10 +189,56 @@ export default function LabOpenRequests() {
     setResponseNotes("");
     setModifiedDiscount("");
     setModifiedPrices({});
+    setModifiedSamplePrices({});
+    setModifiedHeaderPrices({});
   };
+
+  // Track separate modified prices for base, additional samples, and headers
+  const [modifiedSamplePrices, setModifiedSamplePrices] = useState<Record<string, string>>({});
+  const [modifiedHeaderPrices, setModifiedHeaderPrices] = useState<Record<string, string>>({});
 
   const handlePriceChange = (itemId: string, value: string) => {
     setModifiedPrices(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const handleSamplePriceChange = (itemId: string, value: string) => {
+    setModifiedSamplePrices(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const handleHeaderPriceChange = (itemId: string, value: string) => {
+    setModifiedHeaderPrices(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  // Calculate additional samples price ($60 each for Tirzepatide, Semaglutide, Retatrutide)
+  const getAdditionalSamplesPrice = (item: QuoteItem): number => {
+    if (!item.additional_samples || item.additional_samples === 0) return 0;
+    const compoundName = item.products?.name || "";
+    const isPremiumCompound = ["Tirzepatide", "Semaglutide", "Retatrutide"].some(
+      name => compoundName.toLowerCase().includes(name.toLowerCase())
+    );
+    return isPremiumCompound ? item.additional_samples * 60 : item.additional_samples * 60;
+  };
+
+  // Calculate additional headers price ($30 each)
+  const getAdditionalHeadersPrice = (item: QuoteItem): number => {
+    if (!item.additional_report_headers || item.additional_report_headers === 0) return 0;
+    return item.additional_report_headers * 30;
+  };
+
+  // Get modified or default additional samples price
+  const getEffectiveSamplePrice = (item: QuoteItem): number => {
+    if (modifiedSamplePrices[item.id] !== undefined && modifiedSamplePrices[item.id] !== "") {
+      return parseFloat(modifiedSamplePrices[item.id]) || 0;
+    }
+    return getAdditionalSamplesPrice(item);
+  };
+
+  // Get modified or default additional headers price  
+  const getEffectiveHeaderPrice = (item: QuoteItem): number => {
+    if (modifiedHeaderPrices[item.id] !== undefined && modifiedHeaderPrices[item.id] !== "") {
+      return parseFloat(modifiedHeaderPrices[item.id]) || 0;
+    }
+    return getAdditionalHeadersPrice(item);
   };
 
   const getItemPrice = (item: QuoteItem): number => {
@@ -202,13 +248,18 @@ export default function LabOpenRequests() {
     return item.price || 0;
   };
 
+  // Get total price for an item including all components
+  const getItemTotalPrice = (item: QuoteItem): number => {
+    return getItemPrice(item) + getEffectiveSamplePrice(item) + getEffectiveHeaderPrice(item);
+  };
+
   const hasModifiedPrices = () => {
     return Object.keys(modifiedPrices).some(itemId => {
       const item = selectedQuoteItems.find(i => i.id === itemId);
       if (!item) return false;
       const newPrice = parseFloat(modifiedPrices[itemId]);
       return !isNaN(newPrice) && newPrice !== item.price;
-    });
+    }) || Object.keys(modifiedSamplePrices).length > 0 || Object.keys(modifiedHeaderPrices).length > 0;
   };
 
   const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
@@ -579,10 +630,20 @@ export default function LabOpenRequests() {
                     <div className="space-y-4">
                       {selectedQuoteItems.map((item, index) => {
                         const canEditPrice = selectedQuote?.status === "sent_to_vendor" && permissions.canApproveQuotes;
-                        const currentPrice = getItemPrice(item);
+                        const currentBasePrice = getItemPrice(item);
                         const originalPrice = item.price || 0;
                         const isPriceModified = modifiedPrices[item.id] !== undefined && 
                           parseFloat(modifiedPrices[item.id]) !== originalPrice;
+                        
+                        const hasSamples = item.additional_samples && item.additional_samples > 0;
+                        const hasHeaders = item.additional_report_headers && item.additional_report_headers > 0;
+                        const defaultSamplePrice = getAdditionalSamplesPrice(item);
+                        const defaultHeaderPrice = getAdditionalHeadersPrice(item);
+                        const effectiveSamplePrice = getEffectiveSamplePrice(item);
+                        const effectiveHeaderPrice = getEffectiveHeaderPrice(item);
+                        const isSamplePriceModified = modifiedSamplePrices[item.id] !== undefined;
+                        const isHeaderPriceModified = modifiedHeaderPrices[item.id] !== undefined;
+                        const itemTotal = getItemTotalPrice(item);
                         
                         return (
                           <div key={item.id} className="border rounded-lg p-4 bg-muted/30">
@@ -595,29 +656,14 @@ export default function LabOpenRequests() {
                                   </Badge>
                                 )}
                               </div>
-                              {canEditPrice ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-muted-foreground">$</span>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    className={`w-24 text-right ${isPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
-                                    value={modifiedPrices[item.id] ?? (item.price?.toString() || "")}
-                                    onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                                    placeholder="0.00"
-                                  />
-                                  {isPriceModified && (
-                                    <Badge variant="outline" className="text-orange-600 border-orange-300">
-                                      Modified
-                                    </Badge>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-lg font-semibold">
-                                  ${currentPrice.toFixed(2)}
-                                </span>
-                              )}
+                              <div className="text-right">
+                                <p className="text-lg font-semibold">${itemTotal.toFixed(2)}</p>
+                                {(isPriceModified || isSamplePriceModified || isHeaderPriceModified) && (
+                                  <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                                    Modified
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div>
@@ -637,20 +683,80 @@ export default function LabOpenRequests() {
                                 <p className="font-medium">{item.batch || "-"}</p>
                               </div>
                             </div>
-                            {(item.additional_samples || item.additional_report_headers) && (
-                              <div className="mt-3 pt-3 border-t flex gap-4 text-sm">
-                                {item.additional_samples ? (
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline">+{item.additional_samples} variance samples</Badge>
+                            
+                            {/* Pricing breakdown section */}
+                            <div className="mt-3 pt-3 border-t space-y-2">
+                              {/* Base price row */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Base test price</span>
+                                {canEditPrice ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground text-sm">$</span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      className={`w-24 h-8 text-right text-sm ${isPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
+                                      value={modifiedPrices[item.id] ?? (item.price?.toString() || "")}
+                                      onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                      placeholder="0.00"
+                                    />
                                   </div>
-                                ) : null}
-                                {item.additional_report_headers ? (
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline">+{item.additional_report_headers} report headers</Badge>
-                                  </div>
-                                ) : null}
+                                ) : (
+                                  <span className="text-sm font-medium">${currentBasePrice.toFixed(2)}</span>
+                                )}
                               </div>
-                            )}
+                              
+                              {/* Additional samples row */}
+                              {hasSamples && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    +{item.additional_samples} variance sample{item.additional_samples > 1 ? 's' : ''} @ $60 each
+                                  </span>
+                                  {canEditPrice ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-muted-foreground text-sm">$</span>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className={`w-24 h-8 text-right text-sm ${isSamplePriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
+                                        value={modifiedSamplePrices[item.id] ?? defaultSamplePrice.toString()}
+                                        onChange={(e) => handleSamplePriceChange(item.id, e.target.value)}
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm font-medium">${effectiveSamplePrice.toFixed(2)}</span>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Additional headers row */}
+                              {hasHeaders && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    +{item.additional_report_headers} report header{item.additional_report_headers > 1 ? 's' : ''} @ $30 each
+                                  </span>
+                                  {canEditPrice ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-muted-foreground text-sm">$</span>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className={`w-24 h-8 text-right text-sm ${isHeaderPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
+                                        value={modifiedHeaderPrices[item.id] ?? defaultHeaderPrice.toString()}
+                                        onChange={(e) => handleHeaderPriceChange(item.id, e.target.value)}
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm font-medium">${effectiveHeaderPrice.toFixed(2)}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -660,7 +766,7 @@ export default function LabOpenRequests() {
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total</p>
                           <p className="text-xl font-bold">
-                            ${selectedQuoteItems.reduce((sum, item) => sum + getItemPrice(item), 0).toFixed(2)}
+                            ${selectedQuoteItems.reduce((sum, item) => sum + getItemTotalPrice(item), 0).toFixed(2)}
                           </p>
                           {hasModifiedPrices() && (
                             <p className="text-xs text-orange-600 mt-1">Includes modified prices</p>

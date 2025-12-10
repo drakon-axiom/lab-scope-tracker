@@ -56,10 +56,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, Wand2, CheckCircle2, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, CheckCircle2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
-import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
+
 import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
 import { PaymentDetailsDialog, PaymentFormData } from "@/components/PaymentDetailsDialog";
 import { ShippingDetailsDialog, ShippingFormData } from "@/components/ShippingDetailsDialog";
@@ -274,7 +274,7 @@ const Quotes = () => {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [activeView, setActiveView] = useState<string>("all"); // "all" or saved view id
-  const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
+  
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -2374,16 +2374,6 @@ const Quotes = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setBulkPricingWizardOpen(true)}
-              className="text-xs sm:text-sm"
-            >
-              <Wand2 className="mr-1 sm:mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Bulk Pricing Setup</span>
-              <span className="sm:hidden">Pricing</span>
-            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={resetForm} size="sm" className="text-xs sm:text-sm">
@@ -4141,17 +4131,6 @@ const Quotes = () => {
           quoteId={selectedQuote?.id}
         />
 
-        {/* Bulk Vendor Pricing Wizard */}
-        <BulkVendorPricingWizard
-          open={bulkPricingWizardOpen}
-          onOpenChange={setBulkPricingWizardOpen}
-          onComplete={() => {
-            toast({
-              title: "Success",
-              description: "Vendor pricing updated successfully",
-            });
-          }}
-        />
 
         {/* Quote Approval Dialog */}
         {selectedQuoteForApproval && quoteItems.length > 0 && (

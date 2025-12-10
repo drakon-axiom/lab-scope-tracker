@@ -58,9 +58,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, DollarSign, Wand2, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Edit, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Upload, Download, Eye, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 import { VendorPricingDialog } from "@/components/VendorPricingDialog";
-import { BulkVendorPricingWizard } from "@/components/BulkVendorPricingWizard";
 import {
   Pagination,
   PaginationContent,
@@ -106,7 +105,7 @@ const Compounds = () => {
   const [editingCompound, setEditingCompound] = useState<Compound | null>(null);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [selectedCompound, setSelectedCompound] = useState<{ id: string; name: string } | null>(null);
-  const [bulkPricingWizardOpen, setBulkPricingWizardOpen] = useState(false);
+  
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
   const [bulkUpdateData, setBulkUpdateData] = useState({
@@ -857,16 +856,6 @@ const Compounds = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setBulkPricingWizardOpen(true)}
-              className="text-xs sm:text-sm"
-            >
-              <Wand2 className="mr-1 sm:mr-2 h-4 w-4" />
-              <span className="hidden md:inline">Bulk Pricing Setup</span>
-              <span className="md:hidden">Pricing</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => setImportDialogOpen(true)}
               className="text-xs sm:text-sm"
             >
@@ -1374,18 +1363,6 @@ const Compounds = () => {
         />
       )}
       
-      {/* Bulk Vendor Pricing Wizard */}
-      <BulkVendorPricingWizard
-        open={bulkPricingWizardOpen}
-        onOpenChange={setBulkPricingWizardOpen}
-        onComplete={() => {
-          toast({
-            title: "Success",
-            description: "Vendor pricing updated successfully",
-          });
-          fetchCompounds();
-        }}
-      />
 
       {/* Bulk Update Dialog */}
       <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>

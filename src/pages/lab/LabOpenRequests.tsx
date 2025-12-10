@@ -11,7 +11,7 @@ import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
 import { 
   Eye, Check, X, Edit, Lock, Package, CreditCard, 
-  FlaskConical, FileText, Upload, ChevronRight, RefreshCw 
+  FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2 
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -114,6 +114,8 @@ export default function LabOpenRequests() {
   const [responseNotes, setResponseNotes] = useState("");
   const [modifiedDiscount, setModifiedDiscount] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [modifiedPrices, setModifiedPrices] = useState<Record<string, string>>({});
+  const [savingApproval, setSavingApproval] = useState(false);
 
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
 
@@ -186,10 +188,50 @@ export default function LabOpenRequests() {
     fetchQuoteItems(quote.id);
     setResponseNotes("");
     setModifiedDiscount("");
+    setModifiedPrices({});
+  };
+
+  const handlePriceChange = (itemId: string, value: string) => {
+    setModifiedPrices(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const getItemPrice = (item: QuoteItem): number => {
+    if (modifiedPrices[item.id] !== undefined && modifiedPrices[item.id] !== "") {
+      return parseFloat(modifiedPrices[item.id]) || 0;
+    }
+    return item.price || 0;
+  };
+
+  const hasModifiedPrices = () => {
+    return Object.keys(modifiedPrices).some(itemId => {
+      const item = selectedQuoteItems.find(i => i.id === itemId);
+      if (!item) return false;
+      const newPrice = parseFloat(modifiedPrices[itemId]);
+      return !isNaN(newPrice) && newPrice !== item.price;
+    });
   };
 
   const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
+    setSavingApproval(true);
     try {
+      // If approving with changes, update any modified item prices first
+      if (withChanges && hasModifiedPrices()) {
+        for (const [itemId, priceStr] of Object.entries(modifiedPrices)) {
+          const newPrice = parseFloat(priceStr);
+          if (!isNaN(newPrice)) {
+            const { error: itemError } = await supabase
+              .from("quote_items")
+              .update({ price: newPrice })
+              .eq("id", itemId);
+            
+            if (itemError) {
+              console.error("Error updating item price:", itemError);
+              throw itemError;
+            }
+          }
+        }
+      }
+
       const updates: Record<string, unknown> = {
         lab_response: responseNotes || null,
       };
@@ -217,7 +259,11 @@ export default function LabOpenRequests() {
         description: withChanges
           ? "Lab approved quote with modifications"
           : "Lab approved quote",
-        metadata: { notes: responseNotes, discount: modifiedDiscount },
+        metadata: { 
+          notes: responseNotes, 
+          discount: modifiedDiscount,
+          modified_prices: hasModifiedPrices() ? modifiedPrices : null
+        },
       });
 
       toast.success(
@@ -229,6 +275,8 @@ export default function LabOpenRequests() {
     } catch (error) {
       console.error("Error approving quote:", error);
       toast.error("Failed to approve quote");
+    } finally {
+      setSavingApproval(false);
     }
   };
 
@@ -529,63 +577,94 @@ export default function LabOpenRequests() {
                     <p className="text-sm text-muted-foreground py-4 text-center">No items found</p>
                   ) : (
                     <div className="space-y-4">
-                      {selectedQuoteItems.map((item, index) => (
-                        <div key={item.id} className="border rounded-lg p-4 bg-muted/30">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h4 className="font-medium">{item.products?.name || "Unknown Compound"}</h4>
-                              {item.products?.category && (
-                                <Badge variant="secondary" className="mt-1 text-xs">
-                                  {item.products.category}
-                                </Badge>
+                      {selectedQuoteItems.map((item, index) => {
+                        const canEditPrice = selectedQuote?.status === "sent_to_vendor" && permissions.canApproveQuotes;
+                        const currentPrice = getItemPrice(item);
+                        const originalPrice = item.price || 0;
+                        const isPriceModified = modifiedPrices[item.id] !== undefined && 
+                          parseFloat(modifiedPrices[item.id]) !== originalPrice;
+                        
+                        return (
+                          <div key={item.id} className="border rounded-lg p-4 bg-muted/30">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="font-medium">{item.products?.name || "Unknown Compound"}</h4>
+                                {item.products?.category && (
+                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                    {item.products.category}
+                                  </Badge>
+                                )}
+                              </div>
+                              {canEditPrice ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">$</span>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    className={`w-24 text-right ${isPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
+                                    value={modifiedPrices[item.id] ?? (item.price?.toString() || "")}
+                                    onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                    placeholder="0.00"
+                                  />
+                                  {isPriceModified && (
+                                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                      Modified
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-lg font-semibold">
+                                  ${currentPrice.toFixed(2)}
+                                </span>
                               )}
                             </div>
-                            <span className="text-lg font-semibold">
-                              {item.price ? `$${item.price.toFixed(2)}` : "-"}
-                            </span>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Client</p>
+                                <p className="font-medium">{item.client || "-"}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Sample</p>
+                                <p className="font-medium">{item.sample || "-"}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Manufacturer</p>
+                                <p className="font-medium">{item.manufacturer || "-"}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Batch</p>
+                                <p className="font-medium">{item.batch || "-"}</p>
+                              </div>
+                            </div>
+                            {(item.additional_samples || item.additional_report_headers) && (
+                              <div className="mt-3 pt-3 border-t flex gap-4 text-sm">
+                                {item.additional_samples ? (
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">+{item.additional_samples} variance samples</Badge>
+                                  </div>
+                                ) : null}
+                                {item.additional_report_headers ? (
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">+{item.additional_report_headers} report headers</Badge>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Client</p>
-                              <p className="font-medium">{item.client || "-"}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Sample</p>
-                              <p className="font-medium">{item.sample || "-"}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Manufacturer</p>
-                              <p className="font-medium">{item.manufacturer || "-"}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Batch</p>
-                              <p className="font-medium">{item.batch || "-"}</p>
-                            </div>
-                          </div>
-                          {(item.additional_samples || item.additional_report_headers) && (
-                            <div className="mt-3 pt-3 border-t flex gap-4 text-sm">
-                              {item.additional_samples ? (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">+{item.additional_samples} variance samples</Badge>
-                                </div>
-                              ) : null}
-                              {item.additional_report_headers ? (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">+{item.additional_report_headers} report headers</Badge>
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                       
                       {/* Total Section */}
                       <div className="flex justify-end pt-2 border-t">
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total</p>
                           <p className="text-xl font-bold">
-                            ${selectedQuoteItems.reduce((sum, item) => sum + (item.price || 0), 0).toFixed(2)}
+                            ${selectedQuoteItems.reduce((sum, item) => sum + getItemPrice(item), 0).toFixed(2)}
                           </p>
+                          {hasModifiedPrices() && (
+                            <p className="text-xs text-orange-600 mt-1">Includes modified prices</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -655,6 +734,7 @@ export default function LabOpenRequests() {
                     <Button
                       variant="destructive"
                       onClick={() => handleReject(selectedQuote)}
+                      disabled={savingApproval}
                     >
                       <X className="h-4 w-4 mr-1" />
                       Reject
@@ -662,12 +742,24 @@ export default function LabOpenRequests() {
                     <Button
                       variant="outline"
                       onClick={() => handleApprove(selectedQuote, true)}
+                      disabled={savingApproval}
                     >
-                      <Edit className="h-4 w-4 mr-1" />
+                      {savingApproval ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Edit className="h-4 w-4 mr-1" />
+                      )}
                       Approve with Changes
                     </Button>
-                    <Button onClick={() => handleApprove(selectedQuote, false)}>
-                      <Check className="h-4 w-4 mr-1" />
+                    <Button 
+                      onClick={() => handleApprove(selectedQuote, false)}
+                      disabled={savingApproval}
+                    >
+                      {savingApproval ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4 mr-1" />
+                      )}
                       Approve
                     </Button>
                   </>

@@ -265,18 +265,48 @@ export default function LabOpenRequests() {
   const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
     setSavingApproval(true);
     try {
-      // If approving with changes, update any modified item prices first
+      // If approving with changes, update any modified item prices
       if (withChanges && hasModifiedPrices()) {
-        for (const [itemId, priceStr] of Object.entries(modifiedPrices)) {
-          const newPrice = parseFloat(priceStr);
-          if (!isNaN(newPrice)) {
+        // Update each item with modified prices (base, sample, header)
+        for (const item of selectedQuoteItems) {
+          const updates: Record<string, unknown> = {};
+          
+          // Check if base price was modified
+          if (modifiedPrices[item.id] !== undefined && modifiedPrices[item.id] !== "") {
+            const newPrice = parseFloat(modifiedPrices[item.id]);
+            if (!isNaN(newPrice)) {
+              updates.price = newPrice;
+            }
+          }
+          
+          // Check if additional samples price was modified - store in additional_headers_data
+          const hasModifiedSamplePrice = modifiedSamplePrices[item.id] !== undefined && modifiedSamplePrices[item.id] !== "";
+          const hasModifiedHeaderPrice = modifiedHeaderPrices[item.id] !== undefined && modifiedHeaderPrices[item.id] !== "";
+          
+          if (hasModifiedSamplePrice || hasModifiedHeaderPrice) {
+            // Get existing additional_headers_data or create new
+            const existingData = (item as any).additional_headers_data || {};
+            const newData = { ...existingData };
+            
+            if (hasModifiedSamplePrice) {
+              newData.modified_samples_total = parseFloat(modifiedSamplePrices[item.id]) || 0;
+            }
+            if (hasModifiedHeaderPrice) {
+              newData.modified_headers_total = parseFloat(modifiedHeaderPrices[item.id]) || 0;
+            }
+            
+            updates.additional_headers_data = newData;
+          }
+          
+          // Only update if there are changes
+          if (Object.keys(updates).length > 0) {
             const { error: itemError } = await supabase
               .from("quote_items")
-              .update({ price: newPrice })
-              .eq("id", itemId);
+              .update(updates)
+              .eq("id", item.id);
             
             if (itemError) {
-              console.error("Error updating item price:", itemError);
+              console.error("Error updating item prices:", itemError);
               throw itemError;
             }
           }
@@ -313,7 +343,9 @@ export default function LabOpenRequests() {
         metadata: { 
           notes: responseNotes, 
           discount: modifiedDiscount,
-          modified_prices: hasModifiedPrices() ? modifiedPrices : null
+          modified_base_prices: Object.keys(modifiedPrices).length > 0 ? modifiedPrices : null,
+          modified_sample_prices: Object.keys(modifiedSamplePrices).length > 0 ? modifiedSamplePrices : null,
+          modified_header_prices: Object.keys(modifiedHeaderPrices).length > 0 ? modifiedHeaderPrices : null
         },
       });
 

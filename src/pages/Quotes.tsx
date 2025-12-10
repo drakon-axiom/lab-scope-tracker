@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useIsMobile } from "@/hooks/use-mobile";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { ResponsiveDialog } from "@/components/ResponsiveDialog";
@@ -159,6 +161,8 @@ interface TrackingHistory {
 }
 
 const Quotes = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { role, isSubscriber, isAdmin, loading: roleLoading } = useUserRole();
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { canSendItems, getRemainingItems } = useSubscription();
@@ -2375,28 +2379,40 @@ const Quotes = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            {/* New Quote Button - Opens unified creation dialog */}
-            <Button onClick={() => setDialogOpen(true)} size="sm" className="text-xs sm:text-sm">
+            {/* New Quote Button - Navigates to page on mobile, opens dialog on desktop */}
+            <Button 
+              onClick={() => {
+                if (isMobile) {
+                  navigate("/quotes/new");
+                } else {
+                  setDialogOpen(true);
+                }
+              }} 
+              size="sm" 
+              className="text-xs sm:text-sm"
+            >
               <Plus className="mr-1 sm:mr-2 h-4 w-4" />
               <span className="hidden xs:inline">New Quote</span>
               <span className="xs:hidden">New</span>
             </Button>
 
-            {/* Unified Quote Creation Dialog */}
-            <QuoteCreationDialog
-              open={dialogOpen && !editingId}
-              onOpenChange={(open) => {
-                if (!open) {
+            {/* Unified Quote Creation Dialog - Desktop only */}
+            {!isMobile && (
+              <QuoteCreationDialog
+                open={dialogOpen && !editingId}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setDialogOpen(false);
+                    resetForm();
+                  }
+                }}
+                labs={labs}
+                onSuccess={() => {
+                  fetchQuotes();
                   setDialogOpen(false);
-                  resetForm();
-                }
-              }}
-              labs={labs}
-              onSuccess={() => {
-                fetchQuotes();
-                setDialogOpen(false);
-              }}
-            />
+                }}
+              />
+            )}
 
             {/* Edit Quote Dialog - kept for editing existing quotes */}
             <Dialog open={dialogOpen && !!editingId} onOpenChange={(open) => {

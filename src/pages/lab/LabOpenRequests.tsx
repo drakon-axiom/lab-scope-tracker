@@ -186,8 +186,9 @@ export default function LabOpenRequests() {
     setSelectedQuote(quote);
     setDialogOpen(true);
     fetchQuoteItems(quote.id);
-    setResponseNotes("");
-    setModifiedDiscount("");
+    setResponseNotes(quote.lab_response || "");
+    // Pre-populate with existing discount percentage if set
+    setModifiedDiscount(quote.discount_amount?.toString() || "");
     setModifiedPrices({});
     setModifiedSamplePrices({});
     setModifiedHeaderPrices({});
@@ -793,13 +794,34 @@ export default function LabOpenRequests() {
                         );
                       })}
                       
-                      {/* Total Section */}
+                      {/* Total Section with Discount */}
                       <div className="flex justify-end pt-2 border-t">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Total</p>
-                          <p className="text-xl font-bold">
-                            ${selectedQuoteItems.reduce((sum, item) => sum + getItemTotalPrice(item), 0).toFixed(2)}
-                          </p>
+                        <div className="text-right space-y-1">
+                          {(() => {
+                            const subtotal = selectedQuoteItems.reduce((sum, item) => sum + getItemTotalPrice(item), 0);
+                            const discountPercent = modifiedDiscount ? parseFloat(modifiedDiscount) : (selectedQuote?.discount_amount || 0);
+                            const discountAmount = discountPercent > 0 ? subtotal * (discountPercent / 100) : 0;
+                            const total = subtotal - discountAmount;
+                            
+                            return (
+                              <>
+                                <div className="flex justify-between gap-8">
+                                  <span className="text-sm text-muted-foreground">Subtotal</span>
+                                  <span className="text-sm font-medium">${subtotal.toFixed(2)}</span>
+                                </div>
+                                {discountPercent > 0 && (
+                                  <div className="flex justify-between gap-8 text-green-600">
+                                    <span className="text-sm">Discount ({discountPercent}%)</span>
+                                    <span className="text-sm font-medium">-${discountAmount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between gap-8 pt-1 border-t">
+                                  <span className="text-sm text-muted-foreground">Total</span>
+                                  <span className="text-xl font-bold">${total.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                           {hasModifiedPrices() && (
                             <p className="text-xs text-orange-600 mt-1">Includes modified prices</p>
                           )}

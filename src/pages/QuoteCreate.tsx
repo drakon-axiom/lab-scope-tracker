@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2, Pencil, Save } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2, Pencil, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerSuccessConfetti } from "@/lib/confetti";
 
@@ -117,6 +117,7 @@ const QuoteCreate = () => {
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [submittingQuote, setSubmittingQuote] = useState(false);
   const [itemFormData, setItemFormData] = useState<QuoteItem>({
     product_id: "",
     product_name: "",
@@ -535,7 +536,7 @@ const QuoteCreate = () => {
     return items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitAndEmail = async () => {
     if (!formData.lab_id) {
       toast({
         title: "Missing lab",
@@ -554,7 +555,7 @@ const QuoteCreate = () => {
       return;
     }
 
-    setLoading(true);
+    setSubmittingQuote(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -567,13 +568,14 @@ const QuoteCreate = () => {
       let targetQuoteId: string;
 
       if (isEditMode && quoteId) {
-        // Update existing quote
+        // Update existing quote and change status to sent_to_vendor
         const { error: quoteError } = await supabase
           .from("quotes")
           .update({
             lab_id: formData.lab_id,
             quote_number: formData.quote_number || null,
             notes: formData.notes || null,
+            status: "sent_to_vendor",
           })
           .eq("id", quoteId);
 
@@ -583,14 +585,14 @@ const QuoteCreate = () => {
         // Delete existing items and recreate them
         await supabase.from("quote_items").delete().eq("quote_id", quoteId);
       } else {
-        // Create new quote
+        // Create new quote with sent_to_vendor status
         const { data: newQuote, error: quoteError } = await supabase
           .from("quotes")
           .insert({
             lab_id: formData.lab_id,
             quote_number: formData.quote_number || null,
             notes: formData.notes || null,
-            status: "draft",
+            status: "sent_to_vendor",
             user_id: effectiveUserId,
           })
           .select()
@@ -642,22 +644,37 @@ const QuoteCreate = () => {
 
       if (itemsError) throw itemsError;
 
+      // Send email to lab
+      const { error: emailError } = await supabase.functions.invoke("send-quote-email", {
+        body: { quoteId: targetQuoteId },
+      });
+
+      if (emailError) {
+        console.error("Email error:", emailError);
+        // Still log success but notify about email issue
+        toast({
+          title: "Quote submitted",
+          description: "Quote saved but email could not be sent. You can resend from the quotes page.",
+          variant: "default",
+          duration: 5000,
+        });
+      } else {
+        toast({ title: "Quote submitted and sent to lab", duration: 3000 });
+      }
+
       // Log activity
       await supabase.from("quote_activity_log").insert({
         quote_id: targetQuoteId,
         user_id: user.id,
-        activity_type: isEditMode ? "quote_updated" : "quote_created",
-        description: isEditMode 
-          ? `Quote updated with ${items.length} item(s)`
-          : `Quote created with ${items.length} item(s)`,
+        activity_type: "quote_submitted",
+        description: `Quote submitted and sent to lab with ${items.length} item(s)`,
         metadata: {
           lab_id: formData.lab_id,
-          status: "draft",
+          status: "sent_to_vendor",
           items_count: items.length,
         },
       });
 
-      toast({ title: isEditMode ? "Quote updated successfully" : "Quote created successfully", duration: 3000 });
       triggerSuccessConfetti();
       navigate("/quotes");
     } catch (error: any) {
@@ -667,7 +684,7 @@ const QuoteCreate = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setSubmittingQuote(false);
     }
   };
 
@@ -1032,16 +1049,26 @@ const QuoteCreate = () => {
 
             {/* Navigation */}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-12">
+              <Button variant="outline" onClick={() => setStep(2)} className="h-12">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button
-                onClick={handleSubmit}
-                disabled={loading}
+                variant="outline"
+                onClick={handleSaveAsDraft}
+                disabled={savingDraft || submittingQuote}
                 className="flex-1 h-12"
               >
-                {loading ? "Creating..." : "Create Quote"}
+                <Save className="mr-2 h-4 w-4" />
+                {savingDraft ? "Saving..." : "Save Draft"}
+              </Button>
+              <Button
+                onClick={handleSubmitAndEmail}
+                disabled={submittingQuote || savingDraft}
+                className="flex-1 h-12"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {submittingQuote ? "Submitting..." : "Submit Quote"}
               </Button>
             </div>
           </div>

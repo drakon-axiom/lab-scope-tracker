@@ -203,8 +203,7 @@ const Quotes = () => {
       case 'draft':
         actions.edit = true;
         actions.delete = true;
-        actions.manageItems = true;
-        actions.sendToVendor = true;
+        // Other actions (manageItems, sendToVendor) handled in QuoteCreate page
         break;
       case 'sent_to_vendor':
         // Just view while waiting for vendor response

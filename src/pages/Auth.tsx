@@ -85,7 +85,7 @@ const Auth = () => {
       return;
     }
 
-    // Check if user is an admin - if so, redirect to admin portal
+    // Check if user is an admin or lab - redirect to appropriate portal
     if (data.user) {
       const { data: roleData } = await supabase
         .from("user_roles")
@@ -94,7 +94,6 @@ const Auth = () => {
         .maybeSingle();
 
       if (roleData?.role === "admin") {
-        // Sign out and redirect to admin portal
         await supabase.auth.signOut();
         setLoading(false);
         toast({
@@ -103,6 +102,18 @@ const Auth = () => {
           duration: 4000,
         });
         navigate("/overseer-alpha/auth");
+        return;
+      }
+
+      if (roleData?.role === "lab") {
+        await supabase.auth.signOut();
+        setLoading(false);
+        toast({
+          title: "Lab account detected",
+          description: "Please use the lab portal to sign in.",
+          duration: 4000,
+        });
+        navigate("/lab/auth");
         return;
       }
     }

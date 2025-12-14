@@ -30,8 +30,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerSuccessConfetti } from "@/lib/confetti";
 
@@ -82,6 +88,9 @@ const QuoteCreate = () => {
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { toast } = useToast();
 
+  // Wizard step
+  const [step, setStep] = useState(1);
+
   // Labs
   const [labs, setLabs] = useState<Lab[]>([]);
 
@@ -89,7 +98,6 @@ const QuoteCreate = () => {
   const [formData, setFormData] = useState({
     lab_id: "",
     quote_number: "",
-    lab_quote_number: "",
     notes: "",
   });
 
@@ -100,8 +108,8 @@ const QuoteCreate = () => {
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Item form state
-  const [showItemForm, setShowItemForm] = useState(false);
+  // Add item dialog
+  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [itemFormData, setItemFormData] = useState<QuoteItem>({
     product_id: "",
     product_name: "",
@@ -264,7 +272,7 @@ const QuoteCreate = () => {
 
     setItems([...items, newItem]);
     resetItemForm();
-    setShowItemForm(false);
+    setShowAddItemDialog(false);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -332,7 +340,6 @@ const QuoteCreate = () => {
         .insert({
           lab_id: formData.lab_id,
           quote_number: formData.quote_number || null,
-          lab_quote_number: formData.lab_quote_number || null,
           notes: formData.notes || null,
           status: "draft",
           user_id: effectiveUserId,
@@ -428,6 +435,13 @@ const QuoteCreate = () => {
     });
   };
 
+  const getSelectedLabName = () => {
+    return labs.find(l => l.id === formData.lab_id)?.name || "";
+  };
+
+  const canProceedToStep2 = formData.lab_id !== "";
+  const canProceedToStep3 = items.length > 0;
+
   return (
     <Layout>
       <div className="space-y-4 pb-24">
@@ -436,414 +450,621 @@ const QuoteCreate = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/quotes")}
+            onClick={() => step > 1 ? setStep(step - 1) : navigate("/quotes")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Create Quote</h1>
             <p className="text-sm text-muted-foreground">
-              Add quote details and items
+              Step {step} of 3 - {step === 1 ? "Quote Details" : step === 2 ? "Add Items" : "Review & Submit"}
             </p>
           </div>
         </div>
 
-        {/* Quote Info Section */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Quote Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="lab_id">Lab *</Label>
-              <Select
-                value={formData.lab_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, lab_id: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lab" />
-                </SelectTrigger>
-                <SelectContent>
-                  {labs.map((lab) => (
-                    <SelectItem key={lab.id} value={lab.id}>
-                      {lab.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Progress Indicator */}
+        <div className="flex items-center gap-2">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={cn(
+                "h-2 flex-1 rounded-full transition-colors",
+                s <= step ? "bg-primary" : "bg-muted"
+              )}
+            />
+          ))}
+        </div>
 
-            <div className="grid grid-cols-2 gap-3">
+        {/* Step 1: Lab & Quote Details */}
+        {step === 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Quote Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="quote_number">Internal Quote #</Label>
+                <Label htmlFor="lab_id">Select Lab *</Label>
+                <Select
+                  value={formData.lab_id}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, lab_id: value })
+                  }
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Choose a testing lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labs.map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id}>
+                        {lab.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quote_number">Internal Tracking Number</Label>
                 <Input
                   id="quote_number"
                   value={formData.quote_number}
                   onChange={(e) =>
                     setFormData({ ...formData, quote_number: e.target.value })
                   }
-                  placeholder="Optional"
+                  placeholder="Your internal reference (optional)"
+                  className="h-12"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lab_quote_number">Lab Quote #</Label>
-                <Input
-                  id="lab_quote_number"
-                  value={formData.lab_quote_number}
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
                   onChange={(e) =>
-                    setFormData({ ...formData, lab_quote_number: e.target.value })
+                    setFormData({ ...formData, notes: e.target.value })
                   }
-                  placeholder="Optional"
+                  placeholder="Additional notes for this quote (optional)"
+                  rows={3}
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-                placeholder="Optional notes..."
-                rows={2}
-              />
-            </div>
-          </CardContent>
-        </Card>
+              <Button
+                className="w-full h-12"
+                onClick={() => setStep(2)}
+                disabled={!canProceedToStep2}
+              >
+                Next: Add Items
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Items Section */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Quote Items</CardTitle>
-              {!showItemForm && formData.lab_id && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowItemForm(true)}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Item
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!formData.lab_id && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Select a lab first to add items
-              </p>
-            )}
-
-            {/* Item Form */}
-            {showItemForm && (
-              <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                <div className="space-y-2">
-                  <Label>Compound *</Label>
-                  <Select
-                    value={itemFormData.product_id}
-                    onValueChange={handleProductChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select compound" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} - ${product.price?.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Client *</Label>
-                  <Popover open={clientOpen} onOpenChange={setClientOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={clientOpen}
-                        className="w-full justify-between"
-                      >
-                        {itemFormData.client || "Select or enter client..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput
-                          placeholder="Search or enter client..."
-                          onValueChange={(value) => {
-                            setItemFormData({ ...itemFormData, client: value });
-                          }}
-                        />
-                        <CommandList>
-                          <CommandEmpty>
-                            <Button
-                              variant="ghost"
-                              className="w-full"
-                              onClick={() => {
-                                setClientOpen(false);
-                              }}
-                            >
-                              Use "{itemFormData.client}"
-                            </Button>
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {clients.map((client) => (
-                              <CommandItem
-                                key={client.id}
-                                value={client.name}
-                                onSelect={() => {
-                                  setItemFormData({ ...itemFormData, client: client.name });
-                                  setClientOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    itemFormData.client === client.name
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {client.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Manufacturer *</Label>
-                  <Popover open={manufacturerOpen} onOpenChange={setManufacturerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={manufacturerOpen}
-                        className="w-full justify-between"
-                      >
-                        {itemFormData.manufacturer || "Select or enter manufacturer..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput
-                          placeholder="Search or enter manufacturer..."
-                          onValueChange={(value) => {
-                            setItemFormData({ ...itemFormData, manufacturer: value });
-                          }}
-                        />
-                        <CommandList>
-                          <CommandEmpty>
-                            <Button
-                              variant="ghost"
-                              className="w-full"
-                              onClick={() => {
-                                setManufacturerOpen(false);
-                              }}
-                            >
-                              Use "{itemFormData.manufacturer}"
-                            </Button>
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {manufacturers.map((manufacturer) => (
-                              <CommandItem
-                                key={manufacturer.id}
-                                value={manufacturer.name}
-                                onSelect={() => {
-                                  setItemFormData({ ...itemFormData, manufacturer: manufacturer.name });
-                                  setManufacturerOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    itemFormData.manufacturer === manufacturer.name
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {manufacturer.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Batch *</Label>
-                  <Input
-                    value={itemFormData.batch}
-                    onChange={(e) =>
-                      setItemFormData({ ...itemFormData, batch: e.target.value })
-                    }
-                    placeholder="Enter batch number"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Additional Samples</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={itemFormData.additional_samples}
-                      onChange={(e) =>
-                        setItemFormData({
-                          ...itemFormData,
-                          additional_samples: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
+        {/* Step 2: Add Items */}
+        {step === 2 && (
+          <div className="space-y-4">
+            {/* Selected Lab Display */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <FlaskConical className="h-5 w-5 text-primary" />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Additional Headers</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={itemFormData.additional_report_headers}
-                      onChange={(e) =>
-                        handleAdditionalHeadersChange(parseInt(e.target.value) || 0)
-                      }
-                    />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Testing Lab</p>
+                    <p className="font-semibold">{getSelectedLabName()}</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Additional Headers Data */}
-                {itemFormData.additional_headers_data.length > 0 && (
-                  <div className="space-y-3 pt-2 border-t">
-                    <Label className="text-sm font-medium">Additional Header Details</Label>
-                    {itemFormData.additional_headers_data.map((header, idx) => (
-                      <div key={idx} className="grid grid-cols-2 gap-2 p-2 bg-background rounded border">
-                        <Input
-                          placeholder="Client"
-                          value={header.client}
-                          onChange={(e) => {
-                            const newData = [...itemFormData.additional_headers_data];
-                            newData[idx].client = e.target.value;
-                            setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                          }}
-                        />
-                        <Input
-                          placeholder="Sample"
-                          value={header.sample}
-                          onChange={(e) => {
-                            const newData = [...itemFormData.additional_headers_data];
-                            newData[idx].sample = e.target.value;
-                            setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                          }}
-                        />
-                        <Input
-                          placeholder="Manufacturer"
-                          value={header.manufacturer}
-                          onChange={(e) => {
-                            const newData = [...itemFormData.additional_headers_data];
-                            newData[idx].manufacturer = e.target.value;
-                            setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                          }}
-                        />
-                        <Input
-                          placeholder="Batch"
-                          value={header.batch}
-                          onChange={(e) => {
-                            const newData = [...itemFormData.additional_headers_data];
-                            newData[idx].batch = e.target.value;
-                            setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                          }}
-                        />
+            {/* Items List */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Quote Items ({items.length})</CardTitle>
+                  <Button onClick={() => setShowAddItemDialog(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {items.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No items added yet</p>
+                    <p className="text-sm">Click "Add Item" to get started</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between p-4 border rounded-lg bg-background"
+                      >
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.client} • {item.manufacturer} • Batch: {item.batch}
+                          </p>
+                          {(item.additional_samples > 0 || item.additional_report_headers > 0) && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {item.additional_samples > 0 && (
+                                <span className="text-xs px-2 py-1 bg-muted rounded-full">
+                                  +{item.additional_samples} samples
+                                </span>
+                              )}
+                              {item.additional_report_headers > 0 && (
+                                <span className="text-xs px-2 py-1 bg-muted rounded-full">
+                                  +{item.additional_report_headers} headers
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <p className="text-sm font-semibold text-primary mt-2">
+                            ${calculateItemTotal(item).toFixed(2)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveItem(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowItemForm(false);
-                      resetItemForm();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button className="flex-1" onClick={handleAddItem}>
-                    Add Item
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Navigation */}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={() => setStep(3)}
+                disabled={!canProceedToStep3}
+                className="flex-1 h-12"
+              >
+                Review Quote
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
-            {/* Items List */}
-            {items.length > 0 && (
-              <div className="space-y-2">
-                {items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-background"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{item.product_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.client} • {item.manufacturer} • {item.batch}
-                      </p>
-                      <p className="text-sm font-medium text-primary">
-                        ${calculateItemTotal(item).toFixed(2)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+        {/* Step 3: Review */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Review Quote</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Quote Info */}
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Lab</span>
+                    <span className="font-medium">{getSelectedLabName()}</span>
                   </div>
-                ))}
+                  {formData.quote_number && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Internal #</span>
+                      <span className="font-medium">{formData.quote_number}</span>
+                    </div>
+                  )}
+                  {formData.notes && (
+                    <div className="pt-2 border-t">
+                      <span className="text-sm text-muted-foreground">Notes:</span>
+                      <p className="text-sm mt-1">{formData.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Items */}
+                <div className="space-y-3">
+                  <h3 className="font-medium">Items ({items.length})</h3>
+                  {items.map((item, index) => (
+                    <div key={item.id} className="p-4 border rounded-lg space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.client} • {item.manufacturer} • Batch: {item.batch}
+                          </p>
+                        </div>
+                        <span className="font-medium">${item.price.toFixed(2)}</span>
+                      </div>
+                      
+                      {item.additional_samples > 0 && (
+                        <div className="flex justify-between text-sm pl-4">
+                          <span className="text-muted-foreground">
+                            + Additional Samples ({item.additional_samples} × $60)
+                          </span>
+                          <span>${(item.additional_samples * 60).toFixed(2)}</span>
+                        </div>
+                      )}
+                      
+                      {item.additional_report_headers > 0 && (
+                        <div className="flex justify-between text-sm pl-4">
+                          <span className="text-muted-foreground">
+                            + Additional Headers ({item.additional_report_headers} × $30)
+                          </span>
+                          <span>${(item.additional_report_headers * 30).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {item.additional_headers_data.length > 0 && (
+                        <div className="mt-2 pl-4 space-y-1">
+                          {item.additional_headers_data.map((header, hIdx) => (
+                            <p key={hIdx} className="text-xs text-muted-foreground">
+                              Header {hIdx + 1}: {header.client} • {header.sample} • {header.manufacturer} • {header.batch}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between pt-2 border-t font-medium">
+                        <span>Item Total</span>
+                        <span className="text-primary">${calculateItemTotal(item).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {/* Total */}
-                <div className="flex justify-between items-center pt-3 border-t font-medium">
-                  <span>Total</span>
-                  <span className="text-lg">${getTotalQuoteValue().toFixed(2)}</span>
+                <div className="flex justify-between items-center p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <span className="text-lg font-semibold">Quote Total</span>
+                  <span className="text-2xl font-bold text-primary">
+                    ${getTotalQuoteValue().toFixed(2)}
+                  </span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Navigation */}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-12">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex-1 h-12"
+              >
+                {loading ? "Creating..." : "Create Quote"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Add Item Dialog */}
+        <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Item</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Compound *</Label>
+                <Select
+                  value={itemFormData.product_id}
+                  onValueChange={handleProductChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select compound" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} - ${product.price?.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
 
-            {items.length === 0 && formData.lab_id && !showItemForm && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No items added yet
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label>Client *</Label>
+                <Popover open={clientOpen} onOpenChange={setClientOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {itemFormData.client || "Select or type client..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search or type client..."
+                        value={itemFormData.client}
+                        onValueChange={(value) =>
+                          setItemFormData({ ...itemFormData, client: value })
+                        }
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          Press Enter to use "{itemFormData.client}"
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {clients.map((client) => (
+                            <CommandItem
+                              key={client.id}
+                              value={client.name}
+                              onSelect={() => {
+                                setItemFormData({ ...itemFormData, client: client.name });
+                                setClientOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  itemFormData.client === client.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {client.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-        {/* Submit Button - Fixed at bottom */}
-        <div className="fixed bottom-16 left-0 right-0 p-4 bg-background border-t md:relative md:bottom-auto md:border-0 md:p-0 md:bg-transparent">
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSubmit}
-            disabled={loading || items.length === 0 || !formData.lab_id}
-          >
-            {loading ? "Creating..." : "Create Quote"}
-          </Button>
-        </div>
+              <div className="space-y-2">
+                <Label>Manufacturer *</Label>
+                <Popover open={manufacturerOpen} onOpenChange={setManufacturerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {itemFormData.manufacturer || "Select or type manufacturer..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search or type manufacturer..."
+                        value={itemFormData.manufacturer}
+                        onValueChange={(value) =>
+                          setItemFormData({ ...itemFormData, manufacturer: value })
+                        }
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          Press Enter to use "{itemFormData.manufacturer}"
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {manufacturers.map((manufacturer) => (
+                            <CommandItem
+                              key={manufacturer.id}
+                              value={manufacturer.name}
+                              onSelect={() => {
+                                setItemFormData({ ...itemFormData, manufacturer: manufacturer.name });
+                                setManufacturerOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  itemFormData.manufacturer === manufacturer.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {manufacturer.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Batch *</Label>
+                <Input
+                  value={itemFormData.batch}
+                  onChange={(e) =>
+                    setItemFormData({ ...itemFormData, batch: e.target.value })
+                  }
+                  placeholder="Batch number"
+                />
+              </div>
+
+              {/* Additional Samples Checkbox */}
+              <div className="space-y-3 p-3 border rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="has_additional_samples"
+                    checked={itemFormData.has_additional_samples}
+                    onCheckedChange={(checked) =>
+                      setItemFormData({
+                        ...itemFormData,
+                        has_additional_samples: !!checked,
+                        additional_samples: checked ? (itemFormData.additional_samples || 1) : 0,
+                      })
+                    }
+                  />
+                  <Label htmlFor="has_additional_samples" className="text-sm font-medium">
+                    Additional samples for variance testing
+                  </Label>
+                </div>
+                
+                {itemFormData.has_additional_samples && (
+                  <div className="pl-6 space-y-2">
+                    <Label className="text-sm text-muted-foreground">Number of additional samples</Label>
+                    <Select
+                      value={itemFormData.additional_samples.toString()}
+                      onValueChange={(value) =>
+                        setItemFormData({ ...itemFormData, additional_samples: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                          <SelectItem key={num} value={num.toString()}>
+                            {num}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      $60 per additional sample for Tirzepatide, Semaglutide, Retatrutide
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Report Headers Checkbox */}
+              <div className="space-y-3 p-3 border rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="has_additional_headers"
+                    checked={itemFormData.additional_report_headers > 0}
+                    onCheckedChange={(checked) =>
+                      handleAdditionalHeadersChange(checked ? 1 : 0)
+                    }
+                  />
+                  <Label htmlFor="has_additional_headers" className="text-sm font-medium">
+                    Additional report headers
+                  </Label>
+                </div>
+                
+                {itemFormData.additional_report_headers > 0 && (
+                  <div className="pl-6 space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Number of additional headers</Label>
+                      <Select
+                        value={itemFormData.additional_report_headers.toString()}
+                        onValueChange={(value) => handleAdditionalHeadersChange(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">$30 per additional header</p>
+                    </div>
+
+                    {/* Header Details */}
+                    {itemFormData.additional_headers_data.map((header, index) => (
+                      <div key={index} className="p-3 border rounded-lg bg-muted/30 space-y-2">
+                        <p className="text-sm font-medium">Header {index + 1}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="Client"
+                            value={header.client}
+                            onChange={(e) => {
+                              const newData = [...itemFormData.additional_headers_data];
+                              newData[index].client = e.target.value;
+                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                            }}
+                          />
+                          <Input
+                            placeholder="Sample"
+                            value={header.sample}
+                            onChange={(e) => {
+                              const newData = [...itemFormData.additional_headers_data];
+                              newData[index].sample = e.target.value;
+                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                            }}
+                          />
+                          <Input
+                            placeholder="Manufacturer"
+                            value={header.manufacturer}
+                            onChange={(e) => {
+                              const newData = [...itemFormData.additional_headers_data];
+                              newData[index].manufacturer = e.target.value;
+                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                            }}
+                          />
+                          <Input
+                            placeholder="Batch"
+                            value={header.batch}
+                            onChange={(e) => {
+                              const newData = [...itemFormData.additional_headers_data];
+                              newData[index].batch = e.target.value;
+                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Price Preview */}
+              {itemFormData.product_id && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span>Base Price</span>
+                    <span>${itemFormData.price.toFixed(2)}</span>
+                  </div>
+                  {itemFormData.has_additional_samples && itemFormData.additional_samples > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Additional Samples</span>
+                      <span>${(itemFormData.additional_samples * 60).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {itemFormData.additional_report_headers > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Additional Headers</span>
+                      <span>${(itemFormData.additional_report_headers * 30).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-medium pt-2 border-t mt-2">
+                    <span>Total</span>
+                    <span className="text-primary">${calculateItemTotal(itemFormData).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowAddItemDialog(false);
+                    resetItemForm();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={handleAddItem}>
+                  Add Item
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

@@ -776,12 +776,22 @@ const QuoteCreate = () => {
   const handleAdditionalHeadersChange = (count: number) => {
     const newHeadersData = [...itemFormData.additional_headers_data];
     
+    // Auto-populate sample from the selected compound
+    const sampleName = itemFormData.sample || itemFormData.product_name;
+    
     while (newHeadersData.length < count) {
-      newHeadersData.push({ client: "", sample: "", manufacturer: "", batch: "" });
+      newHeadersData.push({ client: "", sample: sampleName, manufacturer: "", batch: "" });
     }
     while (newHeadersData.length > count) {
       newHeadersData.pop();
     }
+    
+    // Also update existing headers to have the sample if they don't
+    newHeadersData.forEach((header) => {
+      if (!header.sample) {
+        header.sample = sampleName;
+      }
+    });
 
     setItemFormData({
       ...itemFormData,
@@ -1406,12 +1416,9 @@ const QuoteCreate = () => {
                           />
                           <Input
                             placeholder="Sample"
-                            value={header.sample}
-                            onChange={(e) => {
-                              const newData = [...itemFormData.additional_headers_data];
-                              newData[index].sample = e.target.value;
-                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                            }}
+                            value={header.sample || itemFormData.sample || itemFormData.product_name}
+                            readOnly
+                            className="bg-muted cursor-not-allowed"
                           />
                           <Input
                             placeholder="Manufacturer"

@@ -58,7 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, Download, History, Search, Filter, Lock, CheckCircle2, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, FileText, Check, ChevronsUpDown, Mail, Copy, RefreshCw, Upload, X, Save, FolderOpen, History, Search, Filter, Lock, CheckCircle2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 
@@ -66,9 +66,6 @@ import { QuoteApprovalDialog } from "@/components/QuoteApprovalDialog";
 import { PaymentDetailsDialog, PaymentFormData } from "@/components/PaymentDetailsDialog";
 import { ShippingDetailsDialog, ShippingFormData } from "@/components/ShippingDetailsDialog";
 import { ShippingLabelDialog, ShippingLabelFormData } from "@/components/ShippingLabelDialog";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
@@ -200,7 +197,6 @@ const Quotes = () => {
       addPayment: false,
       addShipping: false,
       refreshTracking: false,
-      exportPDF: false,
     };
 
     switch (quote.status) {
@@ -222,19 +218,15 @@ const Quotes = () => {
       case 'paid_awaiting_shipping':
         actions.edit = !isEditingDisabled(quote.status);
         actions.addShipping = !quote.tracking_number;
-        actions.exportPDF = true;
         break;
       case 'in_transit':
         actions.refreshTracking = !!quote.tracking_number;
-        actions.exportPDF = true;
         break;
       case 'delivered':
       case 'testing_in_progress':
         actions.manageItems = true; // To add/update test results
-        actions.exportPDF = true;
         break;
       case 'completed':
-        actions.exportPDF = true;
         break;
     }
 
@@ -996,9 +988,6 @@ const Quotes = () => {
             .single();
 
           if (fullQuote) {
-            // Generate and download receipt
-            setTimeout(() => generatePaymentReceipt(fullQuote), 500);
-
             // Send payment confirmation email
             try {
               const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -1311,175 +1300,6 @@ const Quotes = () => {
     }
   };
 
-  const generatePaymentReceipt = (quote: any) => {
-    const doc = new jsPDF();
-    
-    // Add header with receipt title
-    doc.setFontSize(20);
-    doc.setTextColor(22, 101, 52); // Green color for receipt
-    doc.text("PAYMENT RECEIPT", 14, 20);
-    
-    // Add receipt details
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Receipt Date: ${new Date().toLocaleDateString()}`, 14, 35);
-    doc.text(`Quote Number: ${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}`, 14, 42);
-    doc.text(`Lab: ${quote.labs?.name || 'N/A'}`, 14, 49);
-    
-    // Add payment information box
-    doc.setFillColor(240, 253, 244); // Light green background
-    doc.rect(14, 58, 182, 35, 'F');
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text("Payment Information", 18, 66);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text(`Amount Paid: $${(quote.payment_amount_usd || 0).toFixed(2)}`, 18, 74);
-    doc.text(`Payment Date: ${quote.payment_date ? new Date(quote.payment_date).toLocaleDateString() : 'N/A'}`, 18, 81);
-    if (quote.transaction_id) {
-      doc.text(`Transaction ID: ${quote.transaction_id}`, 18, 88);
-    }
-    
-    // Add items table
-    const tableData = quote.quote_items?.map((item: any) => [
-      item.products?.name || 'N/A',
-      item.client || '-',
-      item.sample || '-',
-      `$${(item.price || 0).toFixed(2)}`,
-    ]) || [];
-    
-    autoTable(doc, {
-      startY: 100,
-      head: [['Product/Test', 'Client', 'Sample', 'Price']],
-      body: tableData,
-      foot: [[{ content: 'Total Paid', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, `$${(quote.payment_amount_usd || 0).toFixed(2)}`]],
-      theme: 'striped',
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255] },
-      footStyles: { fillColor: [240, 253, 244], textColor: [0, 0, 0], fontStyle: 'bold' },
-    });
-    
-    // Add footer
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
-    doc.text('Thank you for your business!', 14, finalY);
-    doc.text(`This receipt confirms payment for testing services.`, 14, finalY + 7);
-    
-    doc.save(`receipt-${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}.pdf`);
-    
-    toast({
-      title: "Receipt Generated",
-      description: "Payment receipt downloaded successfully",
-      duration: 3000,
-    });
-  };
-
-  const handleExportPDF = async (quote: any) => {
-    try {
-      // Fetch quote items if not already loaded
-      let quoteWithItems = quote;
-      if (!quote.quote_items || quote.quote_items.length === 0) {
-        const { data: items, error } = await supabase
-          .from('quote_items')
-          .select('*, products(name)')
-          .eq('quote_id', quote.id);
-        
-        if (error) throw error;
-        quoteWithItems = { ...quote, quote_items: items };
-      }
-
-      const doc = new jsPDF();
-      
-      // Add header
-      doc.setFontSize(18);
-      doc.text("Quote Details", 14, 20);
-      
-      doc.setFontSize(11);
-      doc.text(`Quote Number: ${quoteWithItems.quote_number || `Quote ${quoteWithItems.id.slice(0, 8)}`}`, 14, 30);
-      doc.text(`Status: ${quoteWithItems.status}`, 14, 37);
-      doc.text(`Lab: ${quoteWithItems.labs?.name || 'N/A'}`, 14, 44);
-      
-      if (quoteWithItems.notes) {
-        doc.text(`Notes: ${quoteWithItems.notes}`, 14, 51);
-      }
-      
-      // Add items table
-      const tableData = quoteWithItems.quote_items?.map((item: any) => [
-        item.products?.name || 'N/A',
-        item.client || '-',
-        item.sample || '-',
-        item.manufacturer || '-',
-        item.batch || '-',
-        `$${(item.price || 0).toFixed(2)}`,
-        item.additional_samples || 0,
-        item.additional_report_headers || 0,
-      ]) || [];
-      
-      autoTable(doc, {
-        startY: 60,
-        head: [['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Add. Samples', 'Add. Headers']],
-        body: tableData,
-        theme: 'grid',
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [66, 139, 202] },
-      });
-      
-      doc.save(`quote-${quoteWithItems.quote_number || `Quote ${quoteWithItems.id.slice(0, 8)}`}.pdf`);
-      
-      toast({
-        title: "Success",
-        description: "Quote exported as PDF",
-        duration: 3000,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to export quote",
-        variant: "destructive",
-        duration: 4000,
-      });
-    }
-  };
-
-  const handleExportExcel = (quote: any) => {
-    const ws_data = [
-      ['Quote Details'],
-      [],
-      ['Quote Number', quote.quote_number || `Quote ${quote.id.slice(0, 8)}`],
-      ['Status', quote.status],
-      ['Lab', quote.labs?.name || 'N/A'],
-      ['Notes', quote.notes || ''],
-      [],
-      ['Items'],
-      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Price', 'Additional Samples', 'Additional Report Headers', 'Status'],
-    ];
-    
-    quote.quote_items?.forEach((item: any) => {
-      ws_data.push([
-        item.products?.name || 'N/A',
-        item.client || '-',
-        item.sample || '-',
-        item.manufacturer || '-',
-        item.batch || '-',
-        item.price || 0,
-        item.additional_samples || 0,
-        item.additional_report_headers || 0,
-        item.status || 'pending',
-      ]);
-    });
-    
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Quote");
-    
-    XLSX.writeFile(wb, `quote-${quote.quote_number || `Quote ${quote.id.slice(0, 8)}`}.xlsx`);
-    
-    toast({
-      title: "Success",
-      description: "Quote exported as Excel",
-    });
-  };
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2144,9 +1964,6 @@ const Quotes = () => {
         .single();
 
       if (fullQuote) {
-        // Generate and download receipt
-        setTimeout(() => generatePaymentReceipt(fullQuote), 500);
-
         // Send payment confirmation email
         try {
           if (user?.email) {
@@ -2976,12 +2793,6 @@ const Quotes = () => {
                     setShippingLabelDialogOpen(true);
                   }}
                   onRefreshTracking={handleRefreshTracking}
-                  onExportPDF={(quote) => {
-                    handleExportPDF({
-                      ...quote,
-                      quote_items: []
-                    });
-                  }}
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}
                   hasValidatedCreditCard={hasValidatedCreditCard}
@@ -3249,21 +3060,6 @@ const Quotes = () => {
                   </div>
 
                 <div className="flex justify-end gap-2">
-                  {selectedQuote.status === 'paid_awaiting_shipping' && (
-                    <Button
-                      variant="default"
-                      onClick={() => {
-                        const quoteWithItems = {
-                          ...selectedQuote,
-                          quote_items: quoteItems
-                        };
-                        generatePaymentReceipt(quoteWithItems);
-                      }}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Receipt
-                    </Button>
-                  )}
                   <Button
                     variant="outline"
                     onClick={() => setViewDialogOpen(false)}
@@ -4004,8 +3800,7 @@ const Quotes = () => {
                                     rel="noopener noreferrer"
                                     className="text-xs text-primary hover:underline flex items-center gap-1"
                                   >
-                                    <Download className="h-3 w-3" />
-                                    Download File
+                                    View File
                                   </a>
                                 )}
                               </div>

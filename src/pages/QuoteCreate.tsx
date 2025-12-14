@@ -644,9 +644,64 @@ const QuoteCreate = () => {
 
       if (itemsError) throw itemsError;
 
+      // Get lab email for sending
+      const { data: labData } = await supabase
+        .from("labs")
+        .select("contact_email, name")
+        .eq("id", formData.lab_id)
+        .single();
+
+      if (!labData?.contact_email) {
+        toast({
+          title: "Quote saved",
+          description: "Quote saved but lab has no email configured.",
+          variant: "default",
+        });
+        triggerSuccessConfetti();
+        navigate("/quotes");
+        return;
+      }
+
+      // Calculate total value
+      const totalValue = items.reduce((sum, item) => {
+        let itemTotal = item.price || 0;
+        const productName = item.product_name.toLowerCase();
+        if (item.additional_samples > 0) {
+          if (productName.includes('tirzepatide') || productName.includes('semaglutide') || productName.includes('retatrutide')) {
+            itemTotal += item.additional_samples * 60;
+          }
+        }
+        if (item.additional_report_headers > 0) {
+          itemTotal += item.additional_report_headers * 30;
+        }
+        return sum + itemTotal;
+      }, 0);
+
+      // Build email payload
+      const emailPayload = {
+        quoteId: targetQuoteId,
+        labEmail: labData.contact_email,
+        labName: labData.name,
+        quoteNumber: formData.quote_number || null,
+        items: items.map(item => ({
+          productName: item.product_name,
+          client: item.client,
+          sample: item.sample,
+          manufacturer: item.manufacturer,
+          batch: item.batch,
+          price: item.price,
+          additional_samples: item.additional_samples,
+          additional_report_headers: item.additional_report_headers,
+          additional_headers_data: item.additional_headers_data,
+        })),
+        notes: formData.notes || null,
+        totalValue,
+        confirmationUrl: `${window.location.origin}/quote-confirm/${targetQuoteId}`,
+      };
+
       // Send email to lab
       const { error: emailError } = await supabase.functions.invoke("send-quote-email", {
-        body: { quoteId: targetQuoteId },
+        body: emailPayload,
       });
 
       if (emailError) {

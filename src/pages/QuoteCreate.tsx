@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2 } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2, Pencil, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerSuccessConfetti } from "@/lib/confetti";
 
@@ -108,8 +108,10 @@ const QuoteCreate = () => {
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Add item dialog
+  // Add/Edit item dialog
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [itemFormData, setItemFormData] = useState<QuoteItem>({
     product_id: "",
     product_name: "",
@@ -265,18 +267,142 @@ const QuoteCreate = () => {
       return;
     }
 
-    const newItem: QuoteItem = {
-      ...itemFormData,
-      id: `temp-${Date.now()}`,
-    };
-
-    setItems([...items, newItem]);
+    if (editingItemIndex !== null) {
+      // Update existing item
+      const updatedItems = [...items];
+      updatedItems[editingItemIndex] = {
+        ...itemFormData,
+        id: items[editingItemIndex].id,
+      };
+      setItems(updatedItems);
+      setEditingItemIndex(null);
+    } else {
+      // Add new item
+      const newItem: QuoteItem = {
+        ...itemFormData,
+        id: `temp-${Date.now()}`,
+      };
+      setItems([...items, newItem]);
+    }
+    
     resetItemForm();
     setShowAddItemDialog(false);
   };
 
+  const handleEditItem = (index: number) => {
+    const item = items[index];
+    setItemFormData({ ...item });
+    setEditingItemIndex(index);
+    setShowAddItemDialog(true);
+  };
+
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAsDraft = async () => {
+    if (!formData.lab_id) {
+      toast({
+        title: "Missing lab",
+        description: "Please select a lab before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingDraft(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const effectiveUserId = isImpersonatingCustomer && impersonatedUser?.id
+        ? impersonatedUser.id
+        : user.id;
+
+      // Create the quote
+      const { data: newQuote, error: quoteError } = await supabase
+        .from("quotes")
+        .insert({
+          lab_id: formData.lab_id,
+          quote_number: formData.quote_number || null,
+          notes: formData.notes || null,
+          status: "draft",
+          user_id: effectiveUserId,
+        })
+        .select()
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      // Create clients and manufacturers if they don't exist
+      for (const item of items) {
+        const existingClient = clients.find(
+          (c) => c.name.toLowerCase() === item.client.toLowerCase()
+        );
+        if (!existingClient && item.client) {
+          await supabase
+            .from("clients")
+            .insert([{ name: item.client, user_id: effectiveUserId }]);
+        }
+
+        const existingManufacturer = manufacturers.find(
+          (m) => m.name.toLowerCase() === item.manufacturer.toLowerCase()
+        );
+        if (!existingManufacturer && item.manufacturer) {
+          await supabase
+            .from("manufacturers")
+            .insert([{ name: item.manufacturer, user_id: effectiveUserId }]);
+        }
+      }
+
+      // Create quote items if any
+      if (items.length > 0) {
+        const quoteItems = items.map((item) => ({
+          quote_id: newQuote.id,
+          product_id: item.product_id,
+          client: item.client,
+          sample: item.sample,
+          manufacturer: item.manufacturer,
+          batch: item.batch,
+          price: item.price,
+          additional_samples: item.additional_samples || 0,
+          additional_report_headers: item.additional_report_headers || 0,
+          additional_headers_data: item.additional_headers_data || [],
+          status: "pending",
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("quote_items")
+          .insert(quoteItems);
+
+        if (itemsError) throw itemsError;
+      }
+
+      // Log quote creation
+      await supabase.from("quote_activity_log").insert({
+        quote_id: newQuote.id,
+        user_id: user.id,
+        activity_type: "quote_created",
+        description: `Quote saved as draft${items.length > 0 ? ` with ${items.length} item(s)` : ""}`,
+        metadata: {
+          lab_id: formData.lab_id,
+          status: "draft",
+          items_count: items.length,
+        },
+      });
+
+      toast({ title: "Quote saved as draft", duration: 3000 });
+      navigate("/quotes");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const calculateItemTotal = (item: QuoteItem): number => {
@@ -532,14 +658,25 @@ const QuoteCreate = () => {
                 />
               </div>
 
-              <Button
-                className="w-full h-12"
-                onClick={() => setStep(2)}
-                disabled={!canProceedToStep2}
-              >
-                Next: Add Items
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12"
+                  onClick={handleSaveAsDraft}
+                  disabled={savingDraft || !canProceedToStep2}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingDraft ? "Saving..." : "Save Draft"}
+                </Button>
+                <Button
+                  className="flex-1 h-12"
+                  onClick={() => setStep(2)}
+                  disabled={!canProceedToStep2}
+                >
+                  Next: Add Items
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -567,7 +704,11 @@ const QuoteCreate = () => {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Quote Items ({items.length})</CardTitle>
-                  <Button onClick={() => setShowAddItemDialog(true)}>
+                  <Button onClick={() => {
+                    setEditingItemIndex(null);
+                    resetItemForm();
+                    setShowAddItemDialog(true);
+                  }}>
                     <Plus className="h-4 w-4 mr-1" />
                     Add Item
                   </Button>
@@ -610,13 +751,22 @@ const QuoteCreate = () => {
                             ${calculateItemTotal(item).toFixed(2)}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditItem(index)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -626,9 +776,18 @@ const QuoteCreate = () => {
 
             {/* Navigation */}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12">
+              <Button variant="outline" onClick={() => setStep(1)} className="h-12">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleSaveAsDraft}
+                disabled={savingDraft}
+                className="h-12"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {savingDraft ? "Saving..." : "Save Draft"}
               </Button>
               <Button
                 onClick={() => setStep(3)}
@@ -748,11 +907,17 @@ const QuoteCreate = () => {
           </div>
         )}
 
-        {/* Add Item Dialog */}
-        <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
+        {/* Add/Edit Item Dialog */}
+        <Dialog open={showAddItemDialog} onOpenChange={(open) => {
+          setShowAddItemDialog(open);
+          if (!open) {
+            setEditingItemIndex(null);
+            resetItemForm();
+          }
+        }}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add Item</DialogTitle>
+              <DialogTitle>{editingItemIndex !== null ? "Edit Item" : "Add Item"}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -1053,13 +1218,14 @@ const QuoteCreate = () => {
                   className="flex-1"
                   onClick={() => {
                     setShowAddItemDialog(false);
+                    setEditingItemIndex(null);
                     resetItemForm();
                   }}
                 >
                   Cancel
                 </Button>
                 <Button className="flex-1" onClick={handleAddItem}>
-                  Add Item
+                  {editingItemIndex !== null ? "Update Item" : "Add Item"}
                 </Button>
               </div>
             </div>

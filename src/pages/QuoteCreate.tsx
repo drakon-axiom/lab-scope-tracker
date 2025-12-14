@@ -359,6 +359,21 @@ const QuoteCreate = () => {
       return;
     }
 
+    // Validate additional headers if any
+    if (itemFormData.additional_report_headers > 0) {
+      const incompleteHeaders = itemFormData.additional_headers_data.filter(
+        (header) => !header.client || !header.manufacturer || !header.batch
+      );
+      if (incompleteHeaders.length > 0) {
+        toast({
+          title: "Incomplete headers",
+          description: `Please fill in all fields for additional report headers`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (editingItemIndex !== null) {
       // Update existing item
       const updatedItems = [...items];

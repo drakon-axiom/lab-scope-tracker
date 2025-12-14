@@ -140,32 +140,56 @@ export const QuoteEmailPreviewDialog = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item, idx) => (
-                        <tr key={idx} className="border-t">
-                          <td className="p-2 align-top">
-                            <p className="font-medium">{item.product_name}</p>
-                            {item.additional_samples > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                +{item.additional_samples} additional sample{item.additional_samples !== 1 ? 's' : ''}
-                              </p>
-                            )}
-                            {item.additional_report_headers > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                +{item.additional_report_headers} additional header{item.additional_report_headers !== 1 ? 's' : ''}
-                              </p>
-                            )}
-                          </td>
-                          <td className="p-2 align-top text-muted-foreground">
-                            <p>Client: {item.client}</p>
-                            <p>Sample: {item.sample}</p>
-                            <p>Mfr: {item.manufacturer}</p>
-                            <p>Batch: {item.batch}</p>
-                          </td>
-                          <td className="p-2 align-top text-right font-medium">
-                            ${calculateItemTotal(item).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {items.map((item, idx) => {
+                        const productName = item.product_name.toLowerCase();
+                        const isPeptide = productName.includes('tirzepatide') || productName.includes('semaglutide') || productName.includes('retatrutide');
+                        const additionalSamplesCost = item.additional_samples > 0 && isPeptide ? item.additional_samples * 60 : 0;
+                        const additionalHeadersCost = item.additional_report_headers > 0 ? item.additional_report_headers * 30 : 0;
+                        
+                        return (
+                          <tr key={idx} className="border-t">
+                            <td className="p-2 align-top">
+                              <p className="font-medium">{item.product_name}</p>
+                              {item.additional_samples > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{item.additional_samples} additional sample{item.additional_samples !== 1 ? 's' : ''}
+                                </p>
+                              )}
+                              {item.additional_report_headers > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{item.additional_report_headers} additional header{item.additional_report_headers !== 1 ? 's' : ''}
+                                </p>
+                              )}
+                            </td>
+                            <td className="p-2 align-top text-muted-foreground">
+                              <p>Client: {item.client}</p>
+                              <p>Sample: {item.sample}</p>
+                              <p>Mfr: {item.manufacturer}</p>
+                              <p>Batch: {item.batch}</p>
+                            </td>
+                            <td className="p-2 align-top text-right">
+                              <div className="space-y-0.5">
+                                <p className="font-medium">${item.price.toFixed(2)}</p>
+                                {additionalSamplesCost > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    +${additionalSamplesCost.toFixed(2)} <span className="text-xs">({item.additional_samples} × $60)</span>
+                                  </p>
+                                )}
+                                {additionalHeadersCost > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    +${additionalHeadersCost.toFixed(2)} <span className="text-xs">({item.additional_report_headers} × $30)</span>
+                                  </p>
+                                )}
+                                {(additionalSamplesCost > 0 || additionalHeadersCost > 0) && (
+                                  <p className="text-xs font-semibold text-primary border-t pt-0.5 mt-0.5">
+                                    ${calculateItemTotal(item).toFixed(2)}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot className="bg-muted/50">
                       <tr className="border-t">

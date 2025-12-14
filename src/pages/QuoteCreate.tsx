@@ -339,12 +339,19 @@ const QuoteCreate = () => {
   const handleProductChange = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
+      // Update main item data and sync sample to all additional headers
+      const updatedHeadersData = itemFormData.additional_headers_data.map(header => ({
+        ...header,
+        sample: product.name,
+      }));
+      
       setItemFormData({
         ...itemFormData,
         product_id: productId,
         product_name: product.name,
         sample: product.name,
         price: product.price || 0,
+        additional_headers_data: updatedHeadersData,
       });
     }
   };
@@ -795,8 +802,8 @@ const QuoteCreate = () => {
   const handleAdditionalHeadersChange = (count: number) => {
     const newHeadersData = [...itemFormData.additional_headers_data];
     
-    // Auto-populate sample from the selected compound
-    const sampleName = itemFormData.sample || itemFormData.product_name;
+    // Use the compound name as the sample for all headers
+    const sampleName = itemFormData.product_name || itemFormData.sample;
     
     while (newHeadersData.length < count) {
       newHeadersData.push({ client: "", sample: sampleName, manufacturer: "", batch: "" });
@@ -805,11 +812,9 @@ const QuoteCreate = () => {
       newHeadersData.pop();
     }
     
-    // Also update existing headers to have the sample if they don't
+    // Ensure all existing headers have the correct sample value
     newHeadersData.forEach((header) => {
-      if (!header.sample) {
-        header.sample = sampleName;
-      }
+      header.sample = sampleName;
     });
 
     setItemFormData({

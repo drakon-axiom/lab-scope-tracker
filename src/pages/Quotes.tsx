@@ -71,7 +71,7 @@ import { z } from "zod";
 import { triggerSuccessConfetti, triggerCelebrationConfetti } from "@/lib/confetti";
 import { useSubscription } from "@/hooks/useSubscription";
 import { QuotesVirtualTable } from "@/components/QuotesVirtualTable";
-import { QuoteCreationDialog } from "@/components/QuoteCreationDialog";
+
 
 interface Quote {
   id: string;
@@ -2200,15 +2200,9 @@ const Quotes = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            {/* New Quote Button - Navigates to page on mobile, opens dialog on desktop */}
+            {/* New Quote Button - Always navigates to wizard page */}
             <Button 
-              onClick={() => {
-                if (isMobile) {
-                  navigate("/quotes/new");
-                } else {
-                  setDialogOpen(true);
-                }
-              }} 
+              onClick={() => navigate("/quotes/new")} 
               size="sm" 
               className="text-xs sm:text-sm"
             >
@@ -2216,24 +2210,6 @@ const Quotes = () => {
               <span className="hidden xs:inline">New Quote</span>
               <span className="xs:hidden">New</span>
             </Button>
-
-            {/* Unified Quote Creation Dialog - Desktop only */}
-            {!isMobile && (
-              <QuoteCreationDialog
-                open={dialogOpen && !editingId}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setDialogOpen(false);
-                    resetForm();
-                  }
-                }}
-                labs={labs}
-                onSuccess={() => {
-                  fetchQuotes();
-                  setDialogOpen(false);
-                }}
-              />
-            )}
 
             {/* Edit Quote Dialog - kept for editing existing quotes */}
             <Dialog open={dialogOpen && !!editingId} onOpenChange={(open) => {

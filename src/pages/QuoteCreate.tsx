@@ -136,6 +136,10 @@ const QuoteCreate = () => {
   // Popover states
   const [clientOpen, setClientOpen] = useState(false);
   const [manufacturerOpen, setManufacturerOpen] = useState(false);
+  
+  // Additional header popover states (track by index)
+  const [headerClientOpen, setHeaderClientOpen] = useState<number | null>(null);
+  const [headerManufacturerOpen, setHeaderManufacturerOpen] = useState<number | null>(null);
 
   // Email preview dialog
   const [showEmailPreview, setShowEmailPreview] = useState(false);
@@ -1405,30 +1409,109 @@ const QuoteCreate = () => {
                       <div key={index} className="p-3 border rounded-lg bg-muted/30 space-y-2">
                         <p className="text-sm font-medium">Header {index + 1}</p>
                         <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            placeholder="Client"
-                            value={header.client}
-                            onChange={(e) => {
-                              const newData = [...itemFormData.additional_headers_data];
-                              newData[index].client = e.target.value;
-                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                            }}
-                          />
+                          {/* Client Dropdown */}
+                          <Popover open={headerClientOpen === index} onOpenChange={(open) => setHeaderClientOpen(open ? index : null)}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between h-9 text-sm"
+                              >
+                                <span className="truncate">{header.client || "Client..."}</span>
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput
+                                  placeholder="Search or type..."
+                                  value={header.client}
+                                  onValueChange={(value) => {
+                                    const newData = [...itemFormData.additional_headers_data];
+                                    newData[index].client = value;
+                                    setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                  }}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>Press Enter to use "{header.client}"</CommandEmpty>
+                                  <CommandGroup>
+                                    {clients.map((client) => (
+                                      <CommandItem
+                                        key={client.id}
+                                        value={client.name}
+                                        onSelect={() => {
+                                          const newData = [...itemFormData.additional_headers_data];
+                                          newData[index].client = client.name;
+                                          setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                          setHeaderClientOpen(null);
+                                        }}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", header.client === client.name ? "opacity-100" : "opacity-0")} />
+                                        {client.name}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          
+                          {/* Sample (read-only) */}
                           <Input
                             placeholder="Sample"
                             value={header.sample || itemFormData.sample || itemFormData.product_name}
                             readOnly
-                            className="bg-muted cursor-not-allowed"
+                            className="bg-muted cursor-not-allowed h-9 text-sm"
                           />
-                          <Input
-                            placeholder="Manufacturer"
-                            value={header.manufacturer}
-                            onChange={(e) => {
-                              const newData = [...itemFormData.additional_headers_data];
-                              newData[index].manufacturer = e.target.value;
-                              setItemFormData({ ...itemFormData, additional_headers_data: newData });
-                            }}
-                          />
+                          
+                          {/* Manufacturer Dropdown */}
+                          <Popover open={headerManufacturerOpen === index} onOpenChange={(open) => setHeaderManufacturerOpen(open ? index : null)}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between h-9 text-sm"
+                              >
+                                <span className="truncate">{header.manufacturer || "Manufacturer..."}</span>
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput
+                                  placeholder="Search or type..."
+                                  value={header.manufacturer}
+                                  onValueChange={(value) => {
+                                    const newData = [...itemFormData.additional_headers_data];
+                                    newData[index].manufacturer = value;
+                                    setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                  }}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>Press Enter to use "{header.manufacturer}"</CommandEmpty>
+                                  <CommandGroup>
+                                    {manufacturers.map((manufacturer) => (
+                                      <CommandItem
+                                        key={manufacturer.id}
+                                        value={manufacturer.name}
+                                        onSelect={() => {
+                                          const newData = [...itemFormData.additional_headers_data];
+                                          newData[index].manufacturer = manufacturer.name;
+                                          setItemFormData({ ...itemFormData, additional_headers_data: newData });
+                                          setHeaderManufacturerOpen(null);
+                                        }}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", header.manufacturer === manufacturer.name ? "opacity-100" : "opacity-0")} />
+                                        {manufacturer.name}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          
+                          {/* Batch */}
                           <Input
                             placeholder="Batch"
                             value={header.batch}
@@ -1437,6 +1520,7 @@ const QuoteCreate = () => {
                               newData[index].batch = e.target.value;
                               setItemFormData({ ...itemFormData, additional_headers_data: newData });
                             }}
+                            className="h-9 text-sm"
                           />
                         </div>
                       </div>

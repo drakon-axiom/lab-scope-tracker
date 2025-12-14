@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -84,9 +84,14 @@ interface QuoteItem {
 
 const QuoteCreate = () => {
   const navigate = useNavigate();
+  const { quoteId } = useParams<{ quoteId?: string }>();
   const { isSubscriber, isAdmin } = useUserRole();
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { toast } = useToast();
+
+  // Edit mode
+  const isEditMode = !!quoteId;
+  const [loadingQuote, setLoadingQuote] = useState(false);
 
   // Wizard step
   const [step, setStep] = useState(1);
@@ -137,6 +142,13 @@ const QuoteCreate = () => {
     fetchManufacturers();
   }, []);
 
+  // Load existing quote data if editing
+  useEffect(() => {
+    if (isEditMode && quoteId) {
+      loadExistingQuote(quoteId);
+    }
+  }, [quoteId]);
+
   // Fetch products when lab is selected
   useEffect(() => {
     if (formData.lab_id) {
@@ -145,6 +157,75 @@ const QuoteCreate = () => {
       setProducts([]);
     }
   }, [formData.lab_id]);
+
+  const loadExistingQuote = async (id: string) => {
+    setLoadingQuote(true);
+    try {
+      // Fetch quote data
+      const { data: quote, error: quoteError } = await supabase
+        .from("quotes")
+        .select("*, labs(name)")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (quoteError) throw quoteError;
+      if (!quote) {
+        toast({ title: "Quote not found", variant: "destructive" });
+        navigate("/quotes");
+        return;
+      }
+
+      // Only allow editing draft quotes
+      if (quote.status !== "draft") {
+        toast({ title: "Only draft quotes can be edited here", variant: "destructive" });
+        navigate("/quotes");
+        return;
+      }
+
+      // Set form data
+      setFormData({
+        lab_id: quote.lab_id,
+        quote_number: quote.quote_number || "",
+        notes: quote.notes || "",
+      });
+
+      // Fetch quote items
+      const { data: quoteItems, error: itemsError } = await supabase
+        .from("quote_items")
+        .select("*, products(id, name)")
+        .eq("quote_id", id);
+
+      if (itemsError) throw itemsError;
+
+      // Transform items to local format
+      const loadedItems: QuoteItem[] = (quoteItems || []).map((item) => ({
+        id: item.id,
+        product_id: item.product_id,
+        product_name: item.products?.name || "",
+        client: item.client || "",
+        sample: item.sample || "",
+        manufacturer: item.manufacturer || "",
+        batch: item.batch || "",
+        price: item.price || 0,
+        additional_samples: item.additional_samples || 0,
+        additional_report_headers: item.additional_report_headers || 0,
+        has_additional_samples: (item.additional_samples || 0) > 0,
+        additional_headers_data: (item.additional_headers_data as Array<{
+          client: string;
+          sample: string;
+          manufacturer: string;
+          batch: string;
+        }>) || [],
+      }));
+
+      setItems(loadedItems);
+    } catch (error: any) {
+      console.error("Error loading quote:", error);
+      toast({ title: "Error loading quote", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingQuote(false);
+    }
+  };
 
   const fetchLabs = async () => {
     try {
@@ -320,20 +401,41 @@ const QuoteCreate = () => {
         ? impersonatedUser.id
         : user.id;
 
-      // Create the quote
-      const { data: newQuote, error: quoteError } = await supabase
-        .from("quotes")
-        .insert({
-          lab_id: formData.lab_id,
-          quote_number: formData.quote_number || null,
-          notes: formData.notes || null,
-          status: "draft",
-          user_id: effectiveUserId,
-        })
-        .select()
-        .single();
+      let targetQuoteId: string;
 
-      if (quoteError) throw quoteError;
+      if (isEditMode && quoteId) {
+        // Update existing quote
+        const { error: quoteError } = await supabase
+          .from("quotes")
+          .update({
+            lab_id: formData.lab_id,
+            quote_number: formData.quote_number || null,
+            notes: formData.notes || null,
+          })
+          .eq("id", quoteId);
+
+        if (quoteError) throw quoteError;
+        targetQuoteId = quoteId;
+
+        // Delete existing items and recreate them
+        await supabase.from("quote_items").delete().eq("quote_id", quoteId);
+      } else {
+        // Create new quote
+        const { data: newQuote, error: quoteError } = await supabase
+          .from("quotes")
+          .insert({
+            lab_id: formData.lab_id,
+            quote_number: formData.quote_number || null,
+            notes: formData.notes || null,
+            status: "draft",
+            user_id: effectiveUserId,
+          })
+          .select()
+          .single();
+
+        if (quoteError) throw quoteError;
+        targetQuoteId = newQuote.id;
+      }
 
       // Create clients and manufacturers if they don't exist
       for (const item of items) {
@@ -359,7 +461,7 @@ const QuoteCreate = () => {
       // Create quote items if any
       if (items.length > 0) {
         const quoteItems = items.map((item) => ({
-          quote_id: newQuote.id,
+          quote_id: targetQuoteId,
           product_id: item.product_id,
           client: item.client,
           sample: item.sample,
@@ -379,12 +481,14 @@ const QuoteCreate = () => {
         if (itemsError) throw itemsError;
       }
 
-      // Log quote creation
+      // Log activity
       await supabase.from("quote_activity_log").insert({
-        quote_id: newQuote.id,
+        quote_id: targetQuoteId,
         user_id: user.id,
-        activity_type: "quote_created",
-        description: `Quote saved as draft${items.length > 0 ? ` with ${items.length} item(s)` : ""}`,
+        activity_type: isEditMode ? "quote_updated" : "quote_created",
+        description: isEditMode 
+          ? `Quote draft updated${items.length > 0 ? ` with ${items.length} item(s)` : ""}`
+          : `Quote saved as draft${items.length > 0 ? ` with ${items.length} item(s)` : ""}`,
         metadata: {
           lab_id: formData.lab_id,
           status: "draft",
@@ -392,7 +496,7 @@ const QuoteCreate = () => {
         },
       });
 
-      toast({ title: "Quote saved as draft", duration: 3000 });
+      toast({ title: isEditMode ? "Quote updated" : "Quote saved as draft", duration: 3000 });
       navigate("/quotes");
     } catch (error: any) {
       toast({
@@ -460,20 +564,41 @@ const QuoteCreate = () => {
         ? impersonatedUser.id
         : user.id;
 
-      // Create the quote
-      const { data: newQuote, error: quoteError } = await supabase
-        .from("quotes")
-        .insert({
-          lab_id: formData.lab_id,
-          quote_number: formData.quote_number || null,
-          notes: formData.notes || null,
-          status: "draft",
-          user_id: effectiveUserId,
-        })
-        .select()
-        .single();
+      let targetQuoteId: string;
 
-      if (quoteError) throw quoteError;
+      if (isEditMode && quoteId) {
+        // Update existing quote
+        const { error: quoteError } = await supabase
+          .from("quotes")
+          .update({
+            lab_id: formData.lab_id,
+            quote_number: formData.quote_number || null,
+            notes: formData.notes || null,
+          })
+          .eq("id", quoteId);
+
+        if (quoteError) throw quoteError;
+        targetQuoteId = quoteId;
+
+        // Delete existing items and recreate them
+        await supabase.from("quote_items").delete().eq("quote_id", quoteId);
+      } else {
+        // Create new quote
+        const { data: newQuote, error: quoteError } = await supabase
+          .from("quotes")
+          .insert({
+            lab_id: formData.lab_id,
+            quote_number: formData.quote_number || null,
+            notes: formData.notes || null,
+            status: "draft",
+            user_id: effectiveUserId,
+          })
+          .select()
+          .single();
+
+        if (quoteError) throw quoteError;
+        targetQuoteId = newQuote.id;
+      }
 
       // Create clients and manufacturers if they don't exist
       for (const item of items) {
@@ -498,7 +623,7 @@ const QuoteCreate = () => {
 
       // Create quote items
       const quoteItems = items.map((item) => ({
-        quote_id: newQuote.id,
+        quote_id: targetQuoteId,
         product_id: item.product_id,
         client: item.client,
         sample: item.sample,
@@ -517,12 +642,14 @@ const QuoteCreate = () => {
 
       if (itemsError) throw itemsError;
 
-      // Log quote creation
+      // Log activity
       await supabase.from("quote_activity_log").insert({
-        quote_id: newQuote.id,
+        quote_id: targetQuoteId,
         user_id: user.id,
-        activity_type: "quote_created",
-        description: "Quote created with " + items.length + " item(s)",
+        activity_type: isEditMode ? "quote_updated" : "quote_created",
+        description: isEditMode 
+          ? `Quote updated with ${items.length} item(s)`
+          : `Quote created with ${items.length} item(s)`,
         metadata: {
           lab_id: formData.lab_id,
           status: "draft",
@@ -530,7 +657,7 @@ const QuoteCreate = () => {
         },
       });
 
-      toast({ title: "Quote created successfully", duration: 3000 });
+      toast({ title: isEditMode ? "Quote updated successfully" : "Quote created successfully", duration: 3000 });
       triggerSuccessConfetti();
       navigate("/quotes");
     } catch (error: any) {
@@ -568,6 +695,19 @@ const QuoteCreate = () => {
   const canProceedToStep2 = formData.lab_id !== "";
   const canProceedToStep3 = items.length > 0;
 
+  if (loadingQuote) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Loading quote...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-4 pb-24">
@@ -581,7 +721,7 @@ const QuoteCreate = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">Create Quote</h1>
+            <h1 className="text-2xl font-bold">{isEditMode ? "Edit Quote" : "Create Quote"}</h1>
             <p className="text-sm text-muted-foreground">
               Step {step} of 3 - {step === 1 ? "Quote Details" : step === 2 ? "Add Items" : "Review & Submit"}
             </p>

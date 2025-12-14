@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Eye, Pencil, Trash2, FileText, Check, Mail, RefreshCw, Download, Lock, CheckCircle2, Calendar } from "lucide-react";
+import { Eye, Pencil, Trash2, FileText, Check, Mail, RefreshCw, Lock, CheckCircle2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,6 @@ interface QuoteActions {
   addPayment: boolean;
   addShipping: boolean;
   refreshTracking: boolean;
-  exportPDF: boolean;
 }
 
 interface QuotesVirtualTableProps {
@@ -59,7 +58,6 @@ interface QuotesVirtualTableProps {
   onAddShipping: (quote: Quote) => void;
   onGenerateLabel: (quote: Quote) => void;
   onRefreshTracking: (trackingNumber: string) => void;
-  onExportPDF: (quote: Quote) => void;
   canRefreshTracking: () => boolean;
   timeUntilNextRefresh: string;
   hasValidatedCreditCard: boolean;
@@ -81,7 +79,6 @@ const QuoteRow = memo(({
   onAddShipping,
   onGenerateLabel,
   onRefreshTracking,
-  onExportPDF,
   canRefreshTracking,
   timeUntilNextRefresh,
   hasValidatedCreditCard,
@@ -226,16 +223,6 @@ const QuoteRow = memo(({
             </Tooltip>
           )}
 
-          {actions.exportPDF && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 hidden lg:inline-flex" onClick={() => onExportPDF(quote)}>
-                  <Download className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Export PDF</TooltipContent>
-            </Tooltip>
-          )}
 
           {actions.edit && !actions.addPayment && (
             <Tooltip>
@@ -280,7 +267,6 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   onAddShipping,
   onGenerateLabel,
   onRefreshTracking,
-  onExportPDF,
   canRefreshTracking,
   timeUntilNextRefresh,
   hasValidatedCreditCard,
@@ -367,7 +353,6 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
                   onAddShipping={onAddShipping}
                   onGenerateLabel={onGenerateLabel}
                   onRefreshTracking={onRefreshTracking}
-                  onExportPDF={onExportPDF}
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}
                   hasValidatedCreditCard={hasValidatedCreditCard}

@@ -74,9 +74,8 @@ const Auth = () => {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toast({
         title: "Sign in failed",
         description: error.message,
@@ -85,6 +84,30 @@ const Auth = () => {
       });
       return;
     }
+
+    // Check if user is an admin - if so, redirect to admin portal
+    if (data.user) {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (roleData?.role === "admin") {
+        // Sign out and redirect to admin portal
+        await supabase.auth.signOut();
+        setLoading(false);
+        toast({
+          title: "Admin account detected",
+          description: "Please use the admin portal to sign in.",
+          duration: 4000,
+        });
+        navigate("/overseer-alpha/auth");
+        return;
+      }
+    }
+
+    setLoading(false);
 
     // Check if MFA is required for this user
     const { data: factors } = await supabase.auth.mfa.listFactors();

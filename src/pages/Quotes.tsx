@@ -50,6 +50,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -296,6 +306,8 @@ const Quotes = () => {
   }>>([]);
   const [saveViewDialogOpen, setSaveViewDialogOpen] = useState(false);
   const [newViewName, setNewViewName] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   const SAVED_VIEWS_KEY = "quotes_saved_views";
@@ -1143,11 +1155,16 @@ const Quotes = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this quote?")) return;
+  const handleDelete = (id: string) => {
+    setQuoteToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!quoteToDelete) return;
 
     try {
-      const { error } = await supabase.from("quotes").delete().eq("id", id);
+      const { error } = await supabase.from("quotes").delete().eq("id", quoteToDelete);
       if (error) throw error;
       toast({ title: "Quote deleted successfully", duration: 3000 });
       fetchQuotes();
@@ -1158,6 +1175,9 @@ const Quotes = () => {
         variant: "destructive",
         duration: 4000,
       });
+    } finally {
+      setDeleteDialogOpen(false);
+      setQuoteToDelete(null);
     }
   };
 
@@ -4044,6 +4064,24 @@ const Quotes = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this quote? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setQuoteToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       </PullToRefreshWrapper>
       </TooltipProvider>

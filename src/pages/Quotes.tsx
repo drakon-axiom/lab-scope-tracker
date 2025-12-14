@@ -308,6 +308,8 @@ const Quotes = () => {
   const [newViewName, setNewViewName] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
+  const [selectedDraftIds, setSelectedDraftIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const { toast } = useToast();
 
   const SAVED_VIEWS_KEY = "quotes_saved_views";
@@ -1161,6 +1163,37 @@ const Quotes = () => {
   };
 
   const confirmDelete = async () => {
+    // Handle bulk delete
+    if (selectedDraftIds.size > 0 && !quoteToDelete) {
+      setIsBulkDeleting(true);
+      try {
+        const idsToDelete = Array.from(selectedDraftIds);
+        const { error } = await supabase
+          .from("quotes")
+          .delete()
+          .in("id", idsToDelete);
+        if (error) throw error;
+        toast({ 
+          title: `${idsToDelete.length} quote${idsToDelete.length > 1 ? 's' : ''} deleted successfully`, 
+          duration: 3000 
+        });
+        setSelectedDraftIds(new Set());
+        fetchQuotes();
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+          duration: 4000,
+        });
+      } finally {
+        setIsBulkDeleting(false);
+        setDeleteDialogOpen(false);
+      }
+      return;
+    }
+
+    // Handle single delete
     if (!quoteToDelete) return;
 
     try {
@@ -1179,6 +1212,36 @@ const Quotes = () => {
       setDeleteDialogOpen(false);
       setQuoteToDelete(null);
     }
+  };
+
+  const handleToggleDraftSelection = (quoteId: string) => {
+    setSelectedDraftIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quoteId)) {
+        newSet.delete(quoteId);
+      } else {
+        newSet.add(quoteId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllDrafts = (draftQuotes: Quote[]) => {
+    const allDraftIds = draftQuotes.map(q => q.id);
+    const allSelected = allDraftIds.every(id => selectedDraftIds.has(id));
+    
+    if (allSelected) {
+      // Deselect all
+      setSelectedDraftIds(new Set());
+    } else {
+      // Select all drafts
+      setSelectedDraftIds(new Set(allDraftIds));
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    setQuoteToDelete(null); // Clear single delete
+    setDeleteDialogOpen(true);
   };
 
   const handleView = (quote: Quote) => {
@@ -2227,6 +2290,19 @@ const Quotes = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            {/* Bulk Delete Button - Shows when drafts are selected */}
+            {selectedDraftIds.size > 0 && (
+              <Button 
+                onClick={handleBulkDeleteClick} 
+                size="sm" 
+                variant="destructive"
+                className="text-xs sm:text-sm"
+              >
+                <Trash2 className="mr-1 sm:mr-2 h-4 w-4" />
+                Delete ({selectedDraftIds.size})
+              </Button>
+            )}
+
             {/* New Quote Button - Always navigates to wizard page */}
             <Button 
               onClick={() => navigate("/quotes/new")} 
@@ -2799,6 +2875,9 @@ const Quotes = () => {
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}
                   hasValidatedCreditCard={hasValidatedCreditCard}
+                  selectedDraftIds={selectedDraftIds}
+                  onToggleDraftSelection={handleToggleDraftSelection}
+                  onSelectAllDrafts={handleSelectAllDrafts}
                 />
               );
             })()}
@@ -4066,18 +4145,33 @@ const Quotes = () => {
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) {
+            setQuoteToDelete(null);
+          }
+        }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+              <AlertDialogTitle>
+                {selectedDraftIds.size > 0 && !quoteToDelete 
+                  ? `Delete ${selectedDraftIds.size} Quote${selectedDraftIds.size > 1 ? 's' : ''}` 
+                  : 'Delete Quote'}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this quote? This action cannot be undone.
+                {selectedDraftIds.size > 0 && !quoteToDelete 
+                  ? `Are you sure you want to delete ${selectedDraftIds.size} selected draft quote${selectedDraftIds.size > 1 ? 's' : ''}? This action cannot be undone.`
+                  : 'Are you sure you want to delete this quote? This action cannot be undone.'}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setQuoteToDelete(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
+              <AlertDialogAction 
+                onClick={confirmDelete} 
+                disabled={isBulkDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isBulkDeleting ? 'Deleting...' : 'Delete'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

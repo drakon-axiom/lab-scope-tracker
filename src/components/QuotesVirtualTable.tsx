@@ -1,6 +1,7 @@
 import { useRef, memo, useMemo, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -61,10 +62,18 @@ interface QuotesVirtualTableProps {
   canRefreshTracking: () => boolean;
   timeUntilNextRefresh: string;
   hasValidatedCreditCard: boolean;
+  // Bulk selection props
+  selectedDraftIds?: Set<string>;
+  onToggleDraftSelection?: (quoteId: string) => void;
+  onSelectAllDrafts?: (draftQuotes: Quote[]) => void;
 }
 
 const ROW_HEIGHT = 64;
 const MAX_HEIGHT = 600;
+
+interface QuoteRowProps extends Omit<QuotesVirtualTableProps, 'quotes' | 'allQuotesCount' | 'onSelectAllDrafts'> {
+  quote: Quote;
+}
 
 const QuoteRow = memo(({
   quote,
@@ -82,18 +91,36 @@ const QuoteRow = memo(({
   canRefreshTracking,
   timeUntilNextRefresh,
   hasValidatedCreditCard,
-}: Omit<QuotesVirtualTableProps, 'quotes' | 'allQuotesCount'> & { quote: Quote }) => {
+  selectedDraftIds,
+  onToggleDraftSelection,
+}: QuoteRowProps) => {
   const locked = isQuoteLocked(quote.status);
   const actions = getAvailableActions(quote);
+  const isDraft = quote.status === 'draft';
+  const isSelected = isDraft && selectedDraftIds?.has(quote.id);
 
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 items-center border-b h-16",
+        "grid grid-cols-[auto_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 items-center border-b h-16",
         locked && "opacity-75",
-        quote.status === 'awaiting_customer_approval' && "bg-amber-50 dark:bg-amber-950/20"
+        quote.status === 'awaiting_customer_approval' && "bg-amber-50 dark:bg-amber-950/20",
+        isSelected && "bg-primary/5"
       )}
     >
+      {/* Checkbox for drafts */}
+      <div className="flex items-center justify-center w-6">
+        {isDraft && onToggleDraftSelection ? (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleDraftSelection(quote.id)}
+            aria-label={`Select quote ${quote.quote_number || quote.id.slice(0, 8)}`}
+          />
+        ) : (
+          <div className="w-4" /> // Spacer for non-drafts
+        )}
+      </div>
+
       {/* Quote # */}
       <div className="flex items-center gap-2 min-w-0">
         {locked && <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
@@ -270,6 +297,9 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   canRefreshTracking,
   timeUntilNextRefresh,
   hasValidatedCreditCard,
+  selectedDraftIds,
+  onToggleDraftSelection,
+  onSelectAllDrafts,
 }: QuotesVirtualTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -288,10 +318,16 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
     return Math.min(totalSize + 2, MAX_HEIGHT);
   }, [quotes.length, totalSize]);
 
+  // Get all draft quotes for select all functionality
+  const draftQuotes = useMemo(() => quotes.filter(q => q.status === 'draft'), [quotes]);
+  const allDraftsSelected = draftQuotes.length > 0 && draftQuotes.every(q => selectedDraftIds?.has(q.id));
+  const someDraftsSelected = draftQuotes.some(q => selectedDraftIds?.has(q.id)) && !allDraftsSelected;
+
   if (quotes.length === 0) {
     return (
       <div className="border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 py-3 bg-muted/50 font-medium text-sm">
+        <div className="grid grid-cols-[auto_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 py-3 bg-muted/50 font-medium text-sm">
+          <div className="w-6" />
           <div>Quote #</div>
           <div>Lab</div>
           <div>Status</div>
@@ -311,7 +347,21 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   return (
     <div className="border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 py-3 bg-muted/50 font-medium text-sm sticky top-0 z-10">
+      <div className="grid grid-cols-[auto_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_minmax(80px,1fr)_minmax(150px,auto)] gap-4 px-4 py-3 bg-muted/50 font-medium text-sm sticky top-0 z-10">
+        <div className="flex items-center justify-center w-6">
+          {draftQuotes.length > 0 && onSelectAllDrafts && (
+            <Checkbox
+              checked={allDraftsSelected}
+              ref={(el) => {
+                if (el) {
+                  (el as any).indeterminate = someDraftsSelected;
+                }
+              }}
+              onCheckedChange={() => onSelectAllDrafts(draftQuotes)}
+              aria-label="Select all draft quotes"
+            />
+          )}
+        </div>
         <div>Quote #</div>
         <div>Lab</div>
         <div>Status</div>
@@ -356,6 +406,8 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}
                   hasValidatedCreditCard={hasValidatedCreditCard}
+                  selectedDraftIds={selectedDraftIds}
+                  onToggleDraftSelection={onToggleDraftSelection}
                 />
               </div>
             );

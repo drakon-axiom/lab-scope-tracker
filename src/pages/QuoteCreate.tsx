@@ -40,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Check, ChevronsUpDown, ArrowLeft, ArrowRight, FlaskConical, Building2, Pencil, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerSuccessConfetti } from "@/lib/confetti";
+import { QuoteEmailPreviewDialog } from "@/components/QuoteEmailPreviewDialog";
 
 interface Lab {
   id: string;
@@ -135,6 +136,11 @@ const QuoteCreate = () => {
   // Popover states
   const [clientOpen, setClientOpen] = useState(false);
   const [manufacturerOpen, setManufacturerOpen] = useState(false);
+
+  // Email preview dialog
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewLabEmail, setPreviewLabEmail] = useState("");
+  const [previewLabName, setPreviewLabName] = useState("");
 
   // Fetch labs on mount
   useEffect(() => {
@@ -536,7 +542,7 @@ const QuoteCreate = () => {
     return items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
   };
 
-  const handleSubmitAndEmail = async () => {
+  const handleOpenEmailPreview = async () => {
     if (!formData.lab_id) {
       toast({
         title: "Missing lab",
@@ -554,6 +560,30 @@ const QuoteCreate = () => {
       });
       return;
     }
+
+    // Fetch lab email for preview
+    const { data: labData } = await supabase
+      .from("labs")
+      .select("contact_email, name")
+      .eq("id", formData.lab_id)
+      .single();
+
+    if (!labData?.contact_email) {
+      toast({
+        title: "Lab has no email",
+        description: "This lab has no email configured. Please add one in lab settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPreviewLabEmail(labData.contact_email);
+    setPreviewLabName(labData.name);
+    setShowEmailPreview(true);
+  };
+
+  const handleSubmitAndEmail = async () => {
+    setShowEmailPreview(false);
 
     setSubmittingQuote(true);
 
@@ -1118,12 +1148,12 @@ const QuoteCreate = () => {
                 {savingDraft ? "Saving..." : "Save Draft"}
               </Button>
               <Button
-                onClick={handleSubmitAndEmail}
+                onClick={handleOpenEmailPreview}
                 disabled={submittingQuote || savingDraft}
                 className="flex-1 h-12"
               >
                 <Send className="mr-2 h-4 w-4" />
-                {submittingQuote ? "Submitting..." : "Submit Quote"}
+                Submit Quote
               </Button>
             </div>
           </div>
@@ -1453,6 +1483,19 @@ const QuoteCreate = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Email Preview Dialog */}
+        <QuoteEmailPreviewDialog
+          open={showEmailPreview}
+          onOpenChange={setShowEmailPreview}
+          onConfirm={handleSubmitAndEmail}
+          labName={previewLabName}
+          labEmail={previewLabEmail}
+          quoteNumber={formData.quote_number}
+          items={items}
+          notes={formData.notes}
+          isSubmitting={submittingQuote}
+        />
       </div>
     </Layout>
   );

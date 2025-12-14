@@ -1118,6 +1118,14 @@ const Quotes = () => {
       });
       return;
     }
+
+    // For draft quotes, navigate to the wizard for full editing
+    if (quote.status === 'draft') {
+      navigate(`/quotes/${quote.id}/edit`);
+      return;
+    }
+
+    // For other editable statuses, use the inline dialog
     setFormData({
       lab_id: quote.lab_id,
       quote_number: quote.quote_number || "",

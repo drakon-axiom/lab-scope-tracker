@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, Shield, CheckCircle2, XCircle, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -20,6 +21,12 @@ const Auth = () => {
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
+  
+  // Username validation state
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const debouncedUsername = useDebounce(username, 500);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -31,8 +38,73 @@ const Auth = () => {
     checkUser();
   }, [navigate]);
 
+  // Check username availability
+  useEffect(() => {
+    const checkUsername = async () => {
+      // Reset states
+      if (!debouncedUsername || debouncedUsername.length < 3) {
+        setUsernameAvailable(null);
+        setUsernameError(debouncedUsername.length > 0 && debouncedUsername.length < 3 
+          ? "Username must be at least 3 characters" 
+          : null);
+        return;
+      }
+
+      // Validate format
+      if (!/^[a-zA-Z0-9_]+$/.test(debouncedUsername)) {
+        setUsernameAvailable(false);
+        setUsernameError("Username can only contain letters, numbers, and underscores");
+        return;
+      }
+
+      if (debouncedUsername.length > 30) {
+        setUsernameAvailable(false);
+        setUsernameError("Username must be less than 30 characters");
+        return;
+      }
+
+      setCheckingUsername(true);
+      setUsernameError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("username")
+          .ilike("username", debouncedUsername)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        setUsernameAvailable(!data);
+        if (data) {
+          setUsernameError("Username is already taken");
+        }
+      } catch (error) {
+        console.error("Error checking username:", error);
+        setUsernameAvailable(null);
+        setUsernameError("Could not verify username availability");
+      } finally {
+        setCheckingUsername(false);
+      }
+    };
+
+    checkUsername();
+  }, [debouncedUsername]);
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate username before signup
+    if (!usernameAvailable) {
+      toast({
+        title: "Invalid username",
+        description: usernameError || "Please choose a different username",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
     setLoading(true);
 
     const { error } = await supabase.auth.signUp({
@@ -62,6 +134,7 @@ const Auth = () => {
       setEmail("");
       setPassword("");
       setUsername("");
+      setUsernameAvailable(null);
     }
   };
 
@@ -258,6 +331,19 @@ const Auth = () => {
     );
   }
 
+  const getUsernameIcon = () => {
+    if (checkingUsername) {
+      return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+    }
+    if (usernameAvailable === true) {
+      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    }
+    if (usernameAvailable === false || usernameError) {
+      return <XCircle className="h-4 w-4 text-destructive" />;
+    }
+    return <User className="h-4 w-4 text-muted-foreground" />;
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
       <Card className="w-full max-w-md border-primary/20 shadow-lg">
@@ -309,14 +395,26 @@ const Auth = () => {
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-username">Username</Label>
-                  <Input
-                    id="signup-username"
-                    type="text"
-                    placeholder="yourusername"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="signup-username"
+                      type="text"
+                      placeholder="yourusername"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      required
+                      className="pr-10"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {getUsernameIcon()}
+                    </div>
+                  </div>
+                  {usernameError && (
+                    <p className="text-xs text-destructive">{usernameError}</p>
+                  )}
+                  {usernameAvailable === true && (
+                    <p className="text-xs text-green-500">Username is available</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
@@ -340,7 +438,11 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading || usernameAvailable === false || checkingUsername}
+                >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign Up
                 </Button>

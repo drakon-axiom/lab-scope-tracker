@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TestTube2, LayoutDashboard, Package, FlaskConical, FileCheck, FileText, Upload, Settings, LogOut, Bell, Users, Shield, UserPlus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   Sidebar,
@@ -59,9 +61,36 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
   const collapsed = state === "collapsed";
   const { role, isAdmin } = useUserRole();
   const { isImpersonatingCustomer, impersonatedUser } = useImpersonation();
+  const [username, setUsername] = useState<string | null>(null);
 
-  const getInitials = (email: string) => {
-    return email.charAt(0).toUpperCase();
+  // Fetch username from profile
+  useEffect(() => {
+    const fetchUsername = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      if (data?.username) {
+        setUsername(data.username);
+      }
+    };
+
+    fetchUsername();
+  }, [user?.id]);
+
+  const getInitials = (text: string) => {
+    return text.charAt(0).toUpperCase();
+  };
+
+  const getDisplayName = () => {
+    if (isImpersonatingCustomer) {
+      return impersonatedUser?.email || "User";
+    }
+    return username || user?.email || "User";
   };
 
   // When impersonating a customer, show subscriber-level navigation
@@ -181,14 +210,14 @@ export function AppSidebar({ user, onSignOut }: AppSidebarProps) {
                 <div className="flex items-center gap-3 w-full">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(isImpersonatingCustomer ? (impersonatedUser?.email || "U") : (user.email || "U"))}
+                      {getInitials(getDisplayName())}
                     </AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex-1 overflow-hidden text-left">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium truncate">
-                          {isImpersonatingCustomer ? impersonatedUser?.email : user.email}
+                          {getDisplayName()}
                         </p>
                       </div>
                       {isImpersonatingCustomer ? (

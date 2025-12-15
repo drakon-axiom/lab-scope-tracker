@@ -8,7 +8,7 @@ import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
-import { Eye, Check, X, Edit, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Check, X, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -195,15 +195,19 @@ export default function LabQuotes() {
     };
   }, [effectiveLabId]);
 
-  const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
+  const handleApprove = async (quote: Quote) => {
     try {
+      // Check if actual changes were made
+      const hasDiscountChange = modifiedDiscount && parseFloat(modifiedDiscount) > 0;
+      const hasActualChanges = hasDiscountChange;
+
       const updates: any = {
         lab_response: responseNotes || null,
       };
 
-      if (withChanges) {
+      if (hasActualChanges) {
         updates.status = "awaiting_customer_approval";
-        if (modifiedDiscount) {
+        if (hasDiscountChange) {
           updates.discount_amount = parseFloat(modifiedDiscount);
           updates.discount_type = "percentage";
         }
@@ -221,15 +225,15 @@ export default function LabQuotes() {
       // Log activity
       await supabase.from("quote_activity_log").insert({
         quote_id: quote.id,
-        activity_type: withChanges ? "lab_modified" : "lab_approved",
-        description: withChanges
+        activity_type: hasActualChanges ? "lab_modified" : "lab_approved",
+        description: hasActualChanges
           ? "Lab approved quote with modifications"
           : "Lab approved quote",
         metadata: { notes: responseNotes, discount: modifiedDiscount },
       });
 
       toast.success(
-        withChanges
+        hasActualChanges
           ? "Quote approved with changes. Waiting for customer approval."
           : "Quote approved successfully"
       );
@@ -600,15 +604,7 @@ export default function LabQuotes() {
                   Reject
                 </Button>
                 <Button
-                  variant="outline"
-                  onClick={() => selectedQuote && handleApprove(selectedQuote, true)}
-                  disabled={!permissions.canModifyQuotePricing}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Approve with Changes
-                </Button>
-                <Button
-                  onClick={() => selectedQuote && handleApprove(selectedQuote, false)}
+                  onClick={() => selectedQuote && handleApprove(selectedQuote)}
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Approve

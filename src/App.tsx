@@ -45,6 +45,7 @@ const LabSettings = lazy(() => import("./pages/lab/LabSettings"));
 const LabUsers = lazy(() => import("./pages/lab/LabUsers"));
 const LabUserManagement = lazy(() => import("./pages/LabUserManagement"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
+const LabRequestsManagement = lazy(() => import("./pages/LabRequestsManagement"));
 
 // Optimized QueryClient configuration with caching
 const queryClient = new QueryClient({
@@ -123,6 +124,7 @@ const App = () => {
             <Route path="/lab-user-management" element={<LabUserManagement />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/waitlist-management" element={<WaitlistManagement />} />
+            <Route path="/lab-requests-management" element={<LabRequestsManagement />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/faq" element={<FAQ />} />

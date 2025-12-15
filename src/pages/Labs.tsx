@@ -145,6 +145,18 @@ const Labs = () => {
         description: "Our team will review your request and add the lab if approved.",
         duration: 5000 
       });
+
+      // Notify admins via email (fire and forget)
+      supabase.functions.invoke("notify-lab-request", {
+        body: {
+          lab_name: formData.lab_name,
+          location: formData.location || undefined,
+          contact_email: formData.contact_email || undefined,
+          website: formData.website || undefined,
+          notes: formData.notes || undefined,
+          requester_email: user.email,
+        },
+      }).catch(err => console.error("Failed to notify admins:", err));
       setOpen(false);
       resetForm();
       fetchMyRequests();

@@ -63,8 +63,8 @@ export function Breadcrumbs() {
 
   // Always start with Dashboard
   const allBreadcrumbs = [
-    { label: "Dashboard", path: "/", isLast: pathSegments.length === 0 },
-    ...breadcrumbs.filter((b) => b.label !== "Dashboard"),
+    { label: "Dashboard", path: "/dashboard", isLast: location.pathname === "/dashboard" },
+    ...breadcrumbs.filter((b) => b.label !== "Dashboard" && b.path !== "/dashboard"),
   ];
 
   return (

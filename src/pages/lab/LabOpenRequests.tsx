@@ -10,7 +10,7 @@ import { useImpersonation } from "@/hooks/useImpersonation";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
 import { 
-  Eye, Check, X, Edit, Lock, Package, CreditCard, 
+  Eye, Check, X, Lock, Package, CreditCard, 
   FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -263,11 +263,16 @@ export default function LabOpenRequests() {
     }) || Object.keys(modifiedSamplePrices).length > 0 || Object.keys(modifiedHeaderPrices).length > 0;
   };
 
-  const handleApprove = async (quote: Quote, withChanges: boolean = false) => {
+  const handleApprove = async (quote: Quote) => {
     setSavingApproval(true);
     try {
+      // Auto-detect if actual changes were made
+      const hasDiscountChange = modifiedDiscount && parseFloat(modifiedDiscount) > 0;
+      const hasPriceChanges = hasModifiedPrices();
+      const hasActualChanges = hasDiscountChange || hasPriceChanges;
+
       // If approving with changes, update any modified item prices
-      if (withChanges && hasModifiedPrices()) {
+      if (hasActualChanges && hasPriceChanges) {
         // Update each item with modified prices (base, sample, header)
         for (const item of selectedQuoteItems) {
           const updates: Record<string, unknown> = {};
@@ -318,9 +323,9 @@ export default function LabOpenRequests() {
         lab_response: responseNotes || null,
       };
 
-      if (withChanges) {
+      if (hasActualChanges) {
         updates.status = "awaiting_customer_approval";
-        if (modifiedDiscount) {
+        if (hasDiscountChange) {
           updates.discount_amount = parseFloat(modifiedDiscount);
           updates.discount_type = "percentage";
         }
@@ -337,8 +342,8 @@ export default function LabOpenRequests() {
 
       await supabase.from("quote_activity_log").insert({
         quote_id: quote.id,
-        activity_type: withChanges ? "lab_modified" : "lab_approved",
-        description: withChanges
+        activity_type: hasActualChanges ? "lab_modified" : "lab_approved",
+        description: hasActualChanges
           ? "Lab approved quote with modifications"
           : "Lab approved quote",
         metadata: { 
@@ -351,7 +356,7 @@ export default function LabOpenRequests() {
       });
 
       toast.success(
-        withChanges
+        hasActualChanges
           ? "Quote approved with changes"
           : "Quote approved successfully"
       );
@@ -899,20 +904,8 @@ export default function LabOpenRequests() {
                       <X className="h-4 w-4 mr-1" />
                       Reject
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleApprove(selectedQuote, true)}
-                      disabled={savingApproval}
-                    >
-                      {savingApproval ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Edit className="h-4 w-4 mr-1" />
-                      )}
-                      Approve with Changes
-                    </Button>
                     <Button 
-                      onClick={() => handleApprove(selectedQuote, false)}
+                      onClick={() => handleApprove(selectedQuote)}
                       disabled={savingApproval}
                     >
                       {savingApproval ? (

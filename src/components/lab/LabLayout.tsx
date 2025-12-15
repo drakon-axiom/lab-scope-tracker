@@ -58,7 +58,7 @@ export default function LabLayout({ children }: LabLayoutProps) {
   const permissions = useLabPermissions();
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+  const [username, setUsername] = useState<string | null>(null);
   const handleStopImpersonating = () => {
     stopImpersonation();
     navigate("/lab-user-management");
@@ -71,6 +71,15 @@ export default function LabLayout({ children }: LabLayoutProps) {
         navigate("/lab/auth");
       } else {
         setUser(user);
+        // Fetch username from profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+        if (profile?.username) {
+          setUsername(profile.username);
+        }
       }
     };
 
@@ -231,13 +240,21 @@ export default function LabLayout({ children }: LabLayoutProps) {
             <NavContent />
           </nav>
           
-          {/* Role badge in sidebar footer */}
+          {/* User info in sidebar footer */}
           <div className="absolute bottom-4 left-4 right-4">
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground mb-1">Your Role</p>
-              <Badge variant="outline" className="capitalize">
-                {permissions.role || "Unknown"}
-              </Badge>
+            <div className="p-3 bg-muted rounded-lg space-y-2">
+              <div>
+                <p className="text-sm font-medium truncate">{username || user?.email}</p>
+                {username && user?.email && (
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Role:</p>
+                <Badge variant="outline" className="capitalize text-xs">
+                  {permissions.role || "Unknown"}
+                </Badge>
+              </div>
             </div>
           </div>
         </aside>

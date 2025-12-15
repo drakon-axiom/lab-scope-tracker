@@ -46,6 +46,7 @@ const adminNavItems = [
   { title: "Customers", url: "/user-management", icon: Users },
   { title: "Lab Users", url: "/lab-user-management", icon: Users },
   { title: "Admins", url: "/admin-management", icon: Shield },
+  { title: "Lab Requests", url: "/lab-requests-management", icon: FlaskConical },
   { title: "Waitlist", url: "/waitlist-management", icon: UserPlus },
   { title: "Security Settings", url: "/security-settings", icon: Shield },
 ];

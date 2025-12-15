@@ -476,9 +476,6 @@ const Compounds = () => {
   // Get unique categories for filter dropdown
   const uniqueCategories = Array.from(new Set(compounds.map(c => c.category).filter(Boolean)));
 
-  // Priority compounds to pin at top
-  const priorityCompounds = ["Tirzepatide", "Semaglutide", "Retatrutide", "Blind GLP"];
-
   // Filter and sort compounds
   const filteredAndSortedCompounds = useMemo(() => compounds
     .filter(compound => {
@@ -516,9 +513,10 @@ const Compounds = () => {
       return true;
     })
     .sort((a, b) => {
-      // Check if compounds are priority compounds
-      const aIsPriority = priorityCompounds.includes(a.name);
-      const bIsPriority = priorityCompounds.includes(b.name);
+      // Priority compounds to always show at top
+      const pinnedNames = ["Tirzepatide", "Semaglutide", "Retatrutide", "Blind GLP"];
+      const aIsPriority = pinnedNames.includes(a.name);
+      const bIsPriority = pinnedNames.includes(b.name);
       
       // Priority compounds always come first
       if (aIsPriority && !bIsPriority) return -1;
@@ -526,25 +524,32 @@ const Compounds = () => {
       
       // If both are priority, sort by their order in the priority list
       if (aIsPriority && bIsPriority) {
-        return priorityCompounds.indexOf(a.name) - priorityCompounds.indexOf(b.name);
+        return pinnedNames.indexOf(a.name) - pinnedNames.indexOf(b.name);
       }
       
-      // For non-priority compounds, apply normal sorting
-      let compareValue = 0;
+      // For non-priority compounds, always sort alphabetically by name first
+      // Then apply secondary sort based on user selection
+      const nameCompare = a.name.localeCompare(b.name);
       
       if (sortBy === "name") {
-        compareValue = a.name.localeCompare(b.name);
+        return sortOrder === "asc" ? nameCompare : -nameCompare;
       } else if (sortBy === "standard") {
         const aStandard = a.standard || "";
         const bStandard = b.standard || "";
-        compareValue = aStandard.localeCompare(bStandard);
+        const standardCompare = aStandard.localeCompare(bStandard);
+        // If standards are equal, sort by name
+        if (standardCompare === 0) return nameCompare;
+        return sortOrder === "asc" ? standardCompare : -standardCompare;
       } else if (sortBy === "duration") {
         const aDuration = a.duration_days || 0;
         const bDuration = b.duration_days || 0;
-        compareValue = aDuration - bDuration;
+        const durationCompare = aDuration - bDuration;
+        // If durations are equal, sort by name
+        if (durationCompare === 0) return nameCompare;
+        return sortOrder === "asc" ? durationCompare : -durationCompare;
       }
       
-      return sortOrder === "asc" ? compareValue : -compareValue;
+      return nameCompare;
     }), [compounds, searchQuery, standardFilter, categoryFilter, durationFilter, sortBy, sortOrder]);
 
   // Reset to page 1 when filters change

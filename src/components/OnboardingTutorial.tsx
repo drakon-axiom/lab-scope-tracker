@@ -22,34 +22,30 @@ const steps: OnboardingStep[] = [
   {
     id: 0,
     title: "Welcome to SafeBatch!",
-    description: "Let's take a quick tour to help you get started with your first quote. This will only take a minute.",
+    description: "We make it easy to request lab testing for your compounds. Let's show you how it works.",
     icon: <CheckCircle className="h-8 w-8 text-primary" />,
   },
   {
     id: 1,
-    title: "Browse Compounds",
-    description: "Explore our library of compounds available for testing. Each compound has specific testing protocols and pricing.",
-    icon: <Beaker className="h-8 w-8 text-primary" />,
-    action: {
-      label: "View Compounds",
-      route: "/compounds",
-    },
-  },
-  {
-    id: 2,
-    title: "Create Your First Quote",
-    description: "Select compounds, choose a lab, and generate a professional quote. We'll handle all the details and coordinate with the lab.",
+    title: "Request Testing",
+    description: "Create a quote by selecting the compounds you need tested and your preferred lab. We'll send your request directly to the lab for pricing confirmation.",
     icon: <FileText className="h-8 w-8 text-accent" />,
     action: {
-      label: "Create Quote",
+      label: "Create Your First Quote",
       route: "/quotes",
     },
   },
   {
-    id: 3,
-    title: "Track Everything",
-    description: "Monitor quote approvals, payments, shipments, and testing progress—all in one place. No more email hunting!",
+    id: 2,
+    title: "Track Your Orders",
+    description: "Once approved, track payments, shipping, and testing progress in real-time. You'll get notified at every step of the process.",
     icon: <Package className="h-8 w-8 text-primary" />,
+  },
+  {
+    id: 3,
+    title: "Get Your Results",
+    description: "When testing is complete, your lab reports will be available right here. No more digging through emails!",
+    icon: <Beaker className="h-8 w-8 text-primary" />,
   },
 ];
 
@@ -182,16 +178,16 @@ export const OnboardingTutorial = ({ onComplete }: OnboardingTutorialProps) => {
           {currentStep === 0 && (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/30">
-                <Beaker className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-sm font-medium">50+ Compounds</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/30">
                 <FileText className="h-6 w-6 text-accent mx-auto mb-2" />
-                <p className="text-sm font-medium">Quick Quotes</p>
+                <p className="text-sm font-medium">Easy Quotes</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/30">
                 <Package className="h-6 w-6 text-primary mx-auto mb-2" />
                 <p className="text-sm font-medium">Live Tracking</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/30">
+                <Beaker className="h-6 w-6 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium">Lab Results</p>
               </div>
             </div>
           )}

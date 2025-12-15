@@ -17,8 +17,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send } from "lucide-react";
+import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send, Pencil, Trash2 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface Lab {
@@ -27,6 +37,7 @@ interface Lab {
   location: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  user_id: string;
 }
 
 interface LabRequest {
@@ -55,6 +66,18 @@ const Labs = () => {
     contact_phone: "",
     website: "",
     notes: "",
+  });
+
+  // Admin CRUD state
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [editingLab, setEditingLab] = useState<Lab | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [labToDelete, setLabToDelete] = useState<Lab | null>(null);
+  const [adminFormData, setAdminFormData] = useState({
+    name: "",
+    location: "",
+    contact_email: "",
+    contact_phone: "",
   });
 
   const fetchLabs = async () => {
@@ -106,6 +129,16 @@ const Labs = () => {
       website: "",
       notes: "",
     });
+  };
+
+  const resetAdminForm = () => {
+    setAdminFormData({
+      name: "",
+      location: "",
+      contact_email: "",
+      contact_phone: "",
+    });
+    setEditingLab(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,6 +196,110 @@ const Labs = () => {
     setSubmitting(false);
   };
 
+  const handleAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in",
+        variant: "destructive",
+        duration: 4000,
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    if (editingLab) {
+      // Update existing lab
+      const { error } = await supabase
+        .from("labs")
+        .update({
+          name: adminFormData.name,
+          location: adminFormData.location || null,
+          contact_email: adminFormData.contact_email || null,
+          contact_phone: adminFormData.contact_phone || null,
+        })
+        .eq("id", editingLab.id);
+
+      if (error) {
+        toast({
+          title: "Error updating lab",
+          description: error.message,
+          variant: "destructive",
+          duration: 4000,
+        });
+      } else {
+        toast({ title: "Lab updated successfully" });
+        setAdminDialogOpen(false);
+        resetAdminForm();
+        fetchLabs();
+      }
+    } else {
+      // Create new lab
+      const { error } = await supabase
+        .from("labs")
+        .insert([{
+          name: adminFormData.name,
+          location: adminFormData.location || null,
+          contact_email: adminFormData.contact_email || null,
+          contact_phone: adminFormData.contact_phone || null,
+          user_id: user.id,
+        }]);
+
+      if (error) {
+        toast({
+          title: "Error creating lab",
+          description: error.message,
+          variant: "destructive",
+          duration: 4000,
+        });
+      } else {
+        toast({ title: "Lab created successfully" });
+        setAdminDialogOpen(false);
+        resetAdminForm();
+        fetchLabs();
+      }
+    }
+    setSubmitting(false);
+  };
+
+  const handleEditLab = (lab: Lab) => {
+    setEditingLab(lab);
+    setAdminFormData({
+      name: lab.name,
+      location: lab.location || "",
+      contact_email: lab.contact_email || "",
+      contact_phone: lab.contact_phone || "",
+    });
+    setAdminDialogOpen(true);
+  };
+
+  const handleDeleteLab = async () => {
+    if (!labToDelete) return;
+
+    const { error } = await supabase
+      .from("labs")
+      .delete()
+      .eq("id", labToDelete.id);
+
+    if (error) {
+      toast({
+        title: "Error deleting lab",
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
+    } else {
+      toast({ title: "Lab deleted successfully" });
+      fetchLabs();
+    }
+    setDeleteDialogOpen(false);
+    setLabToDelete(null);
+  };
+
   const handleRefresh = async () => {
     await Promise.all([fetchLabs(), fetchMyRequests()]);
   };
@@ -189,7 +326,67 @@ const Labs = () => {
               <h2 className="text-3xl font-bold tracking-tight">Labs</h2>
               <p className="text-muted-foreground">Available testing laboratories</p>
             </div>
-            {!isAdmin && (
+            {isAdmin ? (
+              <ResponsiveDialog
+                open={adminDialogOpen}
+                onOpenChange={(o) => { setAdminDialogOpen(o); if (!o) resetAdminForm(); }}
+                title={editingLab ? "Edit Lab" : "Add New Lab"}
+                description={editingLab ? "Update lab information" : "Create a new testing laboratory"}
+                trigger={
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Lab
+                  </Button>
+                }
+              >
+                <form onSubmit={handleAdminSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin_name">Lab Name *</Label>
+                    <Input
+                      id="admin_name"
+                      value={adminFormData.name}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, name: e.target.value })}
+                      placeholder="Enter lab name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin_location">Location</Label>
+                    <Input
+                      id="admin_location"
+                      value={adminFormData.location}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, location: e.target.value })}
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="admin_contact_email">Contact Email</Label>
+                      <Input
+                        id="admin_contact_email"
+                        type="email"
+                        value={adminFormData.contact_email}
+                        onChange={(e) => setAdminFormData({ ...adminFormData, contact_email: e.target.value })}
+                        placeholder="lab@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin_contact_phone">Contact Phone</Label>
+                      <Input
+                        id="admin_contact_phone"
+                        type="tel"
+                        value={adminFormData.contact_phone}
+                        onChange={(e) => setAdminFormData({ ...adminFormData, contact_phone: e.target.value })}
+                        placeholder="+1 234 567 8900"
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Saving..." : (editingLab ? "Update Lab" : "Create Lab")}
+                  </Button>
+                </form>
+              </ResponsiveDialog>
+            ) : (
               <ResponsiveDialog
                 open={open}
                 onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}
@@ -292,12 +489,13 @@ const Labs = () => {
                       <TableHead className="min-w-[150px]">Name</TableHead>
                       <TableHead className="hidden md:table-cell min-w-[120px]">Location</TableHead>
                       <TableHead className="hidden sm:table-cell min-w-[150px]">Contact</TableHead>
+                      {isAdmin && <TableHead className="w-[100px]">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {labs.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={isAdmin ? 4 : 3} className="text-center text-muted-foreground py-8">
                           No labs available yet.
                         </TableCell>
                       </TableRow>
@@ -311,6 +509,29 @@ const Labs = () => {
                               {lab.contact_email || lab.contact_phone || "—"}
                             </div>
                           </TableCell>
+                          {isAdmin && (
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditLab(lab)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setLabToDelete(lab);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     )}
@@ -359,6 +580,24 @@ const Labs = () => {
           )}
         </div>
       </PullToRefreshWrapper>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lab</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{labToDelete?.name}"? This action cannot be undone and will remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setLabToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLab} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

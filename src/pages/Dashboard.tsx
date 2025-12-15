@@ -191,7 +191,7 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   className="h-auto py-4 flex flex-col items-start text-left"
-                  onClick={() => navigate("/quotes")}
+                  onClick={() => navigate("/quotes/new")}
                 >
                   <FileText className="h-5 w-5 mb-2" />
                   <span className="font-medium">Create Quote</span>

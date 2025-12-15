@@ -47,7 +47,7 @@ import {
 interface UserWithRole {
   id: string;
   email: string;
-  full_name: string | null;
+  username: string | null;
   created_at: string;
   role: "subscriber";
 }
@@ -194,7 +194,7 @@ const UserManagement = () => {
 
   const handleEditClick = (user: UserWithRole) => {
     setEditingUser(user);
-    setEditUserData({ email: user.email, fullName: user.full_name || "" });
+    setEditUserData({ email: user.email, fullName: user.username || "" });
     setIsEditUserOpen(true);
   };
 
@@ -230,10 +230,10 @@ const UserManagement = () => {
         }
       }
 
-      // Update full name in profiles table
+      // Update username in profiles table
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ full_name: editUserData.fullName || null })
+        .update({ username: editUserData.fullName || null })
         .eq("id", editingUser.id);
 
       if (profileError) throw profileError;
@@ -480,11 +480,11 @@ const UserManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name (Optional)</Label>
+                    <Label htmlFor="username">Username (Optional)</Label>
                     <Input
-                      id="fullName"
+                      id="username"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder="username"
                       value={newUser.fullName}
                       onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                     />
@@ -551,7 +551,7 @@ const UserManagement = () => {
                     {users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">
-                          {user.full_name || "No name"}
+                          {user.username || "No username"}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
@@ -566,7 +566,7 @@ const UserManagement = () => {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => {
-                                      startCustomerImpersonation(user.id, user.email, user.full_name);
+                                      startCustomerImpersonation(user.id, user.email, user.username);
                                       toast({
                                         title: "Impersonating customer",
                                         description: `Now viewing as ${user.email}`,
@@ -669,9 +669,9 @@ const UserManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-fullName">Full Name</Label>
+              <Label htmlFor="edit-username">Username</Label>
               <Input
-                id="edit-fullName"
+                id="edit-username"
                 type="text"
                 value={editUserData.fullName}
                 onChange={(e) => setEditUserData({ ...editUserData, fullName: e.target.value })}

@@ -49,7 +49,7 @@ import {
 interface AdminUser {
   id: string;
   email: string;
-  full_name: string | null;
+  username: string | null;
   created_at: string;
 }
 
@@ -195,7 +195,7 @@ const AdminManagement = () => {
 
   const handleEditClick = (admin: AdminUser) => {
     setEditingAdmin(admin);
-    setEditFullName(admin.full_name || "");
+    setEditFullName(admin.username || "");
     setIsEditDialogOpen(true);
   };
 
@@ -207,7 +207,7 @@ const AdminManagement = () => {
 
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: editFullName })
+        .update({ username: editFullName })
         .eq("id", editingAdmin.id);
 
       if (error) throw error;
@@ -364,11 +364,11 @@ const AdminManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name (Optional)</Label>
+                    <Label htmlFor="username">Username (Optional)</Label>
                     <Input
-                      id="fullName"
+                      id="username"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder="admin_username"
                       value={newAdmin.fullName}
                       onChange={(e) => setNewAdmin({ ...newAdmin, fullName: e.target.value })}
                     />
@@ -424,7 +424,7 @@ const AdminManagement = () => {
                       <TableRow key={admin.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {admin.full_name || "No name"}
+                            {admin.username || "No username"}
                             {admin.id === currentUserId && (
                               <Badge variant="outline" className="text-xs">You</Badge>
                             )}
@@ -526,11 +526,11 @@ const AdminManagement = () => {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-fullName">Full Name</Label>
+                  <Label htmlFor="edit-username">Username</Label>
                   <Input
-                    id="edit-fullName"
+                    id="edit-username"
                     type="text"
-                    placeholder="John Doe"
+                    placeholder="admin_username"
                     value={editFullName}
                     onChange={(e) => setEditFullName(e.target.value)}
                   />

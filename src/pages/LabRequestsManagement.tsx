@@ -182,6 +182,17 @@ const LabRequestsManagement = () => {
         });
       }
 
+      // Send email notification to customer (fire and forget)
+      supabase.functions.invoke("send-lab-request-status", {
+        body: {
+          user_id: selectedRequest.user_id,
+          lab_name: selectedRequest.lab_name,
+          status: "approved",
+          admin_notes: adminNotes || undefined,
+          lab_created: createLab,
+        },
+      }).catch(err => console.error("Failed to send status notification:", err));
+
       setApproveDialogOpen(false);
       fetchRequests();
     } catch (error: any) {
@@ -218,6 +229,16 @@ const LabRequestsManagement = () => {
         title: "Request rejected",
         description: "Lab request has been rejected.",
       });
+
+      // Send email notification to customer (fire and forget)
+      supabase.functions.invoke("send-lab-request-status", {
+        body: {
+          user_id: selectedRequest.user_id,
+          lab_name: selectedRequest.lab_name,
+          status: "rejected",
+          admin_notes: adminNotes || undefined,
+        },
+      }).catch(err => console.error("Failed to send status notification:", err));
 
       setRejectDialogOpen(false);
       fetchRequests();

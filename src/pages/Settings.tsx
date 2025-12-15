@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, RefreshCw, Package } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, RefreshCw, Package, Download, Trash2, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
@@ -70,6 +70,10 @@ const Settings = () => {
   const [updatingTracking, setUpdatingTracking] = useState(false);
   const [lastTrackingRefresh, setLastTrackingRefresh] = useState<number | null>(null);
   const [timeUntilNextRefresh, setTimeUntilNextRefresh] = useState<string>("");
+  const [exportingData, setExportingData] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
+  const [showClearDataDialog, setShowClearDataDialog] = useState(false);
+  const [clearDataConfirmText, setClearDataConfirmText] = useState("");
 
   useEffect(() => {
     loadProfile();
@@ -533,6 +537,160 @@ const Settings = () => {
     return elapsed >= 60 * 60 * 1000; // 60 minutes
   };
 
+  const handleExportData = async () => {
+    try {
+      setExportingData(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch all quotes with their items
+      const { data: quotes, error: quotesError } = await supabase
+        .from('quotes')
+        .select(`
+          *,
+          quote_items (*)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (quotesError) throw quotesError;
+
+      // Fetch labs for reference
+      const { data: labs } = await supabase
+        .from('labs')
+        .select('id, name');
+
+      // Fetch products for reference
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, category');
+
+      // Fetch clients
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Fetch manufacturers
+      const { data: manufacturers } = await supabase
+        .from('manufacturers')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        quotes: quotes || [],
+        clients: clients || [],
+        manufacturers: manufacturers || [],
+        referenceData: {
+          labs: labs || [],
+          products: products || [],
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `safebatch-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Data Exported",
+        description: "Your data has been downloaded successfully",
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export data",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    if (clearDataConfirmText !== "DELETE") return;
+
+    try {
+      setClearingData(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete quote items first (due to foreign key)
+      const { data: userQuotes } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (userQuotes && userQuotes.length > 0) {
+        const quoteIds = userQuotes.map(q => q.id);
+        
+        // Delete quote items
+        await supabase
+          .from('quote_items')
+          .delete()
+          .in('quote_id', quoteIds);
+
+        // Delete quote activity logs
+        await supabase
+          .from('quote_activity_log')
+          .delete()
+          .in('quote_id', quoteIds);
+
+        // Delete email history
+        await supabase
+          .from('email_history')
+          .delete()
+          .in('quote_id', quoteIds);
+
+        // Delete tracking history
+        await supabase
+          .from('tracking_history')
+          .delete()
+          .in('quote_id', quoteIds);
+
+        // Delete quotes
+        await supabase
+          .from('quotes')
+          .delete()
+          .eq('user_id', user.id);
+      }
+
+      // Delete clients
+      await supabase
+        .from('clients')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Delete manufacturers
+      await supabase
+        .from('manufacturers')
+        .delete()
+        .eq('user_id', user.id);
+
+      setShowClearDataDialog(false);
+      setClearDataConfirmText("");
+
+      toast({
+        title: "Data Cleared",
+        description: "Your quotes and related data have been deleted. Usage limits remain in effect.",
+      });
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear data",
+        variant: "destructive",
+      });
+    } finally {
+      setClearingData(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -549,9 +707,10 @@ const Settings = () => {
         <h1 className="text-3xl font-bold">Settings</h1>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-6 mt-6">
@@ -823,7 +982,113 @@ const Settings = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="data" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Download className="h-5 w-5" />
+                  <CardTitle>Export Data</CardTitle>
+                </div>
+                <CardDescription>
+                  Download all your quotes and related data as a JSON file
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Export includes all your quotes, quote items, clients, and manufacturers. Reference data for labs and products is also included.
+                </p>
+                <Button 
+                  onClick={handleExportData}
+                  disabled={exportingData}
+                >
+                  {exportingData && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Download className="mr-2 h-4 w-4" />
+                  Export All Data
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                  <CardTitle className="text-destructive">Clear Data</CardTitle>
+                </div>
+                <CardDescription>
+                  Permanently delete all your quotes and related data
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    This action is irreversible. All your quotes, clients, and manufacturers will be permanently deleted. Your monthly usage limits will remain in effect and cannot be reset by clearing data.
+                  </AlertDescription>
+                </Alert>
+                <Button 
+                  variant="destructive"
+                  onClick={() => setShowClearDataDialog(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All Data
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        <Dialog open={showClearDataDialog} onOpenChange={setShowClearDataDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive">Clear All Data</DialogTitle>
+              <DialogDescription>
+                This will permanently delete all your quotes, clients, and manufacturers. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Your subscription usage limits will remain in effect. Clearing data does not reset your monthly item count.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="clearConfirm">Type DELETE to confirm:</Label>
+                <Input
+                  id="clearConfirm"
+                  value={clearDataConfirmText}
+                  onChange={(e) => setClearDataConfirmText(e.target.value.toUpperCase())}
+                  placeholder="DELETE"
+                  className="font-mono"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleClearData}
+                  disabled={clearingData || clearDataConfirmText !== "DELETE"}
+                  className="flex-1"
+                >
+                  {clearingData && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Clear All Data
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowClearDataDialog(false);
+                    setClearDataConfirmText("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showMfaSetup} onOpenChange={setShowMfaSetup}>
           <DialogContent className="sm:max-w-md">

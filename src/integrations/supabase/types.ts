@@ -351,7 +351,6 @@ export type Database = {
       }
       labs: {
         Row: {
-          accreditations: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
@@ -362,7 +361,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          accreditations?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -373,7 +371,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          accreditations?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string

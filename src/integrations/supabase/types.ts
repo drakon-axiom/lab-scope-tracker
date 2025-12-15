@@ -260,6 +260,57 @@ export type Database = {
           },
         ]
       }
+      lab_requests: {
+        Row: {
+          admin_notes: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          lab_name: string
+          location: string | null
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          lab_name: string
+          location?: string | null
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          lab_name?: string
+          location?: string | null
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       lab_users: {
         Row: {
           created_at: string

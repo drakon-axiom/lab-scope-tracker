@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -565,40 +566,74 @@ const Settings = () => {
         .from('products')
         .select('id, name, category');
 
-      // Fetch clients
-      const { data: clients } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', user.id);
+      // Create lab and product lookup maps
+      const labMap = new Map((labs || []).map(l => [l.id, l.name]));
+      const productMap = new Map((products || []).map(p => [p.id, { name: p.name, category: p.category }]));
 
-      // Fetch manufacturers
-      const { data: manufacturers } = await supabase
-        .from('manufacturers')
-        .select('*')
-        .eq('user_id', user.id);
+      // Flatten quotes and items for Excel export
+      const quotesSheet: Record<string, unknown>[] = [];
+      const itemsSheet: Record<string, unknown>[] = [];
 
-      const exportData = {
-        exportedAt: new Date().toISOString(),
-        quotes: quotes || [],
-        clients: clients || [],
-        manufacturers: manufacturers || [],
-        referenceData: {
-          labs: labs || [],
-          products: products || [],
-        }
-      };
+      (quotes || []).forEach(quote => {
+        const labName = labMap.get(quote.lab_id) || quote.lab_id;
+        
+        quotesSheet.push({
+          'Quote Number': quote.quote_number || '',
+          'Lab Quote Number': quote.lab_quote_number || '',
+          'Lab': labName,
+          'Status': quote.status,
+          'Payment Status': quote.payment_status || '',
+          'Payment Amount (USD)': quote.payment_amount_usd || '',
+          'Payment Date': quote.payment_date ? new Date(quote.payment_date).toLocaleDateString() : '',
+          'Transaction ID': quote.transaction_id || '',
+          'Tracking Number': quote.tracking_number || '',
+          'Shipped Date': quote.shipped_date || '',
+          'Estimated Delivery': quote.estimated_delivery || '',
+          'Discount Type': quote.discount_type || '',
+          'Discount Amount': quote.discount_amount || '',
+          'Notes': quote.notes || '',
+          'Created At': new Date(quote.created_at).toLocaleDateString(),
+          'Updated At': new Date(quote.updated_at).toLocaleDateString(),
+        });
 
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `safebatch-export-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+        (quote.quote_items || []).forEach((item: Record<string, unknown>) => {
+          const product = productMap.get(item.product_id as string);
+          itemsSheet.push({
+            'Quote Number': quote.quote_number || quote.id,
+            'Lab': labName,
+            'Product': product?.name || item.product_id,
+            'Category': product?.category || '',
+            'Client': item.client || '',
+            'Sample': item.sample || '',
+            'Manufacturer': item.manufacturer || '',
+            'Batch': item.batch || '',
+            'Price': item.price || '',
+            'Additional Samples': item.additional_samples || 0,
+            'Additional Report Headers': item.additional_report_headers || 0,
+            'Status': item.status || '',
+            'Test Results': item.test_results || '',
+            'Report URL': item.report_url || '',
+            'Date Submitted': item.date_submitted || '',
+            'Date Completed': item.date_completed || '',
+          });
+        });
+      });
+
+      // Create workbook with multiple sheets
+      const wb = XLSX.utils.book_new();
+      
+      const quotesWs = XLSX.utils.json_to_sheet(quotesSheet);
+      XLSX.utils.book_append_sheet(wb, quotesWs, 'Quotes');
+      
+      const itemsWs = XLSX.utils.json_to_sheet(itemsSheet);
+      XLSX.utils.book_append_sheet(wb, itemsWs, 'Quote Items');
+
+      // Write and download
+      XLSX.writeFile(wb, `safebatch-export-${new Date().toISOString().split('T')[0]}.xlsx`);
 
       toast({
         title: "Data Exported",
-        description: "Your data has been downloaded successfully",
+        description: "Your data has been downloaded as an Excel file",
       });
     } catch (error) {
       console.error('Error exporting data:', error);

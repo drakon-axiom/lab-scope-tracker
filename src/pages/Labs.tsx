@@ -27,7 +27,6 @@ interface Lab {
   location: string | null;
   contact_email: string | null;
   contact_phone: string | null;
-  accreditations: string | null;
 }
 
 interface LabRequest {
@@ -293,13 +292,12 @@ const Labs = () => {
                       <TableHead className="min-w-[150px]">Name</TableHead>
                       <TableHead className="hidden md:table-cell min-w-[120px]">Location</TableHead>
                       <TableHead className="hidden sm:table-cell min-w-[150px]">Contact</TableHead>
-                      <TableHead className="hidden lg:table-cell min-w-[200px]">Accreditations</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {labs.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                           No labs available yet.
                         </TableCell>
                       </TableRow>
@@ -311,11 +309,6 @@ const Labs = () => {
                           <TableCell className="hidden sm:table-cell">
                             <div className="max-w-[150px] truncate">
                               {lab.contact_email || lab.contact_phone || "—"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <div className="max-w-[200px] truncate">
-                              {lab.accreditations || "—"}
                             </div>
                           </TableCell>
                         </TableRow>

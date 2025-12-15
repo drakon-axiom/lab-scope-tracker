@@ -8,10 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, Wallet, RefreshCw, Package } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff, Bell, RefreshCw, Package } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PaymentMethodsManager } from "@/components/PaymentMethodsManager";
 import { z } from "zod";
 import {
   Dialog,
@@ -550,9 +549,8 @@ const Settings = () => {
         <h1 className="text-3xl font-bold">Settings</h1>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
@@ -742,22 +740,6 @@ const Settings = () => {
         </Card>
           </TabsContent>
 
-          <TabsContent value="payments" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5" />
-                  <CardTitle>Payment Methods</CardTitle>
-                </div>
-                <CardDescription>
-                  Manage your saved payment options for faster checkout
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PaymentMethodsManager />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="notifications" className="space-y-6 mt-6">
             <Card>

@@ -255,19 +255,42 @@ export default function LabOpenRequests() {
   };
 
   const hasModifiedPrices = () => {
-    return Object.keys(modifiedPrices).some(itemId => {
+    // Check if base prices were modified
+    const hasBasePriceChange = Object.keys(modifiedPrices).some(itemId => {
       const item = selectedQuoteItems.find(i => i.id === itemId);
       if (!item) return false;
       const newPrice = parseFloat(modifiedPrices[itemId]);
       return !isNaN(newPrice) && newPrice !== item.price;
-    }) || Object.keys(modifiedSamplePrices).length > 0 || Object.keys(modifiedHeaderPrices).length > 0;
+    });
+    
+    // Check if sample prices were modified (compare to calculated original)
+    const hasSamplePriceChange = Object.keys(modifiedSamplePrices).some(itemId => {
+      const item = selectedQuoteItems.find(i => i.id === itemId);
+      if (!item) return false;
+      const newPrice = parseFloat(modifiedSamplePrices[itemId]);
+      const originalPrice = getAdditionalSamplesPrice(item);
+      return !isNaN(newPrice) && newPrice !== originalPrice;
+    });
+    
+    // Check if header prices were modified (compare to calculated original)
+    const hasHeaderPriceChange = Object.keys(modifiedHeaderPrices).some(itemId => {
+      const item = selectedQuoteItems.find(i => i.id === itemId);
+      if (!item) return false;
+      const newPrice = parseFloat(modifiedHeaderPrices[itemId]);
+      const originalPrice = getAdditionalHeadersPrice(item);
+      return !isNaN(newPrice) && newPrice !== originalPrice;
+    });
+    
+    return hasBasePriceChange || hasSamplePriceChange || hasHeaderPriceChange;
   };
 
   const handleApprove = async (quote: Quote) => {
     setSavingApproval(true);
     try {
-      // Auto-detect if actual changes were made
-      const hasDiscountChange = modifiedDiscount && parseFloat(modifiedDiscount) > 0;
+      // Auto-detect if actual changes were made by comparing to original values
+      const originalDiscount = quote.discount_amount || 0;
+      const newDiscount = modifiedDiscount ? parseFloat(modifiedDiscount) : 0;
+      const hasDiscountChange = !isNaN(newDiscount) && newDiscount !== originalDiscount;
       const hasPriceChanges = hasModifiedPrices();
       const hasActualChanges = hasDiscountChange || hasPriceChanges;
 

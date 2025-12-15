@@ -229,7 +229,7 @@ const Dashboard = () => {
                   <p>No active quotes</p>
                   <Button 
                     variant="link" 
-                    onClick={() => navigate("/quotes")}
+                    onClick={() => navigate("/quotes/new")}
                     className="mt-2"
                   >
                     Create your first quote

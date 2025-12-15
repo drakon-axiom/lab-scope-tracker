@@ -476,6 +476,9 @@ const Compounds = () => {
   // Get unique categories for filter dropdown
   const uniqueCategories = Array.from(new Set(compounds.map(c => c.category).filter(Boolean)));
 
+  // Priority compounds to pin at top
+  const priorityCompounds = ["Tirzepatide", "Semaglutide", "Retatrutide", "Blind GLP"];
+
   // Filter and sort compounds
   const filteredAndSortedCompounds = useMemo(() => compounds
     .filter(compound => {
@@ -513,6 +516,20 @@ const Compounds = () => {
       return true;
     })
     .sort((a, b) => {
+      // Check if compounds are priority compounds
+      const aIsPriority = priorityCompounds.includes(a.name);
+      const bIsPriority = priorityCompounds.includes(b.name);
+      
+      // Priority compounds always come first
+      if (aIsPriority && !bIsPriority) return -1;
+      if (!aIsPriority && bIsPriority) return 1;
+      
+      // If both are priority, sort by their order in the priority list
+      if (aIsPriority && bIsPriority) {
+        return priorityCompounds.indexOf(a.name) - priorityCompounds.indexOf(b.name);
+      }
+      
+      // For non-priority compounds, apply normal sorting
       let compareValue = 0;
       
       if (sortBy === "name") {

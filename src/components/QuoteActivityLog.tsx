@@ -15,7 +15,7 @@ interface ActivityLog {
   metadata: any;
   created_at: string;
   profiles?: {
-    full_name: string | null;
+    username: string | null;
   } | null;
 }
 
@@ -68,7 +68,7 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
           if (activity.user_id) {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('full_name')
+              .select('username')
               .eq('id', activity.user_id)
               .single();
             
@@ -203,10 +203,10 @@ export const QuoteActivityLog = ({ quoteId }: QuoteActivityLogProps) => {
                         </span>
                       </div>
                       
-                      {activity.profiles?.full_name && (
+                      {activity.profiles?.username && (
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          <span>{activity.profiles.full_name}</span>
+                          <span>{activity.profiles.username}</span>
                         </div>
                       )}
                       

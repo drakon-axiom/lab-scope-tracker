@@ -36,7 +36,7 @@ const passwordSchema = z.object({
 });
 
 const profileSchema = z.object({
-  fullName: z.string().trim().max(100, "Name must be less than 100 characters"),
+  username: z.string().trim().max(50, "Username must be less than 50 characters"),
 });
 
 const Settings = () => {
@@ -46,7 +46,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -128,7 +128,7 @@ const Settings = () => {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("username")
         .eq("id", user.id)
         .single();
 
@@ -137,7 +137,7 @@ const Settings = () => {
       }
 
       if (profile) {
-        setFullName(profile.full_name || "");
+        setUsername(profile.username || "");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -357,7 +357,7 @@ const Settings = () => {
     
     try {
       // Validate input
-      profileSchema.parse({ fullName });
+      profileSchema.parse({ username });
       
       setSavingProfile(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -370,7 +370,7 @@ const Settings = () => {
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: fullName,
+          username: username,
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
@@ -581,16 +581,16 @@ const Settings = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="fullName"
+                  id="username"
                   type="text"
-                  value={fullName}
+                  value={username}
                   onChange={(e) => {
-                    setFullName(e.target.value);
+                    setUsername(e.target.value);
                     setProfileError("");
                   }}
-                  placeholder="Enter your full name"
+                  placeholder="Enter your username"
                 />
                 {profileError && (
                   <p className="text-sm text-destructive">{profileError}</p>

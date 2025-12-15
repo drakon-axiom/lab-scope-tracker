@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     // Get all profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('id, full_name')
+      .select('id, username')
 
     if (profilesError) {
       throw profilesError
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       return {
         id: ur.user_id,
         email: authUser?.email || 'Unknown',
-        full_name: profile?.full_name || null,
+        username: profile?.username || null,
         created_at: authUser?.created_at || '',
       }
     })

@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     }
 
     // Get request body
-    const { email, password, fullName, role } = await req.json()
+    const { email, password, fullName, role } = await req.json() // fullName is now used as username
 
     if (!email || !password || !role) {
       return new Response(JSON.stringify({ error: 'Missing required fields: email, password, role' }), {
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       password,
       email_confirm: true,
       user_metadata: {
-        full_name: fullName || null,
+        username: fullName || null,
       },
     })
 
@@ -131,10 +131,10 @@ Deno.serve(async (req) => {
         user: {
           id: newUser.user.id,
           email: newUser.user.email,
-          full_name: fullName || null,
+          username: fullName || null,
           role: role,
         }
-      }), 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }

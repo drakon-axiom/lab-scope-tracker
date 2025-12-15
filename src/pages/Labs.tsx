@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send, Pencil, Trash2 } from "lucide-react";
+import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send, Pencil, Trash2, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface Lab {
@@ -67,6 +67,25 @@ const Labs = () => {
     website: "",
     notes: "",
   });
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+
+  // Derived filtered labs
+  const filteredLabs = labs.filter((lab) => {
+    const matchesSearch = searchQuery === "" || 
+      lab.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lab.contact_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lab.location?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesLocation = !locationFilter || lab.location === locationFilter;
+    
+    return matchesSearch && matchesLocation;
+  });
+
+  // Unique locations for filter
+  const uniqueLocations = [...new Set(labs.map(lab => lab.location).filter(Boolean))] as string[];
 
   // Admin CRUD state
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
@@ -481,7 +500,66 @@ const Labs = () => {
                 These labs are available for testing requests
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Search and Filter Bar */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search labs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {uniqueLocations.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant={locationFilter === null ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setLocationFilter(null)}
+                    >
+                      All
+                    </Button>
+                    {uniqueLocations.slice(0, 5).map((location) => (
+                      <Button
+                        key={location}
+                        variant={locationFilter === location ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setLocationFilter(locationFilter === location ? null : location)}
+                      >
+                        {location}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Active filters indicator */}
+              {(searchQuery || locationFilter) && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Showing {filteredLabs.length} of {labs.length} labs</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSearchQuery(""); setLocationFilter(null); }}
+                    className="h-auto py-1 px-2"
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              )}
+
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -493,14 +571,13 @@ const Labs = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {labs.length === 0 ? (
+                    {filteredLabs.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={isAdmin ? 4 : 3} className="text-center text-muted-foreground py-8">
-                          No labs available yet.
+                          {labs.length === 0 ? "No labs available yet." : "No labs match your search."}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      labs.map((lab) => (
+                    ) : filteredLabs.map((lab) => (
                         <TableRow key={lab.id}>
                           <TableCell className="font-medium">{lab.name}</TableCell>
                           <TableCell className="hidden md:table-cell">{lab.location || "—"}</TableCell>
@@ -533,8 +610,7 @@ const Labs = () => {
                             </TableCell>
                           )}
                         </TableRow>
-                      ))
-                    )}
+                      ))}
                   </TableBody>
                 </Table>
               </div>

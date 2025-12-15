@@ -180,6 +180,36 @@ const Dashboard = () => {
             </Card>
           )}
 
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Common tasks to get started</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-start text-left"
+                  onClick={() => navigate("/quotes")}
+                >
+                  <FileText className="h-5 w-5 mb-2" />
+                  <span className="font-medium">Create Quote</span>
+                  <span className="text-xs text-muted-foreground">Start a new quote request</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-start text-left"
+                  onClick={() => navigate("/compounds")}
+                >
+                  <TrendingUp className="h-5 w-5 mb-2" />
+                  <span className="font-medium">Manage Compounds</span>
+                  <span className="text-xs text-muted-foreground">Add or update compounds</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Active Quotes List */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -245,45 +275,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           )}
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks to get started</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex flex-col items-start text-left"
-                  onClick={() => navigate("/quotes")}
-                >
-                  <FileText className="h-5 w-5 mb-2" />
-                  <span className="font-medium">Create Quote</span>
-                  <span className="text-xs text-muted-foreground">Start a new quote request</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex flex-col items-start text-left"
-                  onClick={() => navigate("/compounds")}
-                >
-                  <TrendingUp className="h-5 w-5 mb-2" />
-                  <span className="font-medium">Manage Compounds</span>
-                  <span className="text-xs text-muted-foreground">Add or update compounds</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex flex-col items-start text-left"
-                  onClick={() => navigate("/labs")}
-                >
-                  <Package className="h-5 w-5 mb-2" />
-                  <span className="font-medium">View Labs</span>
-                  <span className="text-xs text-muted-foreground">Manage lab vendors</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </PullToRefreshWrapper>
     </Layout>

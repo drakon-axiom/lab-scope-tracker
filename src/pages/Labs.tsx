@@ -7,14 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -24,9 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Trash2, ChevronDown } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { SwipeableTableRow } from "@/components/SwipeableTableRow";
+import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Lab {
   id: string;
@@ -37,29 +30,39 @@ interface Lab {
   accreditations: string | null;
 }
 
+interface LabRequest {
+  id: string;
+  lab_name: string;
+  location: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  website: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+}
+
 const Labs = () => {
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
   const [labs, setLabs] = useState<Lab[]>([]);
+  const [myRequests, setMyRequests] = useState<LabRequest[]>([]);
   const [open, setOpen] = useState(false);
-  const [editingLab, setEditingLab] = useState<Lab | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    lab_name: "",
     location: "",
     contact_email: "",
     contact_phone: "",
-    accreditations: "",
+    website: "",
+    notes: "",
   });
 
   const fetchLabs = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    if (!user) return;
-
     const { data, error } = await supabase
       .from("labs")
       .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("name", { ascending: true });
 
     if (error) {
       toast({
@@ -73,166 +76,152 @@ const Labs = () => {
     }
   };
 
+  const fetchMyRequests = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("lab_requests")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching lab requests:", error);
+    } else {
+      setMyRequests(data || []);
+    }
+  };
+
   useEffect(() => {
     fetchLabs();
-
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('labs-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'labs'
-        },
-        () => {
-          fetchLabs();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    fetchMyRequests();
   }, []);
 
   const resetForm = () => {
     setFormData({
-      name: "",
+      lab_name: "",
       location: "",
       contact_email: "",
       contact_phone: "",
-      accreditations: "",
+      website: "",
+      notes: "",
     });
-    setEditingLab(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    if (editingLab) {
-      const { error } = await supabase
-        .from("labs")
-        .update(formData)
-        .eq("id", editingLab.id);
-
-      if (error) {
-        toast({
-          title: "Error updating lab",
-          description: error.message,
-          variant: "destructive",
-          duration: 4000,
-        });
-      } else {
-        toast({ title: "Lab updated successfully", duration: 3000 });
-        setOpen(false);
-        resetForm();
-        fetchLabs();
-      }
-    } else {
-      const { error } = await supabase
-        .from("labs")
-        .insert([{ ...formData, user_id: user.id }]);
-
-      if (error) {
-        toast({
-          title: "Error creating lab",
-          description: error.message,
-          variant: "destructive",
-          duration: 4000,
-        });
-      } else {
-        toast({ title: "Lab created successfully", duration: 3000 });
-        setOpen(false);
-        resetForm();
-        fetchLabs();
-      }
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit a request",
+        variant: "destructive",
+        duration: 4000,
+      });
+      setSubmitting(false);
+      return;
     }
-  };
 
-  const handleEdit = (lab: Lab) => {
-    setEditingLab(lab);
-    setFormData({
-      name: lab.name,
-      location: lab.location || "",
-      contact_email: lab.contact_email || "",
-      contact_phone: lab.contact_phone || "",
-      accreditations: lab.accreditations || "",
-    });
-    setOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this lab?")) return;
-
-    const { error } = await supabase.from("labs").delete().eq("id", id);
+    const { error } = await supabase
+      .from("lab_requests")
+      .insert([{ 
+        ...formData, 
+        user_id: user.id 
+      }]);
 
     if (error) {
       toast({
-        title: "Error deleting lab",
+        title: "Error submitting request",
         description: error.message,
         variant: "destructive",
         duration: 4000,
       });
     } else {
-      toast({ title: "Lab deleted successfully", duration: 3000 });
-      fetchLabs();
+      toast({ 
+        title: "Request submitted", 
+        description: "Our team will review your request and add the lab if approved.",
+        duration: 5000 
+      });
+      setOpen(false);
+      resetForm();
+      fetchMyRequests();
     }
+    setSubmitting(false);
   };
 
   const handleRefresh = async () => {
-    await fetchLabs();
+    await Promise.all([fetchLabs(), fetchMyRequests()]);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
+      case "approved":
+        return <Badge className="gap-1 bg-green-600"><CheckCircle className="h-3 w-3" /> Approved</Badge>;
+      case "rejected":
+        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rejected</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
   };
 
   return (
     <Layout>
       <PullToRefreshWrapper onRefresh={handleRefresh}>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Labs</h2>
-            <p className="text-muted-foreground">Manage testing laboratories</p>
-          </div>
-          <ResponsiveDialog 
-            open={open} 
-            onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}
-            title={editingLab ? "Edit Lab" : "Add Lab"}
-            description={editingLab ? "Update laboratory entry" : "Create a new laboratory entry"}
-            trigger={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Lab
-              </Button>
-            }
-          >
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Lab Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  />
-                </div>
-                
-                <Collapsible defaultOpen className="space-y-2">
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 font-medium text-sm hover:text-primary transition-colors">
-                    <span>Contact Details</span>
-                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-4">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Labs</h2>
+              <p className="text-muted-foreground">Available testing laboratories</p>
+            </div>
+            {!isAdmin && (
+              <ResponsiveDialog
+                open={open}
+                onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}
+                title="Request New Lab"
+                description="Submit information about a lab you'd like us to add"
+                trigger={
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Request Lab
+                  </Button>
+                }
+              >
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lab_name">Lab Name *</Label>
+                    <Input
+                      id="lab_name"
+                      value={formData.lab_name}
+                      onChange={(e) => setFormData({ ...formData, lab_name: e.target.value })}
+                      placeholder="Enter lab name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contact_email">Contact Email</Label>
                       <Input
@@ -240,6 +229,7 @@ const Labs = () => {
                         type="email"
                         value={formData.contact_email}
                         onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                        placeholder="lab@example.com"
                       />
                     </div>
                     <div className="space-y-2">
@@ -249,94 +239,120 @@ const Labs = () => {
                         type="tel"
                         value={formData.contact_phone}
                         onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                        placeholder="+1 234 567 8900"
                       />
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                <Collapsible className="space-y-2">
-                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 font-medium text-sm hover:text-primary transition-colors">
-                    <span>Accreditations</span>
-                    <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2">
-                    <Label htmlFor="accreditations">Accreditations</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Additional Notes</Label>
                     <Textarea
-                      id="accreditations"
-                      value={formData.accreditations}
-                      onChange={(e) => setFormData({ ...formData, accreditations: e.target.value })}
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Any additional information about this lab..."
+                      rows={3}
                     />
-                  </CollapsibleContent>
-                </Collapsible>
-                <Button type="submit" className="w-full">
-                  {editingLab ? "Update" : "Create"} Lab
-                </Button>
-              </form>
-          </ResponsiveDialog>
-        </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {submitting ? "Submitting..." : "Submit Request"}
+                  </Button>
+                </form>
+              </ResponsiveDialog>
+            )}
+          </div>
 
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[150px]">Name</TableHead>
-                <TableHead className="hidden md:table-cell min-w-[120px]">Location</TableHead>
-                <TableHead className="hidden sm:table-cell min-w-[150px]">Contact</TableHead>
-                <TableHead className="hidden lg:table-cell min-w-[200px]">Accreditations</TableHead>
-                <TableHead className="text-right min-w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {labs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No labs found. Add your first lab to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                labs.map((lab) => (
-                  <SwipeableTableRow 
-                    key={lab.id}
-                    onEdit={() => handleEdit(lab)}
-                    onDelete={() => handleDelete(lab.id)}
-                  >
-                    <TableCell className="font-medium">{lab.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{lab.location || "—"}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="max-w-[150px] truncate">
-                        {lab.contact_email || lab.contact_phone || "—"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="max-w-[200px] truncate">
-                        {lab.accreditations || "—"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(lab)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(lab.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </SwipeableTableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {/* Available Labs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5" />
+                Available Labs
+              </CardTitle>
+              <CardDescription>
+                These labs are available for testing requests
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">Name</TableHead>
+                      <TableHead className="hidden md:table-cell min-w-[120px]">Location</TableHead>
+                      <TableHead className="hidden sm:table-cell min-w-[150px]">Contact</TableHead>
+                      <TableHead className="hidden lg:table-cell min-w-[200px]">Accreditations</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {labs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          No labs available yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      labs.map((lab) => (
+                        <TableRow key={lab.id}>
+                          <TableCell className="font-medium">{lab.name}</TableCell>
+                          <TableCell className="hidden md:table-cell">{lab.location || "—"}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="max-w-[150px] truncate">
+                              {lab.contact_email || lab.contact_phone || "—"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="max-w-[200px] truncate">
+                              {lab.accreditations || "—"}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* My Lab Requests - only show if user has requests */}
+          {!isAdmin && myRequests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>My Lab Requests</CardTitle>
+                <CardDescription>
+                  Track the status of your lab requests
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[150px]">Lab Name</TableHead>
+                        <TableHead className="hidden sm:table-cell min-w-[120px]">Location</TableHead>
+                        <TableHead className="min-w-[100px]">Status</TableHead>
+                        <TableHead className="hidden md:table-cell min-w-[120px]">Submitted</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {myRequests.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-medium">{request.lab_name}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{request.location || "—"}</TableCell>
+                          <TableCell>{getStatusBadge(request.status)}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {new Date(request.created_at).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-      </div>
       </PullToRefreshWrapper>
     </Layout>
   );

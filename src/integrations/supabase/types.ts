@@ -684,8 +684,10 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          additional_header_price: number | null
           additional_headers_data: Json | null
           additional_report_headers: number | null
+          additional_sample_price: number | null
           additional_samples: number | null
           batch: string | null
           client: string | null
@@ -706,8 +708,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          additional_header_price?: number | null
           additional_headers_data?: Json | null
           additional_report_headers?: number | null
+          additional_sample_price?: number | null
           additional_samples?: number | null
           batch?: string | null
           client?: string | null
@@ -728,8 +732,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          additional_header_price?: number | null
           additional_headers_data?: Json | null
           additional_report_headers?: number | null
+          additional_sample_price?: number | null
           additional_samples?: number | null
           batch?: string | null
           client?: string | null

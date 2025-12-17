@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
+import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -326,6 +327,81 @@ export default function LabOpenRequests() {
   
   const hasAnyChanges = (quote: Quote | null) => {
     return hasModifiedPrices() || getDiscountChange(quote) !== null;
+  };
+
+  const getChangeDetectionDebugData = (quote: Quote) => {
+    const originalDiscount = quote.discount_amount || 0;
+    const parsedDiscount = modifiedDiscount ? Number.parseFloat(modifiedDiscount) : 0;
+    const discountChanged = !Number.isNaN(parsedDiscount) && parsedDiscount !== originalDiscount;
+
+    const base = Object.entries(modifiedPrices).map(([itemId, input]) => {
+      const item = selectedQuoteItems.find((i) => i.id === itemId);
+      const original = item?.price || 0;
+      const parsed = input.trim() === "" ? null : Number.parseFloat(input);
+      const changed = parsed !== null && !Number.isNaN(parsed) && parsed !== original;
+
+      return {
+        label: item?.products?.name ? `Base · ${item.products.name}` : `Base · ${itemId}`,
+        original,
+        input,
+        parsed: parsed === null || Number.isNaN(parsed) ? null : parsed,
+        changed,
+      };
+    });
+
+    const samples = Object.entries(modifiedSamplePrices).map(([itemId, input]) => {
+      const item = selectedQuoteItems.find((i) => i.id === itemId);
+      const original = item ? getAdditionalSamplesPrice(item) : 0;
+      const parsed = input.trim() === "" ? null : Number.parseFloat(input);
+      const changed = parsed !== null && !Number.isNaN(parsed) && parsed !== original;
+
+      return {
+        label: item?.products?.name ? `Variance · ${item.products.name}` : `Variance · ${itemId}`,
+        original,
+        input,
+        parsed: parsed === null || Number.isNaN(parsed) ? null : parsed,
+        changed,
+      };
+    });
+
+    const headers = Object.entries(modifiedHeaderPrices).map(([itemId, input]) => {
+      const item = selectedQuoteItems.find((i) => i.id === itemId);
+      const original = item ? getAdditionalHeadersPrice(item) : 0;
+      const parsed = input.trim() === "" ? null : Number.parseFloat(input);
+      const changed = parsed !== null && !Number.isNaN(parsed) && parsed !== original;
+
+      return {
+        label: item?.products?.name ? `Headers · ${item.products.name}` : `Headers · ${itemId}`,
+        original,
+        input,
+        parsed: parsed === null || Number.isNaN(parsed) ? null : parsed,
+        changed,
+      };
+    });
+
+    const priceChangesCount = getModifiedChanges().length;
+    const hasPriceChanges = priceChangesCount > 0;
+    const hasDiscountChange = getDiscountChange(quote) !== null;
+    const hasAny = hasPriceChanges || hasDiscountChange;
+
+    return {
+      discount: {
+        original: originalDiscount,
+        input: modifiedDiscount,
+        parsed: Number.isNaN(parsedDiscount) ? 0 : parsedDiscount,
+        changed: discountChanged,
+      },
+      base,
+      samples,
+      headers,
+      summary: {
+        hasModifiedPrices: hasPriceChanges,
+        changesCount: priceChangesCount,
+        hasDiscountChange,
+        hasAnyChanges: hasAny,
+        resultingStatus: hasAny ? "awaiting_customer_approval" : "approved_payment_pending",
+      },
+    };
   };
 
   const handleApprove = async (quote: Quote) => {
@@ -984,86 +1060,7 @@ export default function LabOpenRequests() {
                       </div>
                     )}
                     
-                    {/* Debug Panel */}
-                    <div className="mt-4 p-4 border rounded-lg bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-xs font-mono">
-                      <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-2">🔍 Debug: Change Detection</h5>
-                      <div className="space-y-2 text-slate-600 dark:text-slate-400">
-                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
-                          <span className="font-semibold">Discount Check:</span>
-                          <div className="ml-2">
-                            <div>Original: {selectedQuote.discount_amount ?? 'null'} (type: {typeof selectedQuote.discount_amount})</div>
-                            <div>modifiedDiscount state: "{modifiedDiscount}" (type: {typeof modifiedDiscount})</div>
-                            <div>Parsed modifiedDiscount: {modifiedDiscount ? parseFloat(modifiedDiscount) : 0}</div>
-                            <div>Comparison: {selectedQuote.discount_amount || 0} !== {modifiedDiscount ? parseFloat(modifiedDiscount) : 0}</div>
-                            <div className={`font-bold ${getDiscountChange(selectedQuote) ? 'text-orange-600' : 'text-green-600'}`}>
-                              hasDiscountChange: {getDiscountChange(selectedQuote) ? 'TRUE' : 'FALSE'}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
-                          <span className="font-semibold">Base Prices Check:</span>
-                          <div className="ml-2">
-                            <div>modifiedPrices keys: [{Object.keys(modifiedPrices).join(', ') || 'none'}]</div>
-                            {Object.entries(modifiedPrices).map(([itemId, value]) => {
-                              const item = selectedQuoteItems.find(i => i.id === itemId);
-                              return (
-                                <div key={itemId} className="text-xs">
-                                  Item {item?.products?.name || itemId}: original={item?.price ?? 'null'}, modified="{value}", parsed={parseFloat(value) || 0}, changed={item?.price !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        
-                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
-                          <span className="font-semibold">Sample Prices Check:</span>
-                          <div className="ml-2">
-                            <div>modifiedSamplePrices keys: [{Object.keys(modifiedSamplePrices).join(', ') || 'none'}]</div>
-                            {Object.entries(modifiedSamplePrices).map(([itemId, value]) => {
-                              const item = selectedQuoteItems.find(i => i.id === itemId);
-                              const origPrice = item ? getAdditionalSamplesPrice(item) : 0;
-                              return (
-                                <div key={itemId} className="text-xs">
-                                  Item {item?.products?.name || itemId}: original={origPrice}, modified="{value}", parsed={parseFloat(value) || 0}, changed={origPrice !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        
-                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
-                          <span className="font-semibold">Header Prices Check:</span>
-                          <div className="ml-2">
-                            <div>modifiedHeaderPrices keys: [{Object.keys(modifiedHeaderPrices).join(', ') || 'none'}]</div>
-                            {Object.entries(modifiedHeaderPrices).map(([itemId, value]) => {
-                              const item = selectedQuoteItems.find(i => i.id === itemId);
-                              const origPrice = item ? getAdditionalHeadersPrice(item) : 0;
-                              return (
-                                <div key={itemId} className="text-xs">
-                                  Item {item?.products?.name || itemId}: original={origPrice}, modified="{value}", parsed={parseFloat(value) || 0}, changed={origPrice !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        
-                        <div className="pt-2">
-                          <span className="font-semibold">Final Results:</span>
-                          <div className="ml-2">
-                            <div className={hasModifiedPrices() ? 'text-orange-600 font-bold' : 'text-green-600'}>
-                              hasModifiedPrices(): {hasModifiedPrices() ? 'TRUE' : 'FALSE'} (changes count: {getModifiedChanges().length})
-                            </div>
-                            <div className={getDiscountChange(selectedQuote) ? 'text-orange-600 font-bold' : 'text-green-600'}>
-                              hasDiscountChange: {getDiscountChange(selectedQuote) ? 'TRUE' : 'FALSE'}
-                            </div>
-                            <div className={`text-lg font-bold ${hasAnyChanges(selectedQuote) ? 'text-orange-600' : 'text-green-600'}`}>
-                              hasAnyChanges(): {hasAnyChanges(selectedQuote) ? 'TRUE → awaiting_customer_approval' : 'FALSE → approved_payment_pending'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    {/* Debug panel is shown next to the Approve button below */}
                   </div>
                 )}
 
@@ -1092,6 +1089,12 @@ export default function LabOpenRequests() {
               <DialogFooter className="flex flex-wrap gap-2">
                 {selectedQuote.status === "sent_to_vendor" && permissions.canApproveQuotes && (
                   <>
+                    <div className="w-full">
+                      <ChangeDetectionDebugPanel
+                        data={getChangeDetectionDebugData(selectedQuote)}
+                      />
+                    </div>
+
                     <Button
                       variant="destructive"
                       onClick={() => handleReject(selectedQuote)}
@@ -1100,7 +1103,7 @@ export default function LabOpenRequests() {
                       <X className="h-4 w-4 mr-1" />
                       Reject
                     </Button>
-                    <Button 
+                    <Button
                       onClick={() => handleApprove(selectedQuote)}
                       disabled={savingApproval}
                     >

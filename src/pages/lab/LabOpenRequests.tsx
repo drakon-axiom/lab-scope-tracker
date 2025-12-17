@@ -983,6 +983,87 @@ export default function LabOpenRequests() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Debug Panel */}
+                    <div className="mt-4 p-4 border rounded-lg bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-xs font-mono">
+                      <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-2">🔍 Debug: Change Detection</h5>
+                      <div className="space-y-2 text-slate-600 dark:text-slate-400">
+                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
+                          <span className="font-semibold">Discount Check:</span>
+                          <div className="ml-2">
+                            <div>Original: {selectedQuote.discount_amount ?? 'null'} (type: {typeof selectedQuote.discount_amount})</div>
+                            <div>modifiedDiscount state: "{modifiedDiscount}" (type: {typeof modifiedDiscount})</div>
+                            <div>Parsed modifiedDiscount: {modifiedDiscount ? parseFloat(modifiedDiscount) : 0}</div>
+                            <div>Comparison: {selectedQuote.discount_amount || 0} !== {modifiedDiscount ? parseFloat(modifiedDiscount) : 0}</div>
+                            <div className={`font-bold ${getDiscountChange(selectedQuote) ? 'text-orange-600' : 'text-green-600'}`}>
+                              hasDiscountChange: {getDiscountChange(selectedQuote) ? 'TRUE' : 'FALSE'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
+                          <span className="font-semibold">Base Prices Check:</span>
+                          <div className="ml-2">
+                            <div>modifiedPrices keys: [{Object.keys(modifiedPrices).join(', ') || 'none'}]</div>
+                            {Object.entries(modifiedPrices).map(([itemId, value]) => {
+                              const item = selectedQuoteItems.find(i => i.id === itemId);
+                              return (
+                                <div key={itemId} className="text-xs">
+                                  Item {item?.products?.name || itemId}: original={item?.price ?? 'null'}, modified="{value}", parsed={parseFloat(value) || 0}, changed={item?.price !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        
+                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
+                          <span className="font-semibold">Sample Prices Check:</span>
+                          <div className="ml-2">
+                            <div>modifiedSamplePrices keys: [{Object.keys(modifiedSamplePrices).join(', ') || 'none'}]</div>
+                            {Object.entries(modifiedSamplePrices).map(([itemId, value]) => {
+                              const item = selectedQuoteItems.find(i => i.id === itemId);
+                              const origPrice = item ? getAdditionalSamplesPrice(item) : 0;
+                              return (
+                                <div key={itemId} className="text-xs">
+                                  Item {item?.products?.name || itemId}: original={origPrice}, modified="{value}", parsed={parseFloat(value) || 0}, changed={origPrice !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        
+                        <div className="border-b border-slate-300 dark:border-slate-700 pb-2">
+                          <span className="font-semibold">Header Prices Check:</span>
+                          <div className="ml-2">
+                            <div>modifiedHeaderPrices keys: [{Object.keys(modifiedHeaderPrices).join(', ') || 'none'}]</div>
+                            {Object.entries(modifiedHeaderPrices).map(([itemId, value]) => {
+                              const item = selectedQuoteItems.find(i => i.id === itemId);
+                              const origPrice = item ? getAdditionalHeadersPrice(item) : 0;
+                              return (
+                                <div key={itemId} className="text-xs">
+                                  Item {item?.products?.name || itemId}: original={origPrice}, modified="{value}", parsed={parseFloat(value) || 0}, changed={origPrice !== (parseFloat(value) || 0) ? 'YES' : 'NO'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        
+                        <div className="pt-2">
+                          <span className="font-semibold">Final Results:</span>
+                          <div className="ml-2">
+                            <div className={hasModifiedPrices() ? 'text-orange-600 font-bold' : 'text-green-600'}>
+                              hasModifiedPrices(): {hasModifiedPrices() ? 'TRUE' : 'FALSE'} (changes count: {getModifiedChanges().length})
+                            </div>
+                            <div className={getDiscountChange(selectedQuote) ? 'text-orange-600 font-bold' : 'text-green-600'}>
+                              hasDiscountChange: {getDiscountChange(selectedQuote) ? 'TRUE' : 'FALSE'}
+                            </div>
+                            <div className={`text-lg font-bold ${hasAnyChanges(selectedQuote) ? 'text-orange-600' : 'text-green-600'}`}>
+                              hasAnyChanges(): {hasAnyChanges(selectedQuote) ? 'TRUE → awaiting_customer_approval' : 'FALSE → approved_payment_pending'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

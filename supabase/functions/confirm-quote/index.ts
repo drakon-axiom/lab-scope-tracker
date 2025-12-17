@@ -132,32 +132,85 @@ Deno.serve(async (req) => {
       // Check if prices were changed and store old prices
       let pricesChanged = false;
       const oldPrices: Record<string, number> = {};
+
+      // We'll also use existing item metadata to compute the tiered baseline discount
+      // so that the automatic 5%/10% discount does NOT count as a "vendor change".
+      let computedSubtotalForBaseline = 0;
+
       if (updates.items && updates.items.length > 0) {
         const { data: existingItems } = await supabase
           .from('quote_items')
-          .select('id, price')
+          .select('id, price, additional_samples, additional_report_headers')
           .eq('quote_id', quoteId);
 
-        pricesChanged = updates.items.some(updatedItem => {
-          const existing = existingItems?.find(ei => ei.id === updatedItem.id);
+        pricesChanged = updates.items.some((updatedItem) => {
+          const existing = existingItems?.find((ei) => ei.id === updatedItem.id);
           if (existing) {
             oldPrices[updatedItem.id] = parseFloat(String(existing.price));
             return parseFloat(String(existing.price)) !== updatedItem.price;
           }
           return false;
         });
+
+        // Compute subtotal based on the *incoming* prices plus any additional sample/header charges.
+        // This is used only to determine the automatic tiered discount baseline (5% / 10%).
+        computedSubtotalForBaseline = updates.items.reduce((sum, updatedItem) => {
+          const existing = existingItems?.find((ei) => ei.id === updatedItem.id);
+
+          const basePrice = typeof updatedItem.price === 'number'
+            ? updatedItem.price
+            : parseFloat(String(updatedItem.price ?? 0));
+
+          const additionalSamples = existing?.additional_samples ?? 0;
+          const additionalHeaders = existing?.additional_report_headers ?? 0;
+
+          const samplePriceEach = typeof updatedItem.additional_sample_price === 'number'
+            ? updatedItem.additional_sample_price
+            : 60;
+
+          const headerPriceEach = typeof updatedItem.additional_header_price === 'number'
+            ? updatedItem.additional_header_price
+            : 30;
+
+          return sum + basePrice + additionalSamples * samplePriceEach + additionalHeaders * headerPriceEach;
+        }, 0);
       }
 
-      // Compare discount values (only treat as changed if value actually differs)
+      // Compare discount values.
+      // IMPORTANT: if the quote has no stored discount yet, we treat the automatic tiered discount
+      // (5% under $1200, 10% at/over $1200) as the baseline, so it should NOT trigger customer approval.
       const existingDiscountType = existingQuote?.discount_type ?? null;
-      const existingDiscountAmount = typeof existingQuote?.discount_amount === 'number' ? existingQuote.discount_amount : null;
+      const parsedExistingDiscountAmount = existingQuote?.discount_amount === null || existingQuote?.discount_amount === undefined
+        ? null
+        : Number.parseFloat(String(existingQuote.discount_amount));
+      const existingDiscountAmount = parsedExistingDiscountAmount === null || Number.isNaN(parsedExistingDiscountAmount)
+        ? null
+        : parsedExistingDiscountAmount;
 
       const incomingDiscountType = updates.discount_type === undefined ? existingDiscountType : (updates.discount_type ?? null);
       const incomingDiscountAmount = updates.discount_amount === undefined
         ? existingDiscountAmount
         : (typeof updates.discount_amount === 'number' ? updates.discount_amount : null);
 
-      const discountChanged = incomingDiscountType !== existingDiscountType || incomingDiscountAmount !== existingDiscountAmount;
+      const tieredBaselineDiscount = computedSubtotalForBaseline < 1200 ? 5 : 10;
+
+      const discountChanged = (() => {
+        // If nothing is set either way, it's not a change.
+        if (existingDiscountType === null && existingDiscountAmount === null && incomingDiscountType === null && incomingDiscountAmount === null) {
+          return false;
+        }
+
+        // If the quote had no stored discount yet, and the incoming discount equals the tiered baseline,
+        // treat it as NO change (it's just the system's default discount being applied).
+        if (existingDiscountType === null && existingDiscountAmount === null) {
+          if (incomingDiscountType === null && incomingDiscountAmount === null) return false;
+          if (incomingDiscountType === 'percentage' && typeof incomingDiscountAmount === 'number' && incomingDiscountAmount === tieredBaselineDiscount) {
+            return false;
+          }
+        }
+
+        return incomingDiscountType !== existingDiscountType || incomingDiscountAmount !== existingDiscountAmount;
+      })();
 
       const pricingChanged = pricesChanged || discountChanged;
 

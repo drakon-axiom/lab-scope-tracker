@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText, Circle, CheckCircle, Clock, Package, Truck, FlaskConical, FileCheck } from "lucide-react";
 import { triggerSuccessConfetti } from "@/lib/confetti";
 import StatusBadge from "@/components/StatusBadge";
-import { ChangeDetectionDebugPanel, ChangeDetectionDebugData } from "@/components/lab/ChangeDetectionDebugPanel";
+
 import * as XLSX from "xlsx";
 
 const ORDER_TIMELINE_STAGES = [
@@ -280,7 +280,7 @@ const QuoteConfirm = () => {
     };
   };
 
-  const getChangeDetectionDebugData = (): ChangeDetectionDebugData => {
+  const getChangeDetectionDebugData = () => {
     const originalDiscountAmount = typeof originalQuoteData?.discount_amount === "number" ? originalQuoteData.discount_amount : 0;
     const parsedDiscount = discountAmount ? parseFloat(discountAmount) : 0;
     const discountChanged = !Number.isNaN(parsedDiscount) && parsedDiscount !== originalDiscountAmount;
@@ -972,10 +972,6 @@ const QuoteConfirm = () => {
               rows={6}
             />
           </div>
-
-          {/* Change detection debug panel */}
-          <ChangeDetectionDebugPanel data={getChangeDetectionDebugData()} className="mb-4" />
-
           <div className="flex gap-2">
             <Button
               onClick={handleReject}

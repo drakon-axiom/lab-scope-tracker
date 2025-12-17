@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       if (updates.items && updates.items.length > 0) {
         const { data: existingItems } = await supabase
           .from('quote_items')
-          .select('id, price, additional_samples, additional_report_headers')
+          .select('id, price, additional_samples, additional_report_headers, additional_sample_price, additional_header_price')
           .eq('quote_id', quoteId);
 
         for (const updatedItem of updates.items) {
@@ -154,27 +154,29 @@ Deno.serve(async (req) => {
               pricesChanged = true;
             }
             
-            // Check if additional sample price changed from default (60)
+            // Check if additional sample price changed from stored value
             // Only matters if there are additional samples
             if ((existing.additional_samples ?? 0) > 0) {
-              const samplePrice = typeof updatedItem.additional_sample_price === 'number' 
+              const originalSamplePrice = parseFloat(String(existing.additional_sample_price ?? 60));
+              const newSamplePrice = typeof updatedItem.additional_sample_price === 'number' 
                 ? updatedItem.additional_sample_price 
-                : 60;
-              if (samplePrice !== 60) {
+                : originalSamplePrice;
+              if (newSamplePrice !== originalSamplePrice) {
                 additionalPricesChanged = true;
-                console.log(`Additional sample price changed from default 60 to ${samplePrice}`);
+                console.log(`Additional sample price changed from ${originalSamplePrice} to ${newSamplePrice}`);
               }
             }
             
-            // Check if additional header price changed from default (30)
+            // Check if additional header price changed from stored value
             // Only matters if there are additional headers
             if ((existing.additional_report_headers ?? 0) > 0) {
-              const headerPrice = typeof updatedItem.additional_header_price === 'number' 
+              const originalHeaderPrice = parseFloat(String(existing.additional_header_price ?? 30));
+              const newHeaderPrice = typeof updatedItem.additional_header_price === 'number' 
                 ? updatedItem.additional_header_price 
-                : 30;
-              if (headerPrice !== 30) {
+                : originalHeaderPrice;
+              if (newHeaderPrice !== originalHeaderPrice) {
                 additionalPricesChanged = true;
-                console.log(`Additional header price changed from default 30 to ${headerPrice}`);
+                console.log(`Additional header price changed from ${originalHeaderPrice} to ${newHeaderPrice}`);
               }
             }
           }

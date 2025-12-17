@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
 
       // Check if prices were changed and store old prices
       let pricesChanged = false;
+      let additionalPricesChanged = false;
       const oldPrices: Record<string, number> = {};
 
       // We'll also use existing item metadata to compute the tiered baseline discount
@@ -143,14 +144,41 @@ Deno.serve(async (req) => {
           .select('id, price, additional_samples, additional_report_headers')
           .eq('quote_id', quoteId);
 
-        pricesChanged = updates.items.some((updatedItem) => {
+        for (const updatedItem of updates.items) {
           const existing = existingItems?.find((ei) => ei.id === updatedItem.id);
           if (existing) {
             oldPrices[updatedItem.id] = parseFloat(String(existing.price));
-            return parseFloat(String(existing.price)) !== updatedItem.price;
+            
+            // Check if base price changed
+            if (parseFloat(String(existing.price)) !== updatedItem.price) {
+              pricesChanged = true;
+            }
+            
+            // Check if additional sample price changed from default (60)
+            // Only matters if there are additional samples
+            if ((existing.additional_samples ?? 0) > 0) {
+              const samplePrice = typeof updatedItem.additional_sample_price === 'number' 
+                ? updatedItem.additional_sample_price 
+                : 60;
+              if (samplePrice !== 60) {
+                additionalPricesChanged = true;
+                console.log(`Additional sample price changed from default 60 to ${samplePrice}`);
+              }
+            }
+            
+            // Check if additional header price changed from default (30)
+            // Only matters if there are additional headers
+            if ((existing.additional_report_headers ?? 0) > 0) {
+              const headerPrice = typeof updatedItem.additional_header_price === 'number' 
+                ? updatedItem.additional_header_price 
+                : 30;
+              if (headerPrice !== 30) {
+                additionalPricesChanged = true;
+                console.log(`Additional header price changed from default 30 to ${headerPrice}`);
+              }
+            }
           }
-          return false;
-        });
+        }
 
         // Compute subtotal based on the *incoming* prices plus any additional sample/header charges.
         // This is used only to determine the automatic tiered discount baseline (5% / 10%).
@@ -212,7 +240,7 @@ Deno.serve(async (req) => {
         return incomingDiscountType !== existingDiscountType || incomingDiscountAmount !== existingDiscountAmount;
       })();
 
-      const pricingChanged = pricesChanged || discountChanged;
+      const pricingChanged = pricesChanged || additionalPricesChanged || discountChanged;
 
       // Update quote items if provided
       if (updates.items && updates.items.length > 0) {
@@ -248,7 +276,7 @@ Deno.serve(async (req) => {
       if (updates.discount_type !== undefined) quoteUpdates.discount_type = updates.discount_type;
       if (updates.discount_amount !== undefined) quoteUpdates.discount_amount = updates.discount_amount;
 
-      console.log('Computed status:', computedStatus, 'pricingChanged:', pricingChanged, 'pricesChanged:', pricesChanged, 'discountChanged:', discountChanged);
+      console.log('Computed status:', computedStatus, 'pricingChanged:', pricingChanged, 'pricesChanged:', pricesChanged, 'additionalPricesChanged:', additionalPricesChanged, 'discountChanged:', discountChanged);
 
       const { error: quoteError } = await supabase
         .from('quotes')

@@ -132,12 +132,12 @@ const QuoteConfirm = () => {
         setQuote(data);
         setQuoteItems(items || []);
 
-        // Initialize additional pricing defaults
+        // Initialize additional pricing from database or defaults
         const samplePrices: Record<string, string> = {};
         const headerPrices: Record<string, string> = {};
         items?.forEach((item: any) => {
-          samplePrices[item.id] = "60";
-          headerPrices[item.id] = "30";
+          samplePrices[item.id] = String(item.additional_sample_price ?? 60);
+          headerPrices[item.id] = String(item.additional_header_price ?? 30);
         });
         setAdditionalSamplePrices(samplePrices);
         setAdditionalHeaderPrices(headerPrices);
@@ -195,16 +195,26 @@ const QuoteConfirm = () => {
             setDiscountAmount("");
           }
 
-          // Store original data for comparison
+          // Store original data for comparison (including additional prices)
           setOriginalQuoteData({
-            items: items?.map((item: any) => ({ id: item.id, price: item.price })),
+            items: items?.map((item: any) => ({ 
+              id: item.id, 
+              price: item.price,
+              additional_sample_price: item.additional_sample_price ?? 60,
+              additional_header_price: item.additional_header_price ?? 30,
+            })),
             discount_type: normalizedDiscountType,
             discount_amount: baselineDiscountAmount,
           });
         } else {
           // Store original data for comparison (no items to compute baseline)
           setOriginalQuoteData({
-            items: items?.map((item: any) => ({ id: item.id, price: item.price })),
+            items: items?.map((item: any) => ({ 
+              id: item.id, 
+              price: item.price,
+              additional_sample_price: item.additional_sample_price ?? 60,
+              additional_header_price: item.additional_header_price ?? 30,
+            })),
             discount_type: data.discount_type ?? null,
             discount_amount: typeof data.discount_amount === "number" ? data.discount_amount : null,
           });
@@ -300,8 +310,46 @@ const QuoteConfirm = () => {
       };
     });
 
+    // Check additional sample price changes
+    const samples = quoteItems
+      .filter(item => (item.additional_samples || 0) > 0)
+      .map(item => {
+        const original = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
+        const originalSamplePrice = original?.additional_sample_price ?? 60;
+        const currentSamplePrice = parseFloat(additionalSamplePrices[item.id] || "60");
+        const changed = currentSamplePrice !== originalSamplePrice;
+
+        return {
+          label: item.products?.name ? `Sample Price · ${item.products.name}` : `Sample Price · ${item.id}`,
+          original: originalSamplePrice,
+          current: currentSamplePrice,
+          changed,
+          itemId: item.id,
+        };
+      });
+
+    // Check additional header price changes
+    const headers = quoteItems
+      .filter(item => (item.additional_report_headers || 0) > 0)
+      .map(item => {
+        const original = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
+        const originalHeaderPrice = original?.additional_header_price ?? 30;
+        const currentHeaderPrice = parseFloat(additionalHeaderPrices[item.id] || "30");
+        const changed = currentHeaderPrice !== originalHeaderPrice;
+
+        return {
+          label: item.products?.name ? `Header Price · ${item.products.name}` : `Header Price · ${item.id}`,
+          original: originalHeaderPrice,
+          current: currentHeaderPrice,
+          changed,
+          itemId: item.id,
+        };
+      });
+
     const priceChangesCount = base.filter(b => b.changed).length;
-    const hasPriceChanges = priceChangesCount > 0;
+    const sampleChangesCount = samples.filter(s => s.changed).length;
+    const headerChangesCount = headers.filter(h => h.changed).length;
+    const hasPriceChanges = priceChangesCount > 0 || sampleChangesCount > 0 || headerChangesCount > 0;
     const hasDiscountChange = discountChanged;
     const hasAny = hasPriceChanges || hasDiscountChange;
 
@@ -313,11 +361,11 @@ const QuoteConfirm = () => {
         changed: discountChanged,
       },
       base,
-      samples: [],
-      headers: [],
+      samples,
+      headers,
       summary: {
         hasModifiedPrices: hasPriceChanges,
-        changesCount: priceChangesCount,
+        changesCount: priceChangesCount + sampleChangesCount + headerChangesCount,
         hasDiscountChange,
         hasAnyChanges: hasAny,
         resultingStatus: hasAny ? "awaiting_customer_approval" : "approved_payment_pending",
@@ -841,71 +889,109 @@ const QuoteConfirm = () => {
                         />
                       </div>
 
-                      {(item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing && (
-                        <div className="bg-green-50 dark:bg-green-950/20 border-l-2 border-green-500 p-3 rounded space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <Label htmlFor={`sample-price-${item.id}`} className="text-sm">
-                              Price per Additional Sample ($)
-                            </Label>
-                            <Input
-                              id={`sample-price-${item.id}`}
-                              type="number"
-                              step="0.01"
-                              value={additionalSamplePrices[item.id] || "60"}
-                              onChange={(e) => setAdditionalSamplePrices(prev => ({
-                                ...prev,
-                                [item.id]: e.target.value
-                              }))}
-                              className="w-24 text-right"
-                            />
-                          </div>
-                          <div className="text-sm">
-                            <strong>Additional Samples:</strong> {item.additional_samples} × ${parseFloat(additionalSamplePrices[item.id] || "60").toFixed(2)} = <strong>${((item.additional_samples || 0) * parseFloat(additionalSamplePrices[item.id] || "60")).toFixed(2)}</strong>
-                          </div>
-                        </div>
-                      )}
+                      {(item.additional_samples || 0) > 0 && qualifiesForAdditionalSamplePricing && (() => {
+                        const originalItem = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
+                        const originalSamplePrice = originalItem?.additional_sample_price ?? 60;
+                        const currentSamplePrice = parseFloat(additionalSamplePrices[item.id] || "60");
+                        const samplePriceChanged = currentSamplePrice !== originalSamplePrice;
 
-                      {(item.additional_report_headers || 0) > 0 && (
-                        <div className="bg-amber-50 dark:bg-amber-950/20 border-l-2 border-amber-500 p-3 rounded space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <Label htmlFor={`header-price-${item.id}`} className="text-sm">
-                              Price per Additional Header ($)
-                            </Label>
-                            <Input
-                              id={`header-price-${item.id}`}
-                              type="number"
-                              step="0.01"
-                              value={additionalHeaderPrices[item.id] || "30"}
-                              onChange={(e) => setAdditionalHeaderPrices(prev => ({
-                                ...prev,
-                                [item.id]: e.target.value
-                              }))}
-                              className="w-24 text-right"
-                            />
-                          </div>
-                          <div className="text-sm">
-                            <strong>Additional Report Headers:</strong> {item.additional_report_headers} × ${parseFloat(additionalHeaderPrices[item.id] || "30").toFixed(2)} = <strong>${((item.additional_report_headers || 0) * parseFloat(additionalHeaderPrices[item.id] || "30")).toFixed(2)}</strong>
-                          </div>
-                          
-                          {item.additional_headers_data && item.additional_headers_data.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                              {item.additional_headers_data.map((header: any, headerIndex: number) => (
-                                <Card key={headerIndex} className="bg-amber-100/50 dark:bg-amber-900/20">
-                                  <CardContent className="p-3">
-                                    <div className="font-semibold text-xs mb-2">Header #{headerIndex + 1}:</div>
-                                    <div className="text-xs space-y-0.5">
-                                      <div><strong>Client:</strong> {header.client || "—"}</div>
-                                      <div><strong>Sample:</strong> {header.sample || "—"}</div>
-                                      <div><strong>Manufacturer:</strong> {header.manufacturer || "—"}</div>
-                                      <div><strong>Batch:</strong> {header.batch || "—"}</div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
+                        return (
+                          <div className={`p-3 rounded space-y-2 border-l-2 ${samplePriceChanged ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-500' : 'bg-green-50 dark:bg-green-950/20 border-green-500'}`}>
+                            <div className="flex items-center justify-between text-sm">
+                              <div>
+                                <Label htmlFor={`sample-price-${item.id}`} className="text-sm">
+                                  Price per Additional Sample ($)
+                                </Label>
+                                {samplePriceChanged && (
+                                  <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                    Original: ${originalSamplePrice.toFixed(2)} → Modified
+                                  </div>
+                                )}
+                              </div>
+                              <Input
+                                id={`sample-price-${item.id}`}
+                                type="number"
+                                step="0.01"
+                                value={additionalSamplePrices[item.id] || "60"}
+                                onChange={(e) => setAdditionalSamplePrices(prev => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }))}
+                                className={`w-24 text-right ${samplePriceChanged ? 'border-orange-500' : ''}`}
+                              />
                             </div>
-                          )}
-                        </div>
-                      )}
+                            <div className="text-sm">
+                              <strong>Additional Samples:</strong> {item.additional_samples} × ${currentSamplePrice.toFixed(2)} = <strong>${((item.additional_samples || 0) * currentSamplePrice).toFixed(2)}</strong>
+                              {samplePriceChanged && (
+                                <span className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                                  (was ${((item.additional_samples || 0) * originalSamplePrice).toFixed(2)})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {(item.additional_report_headers || 0) > 0 && (() => {
+                        const originalItem = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
+                        const originalHeaderPrice = originalItem?.additional_header_price ?? 30;
+                        const currentHeaderPrice = parseFloat(additionalHeaderPrices[item.id] || "30");
+                        const headerPriceChanged = currentHeaderPrice !== originalHeaderPrice;
+
+                        return (
+                          <div className={`p-3 rounded space-y-2 border-l-2 ${headerPriceChanged ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-500' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-500'}`}>
+                            <div className="flex items-center justify-between text-sm">
+                              <div>
+                                <Label htmlFor={`header-price-${item.id}`} className="text-sm">
+                                  Price per Additional Header ($)
+                                </Label>
+                                {headerPriceChanged && (
+                                  <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                    Original: ${originalHeaderPrice.toFixed(2)} → Modified
+                                  </div>
+                                )}
+                              </div>
+                              <Input
+                                id={`header-price-${item.id}`}
+                                type="number"
+                                step="0.01"
+                                value={additionalHeaderPrices[item.id] || "30"}
+                                onChange={(e) => setAdditionalHeaderPrices(prev => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }))}
+                                className={`w-24 text-right ${headerPriceChanged ? 'border-orange-500' : ''}`}
+                              />
+                            </div>
+                            <div className="text-sm">
+                              <strong>Additional Report Headers:</strong> {item.additional_report_headers} × ${currentHeaderPrice.toFixed(2)} = <strong>${((item.additional_report_headers || 0) * currentHeaderPrice).toFixed(2)}</strong>
+                              {headerPriceChanged && (
+                                <span className="text-xs text-orange-600 dark:text-orange-400 ml-2">
+                                  (was ${((item.additional_report_headers || 0) * originalHeaderPrice).toFixed(2)})
+                                </span>
+                              )}
+                            </div>
+                            
+                            {item.additional_headers_data && item.additional_headers_data.length > 0 && (
+                              <div className="space-y-2 mt-2">
+                                {item.additional_headers_data.map((header: any, headerIndex: number) => (
+                                  <Card key={headerIndex} className="bg-amber-100/50 dark:bg-amber-900/20">
+                                    <CardContent className="p-3">
+                                      <div className="font-semibold text-xs mb-2">Header #{headerIndex + 1}:</div>
+                                      <div className="text-xs space-y-0.5">
+                                        <div><strong>Client:</strong> {header.client || "—"}</div>
+                                        <div><strong>Sample:</strong> {header.sample || "—"}</div>
+                                        <div><strong>Manufacturer:</strong> {header.manufacturer || "—"}</div>
+                                        <div><strong>Batch:</strong> {header.batch || "—"}</div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="bg-muted p-3 rounded-md flex justify-between items-center font-semibold">
                         <span>Item Total:</span>

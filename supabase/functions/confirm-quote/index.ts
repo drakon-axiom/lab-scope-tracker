@@ -247,9 +247,17 @@ Deno.serve(async (req) => {
       // Update quote items if provided
       if (updates.items && updates.items.length > 0) {
         for (const item of updates.items) {
+          const updateData: any = { price: item.price };
+          if (typeof item.additional_sample_price === 'number') {
+            updateData.additional_sample_price = item.additional_sample_price;
+          }
+          if (typeof item.additional_header_price === 'number') {
+            updateData.additional_header_price = item.additional_header_price;
+          }
+          
           const { error: itemError } = await supabase
             .from('quote_items')
-            .update({ price: item.price })
+            .update(updateData)
             .eq('id', item.id);
 
           if (itemError) {

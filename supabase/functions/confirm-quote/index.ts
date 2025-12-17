@@ -105,10 +105,10 @@ Deno.serve(async (req) => {
     if (action === 'update' && updates) {
       console.log('Updating quote:', quoteId, 'with updates:', updates);
 
-      // Check if quote is already paid or beyond
+      // Check if quote is already locked
       const { data: existingQuote, error: checkError } = await supabase
         .from('quotes')
-        .select('status')
+        .select('status, discount_type, discount_amount')
         .eq('id', quoteId)
         .single();
 
@@ -148,7 +148,18 @@ Deno.serve(async (req) => {
         });
       }
 
-      const discountChanged = updates.discount_amount !== undefined && updates.discount_type;
+      // Compare discount values (only treat as changed if value actually differs)
+      const existingDiscountType = existingQuote?.discount_type ?? null;
+      const existingDiscountAmount = typeof existingQuote?.discount_amount === 'number' ? existingQuote.discount_amount : null;
+
+      const incomingDiscountType = updates.discount_type === undefined ? existingDiscountType : (updates.discount_type ?? null);
+      const incomingDiscountAmount = updates.discount_amount === undefined
+        ? existingDiscountAmount
+        : (typeof updates.discount_amount === 'number' ? updates.discount_amount : null);
+
+      const discountChanged = incomingDiscountType !== existingDiscountType || incomingDiscountAmount !== existingDiscountAmount;
+
+      const pricingChanged = pricesChanged || discountChanged;
 
       // Update quote items if provided
       if (updates.items && updates.items.length > 0) {
@@ -169,13 +180,22 @@ Deno.serve(async (req) => {
         console.log('Successfully updated quote items');
       }
 
+      // Compute status (lab quote number / notes should NOT force customer approval)
+      const isRejection = updates.status === 'rejected';
+      const computedStatus = isRejection
+        ? 'rejected'
+        : pricingChanged
+          ? 'awaiting_customer_approval'
+          : 'approved_payment_pending';
+
       // Update quote with new details
-      const quoteUpdates: any = {};
-      if (updates.status) quoteUpdates.status = updates.status;
-      if (updates.lab_quote_number) quoteUpdates.lab_quote_number = updates.lab_quote_number;
-      if (updates.lab_response) quoteUpdates.lab_response = updates.lab_response;
-      if (updates.discount_type) quoteUpdates.discount_type = updates.discount_type;
+      const quoteUpdates: any = { status: computedStatus };
+      if (updates.lab_quote_number !== undefined) quoteUpdates.lab_quote_number = updates.lab_quote_number;
+      if (updates.lab_response !== undefined) quoteUpdates.lab_response = updates.lab_response;
+      if (updates.discount_type !== undefined) quoteUpdates.discount_type = updates.discount_type;
       if (updates.discount_amount !== undefined) quoteUpdates.discount_amount = updates.discount_amount;
+
+      console.log('Computed status:', computedStatus, 'pricingChanged:', pricingChanged, 'pricesChanged:', pricesChanged, 'discountChanged:', discountChanged);
 
       const { error: quoteError } = await supabase
         .from('quotes')
@@ -190,14 +210,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Log the vendor action with old prices
-      const activityType = updates.status === 'rejected' ? 'vendor_rejection' : 
-                          (pricesChanged || discountChanged) ? 'vendor_approval' : 'vendor_approval';
-      const activityDescription = updates.status === 'rejected' 
+      // Log the vendor action
+      const activityType = computedStatus === 'rejected' ? 'vendor_rejection' : 'vendor_approval';
+      const activityDescription = computedStatus === 'rejected'
         ? 'Vendor rejected the quote'
-        : (pricesChanged || discountChanged)
-        ? 'Vendor approved quote with changes'
-        : 'Vendor approved quote without changes';
+        : pricingChanged
+          ? 'Vendor approved quote with changes'
+          : 'Vendor approved quote without changes';
 
       await supabase.from('quote_activity_log').insert({
         quote_id: quoteId,
@@ -205,11 +224,12 @@ Deno.serve(async (req) => {
         activity_type: activityType,
         description: activityDescription,
         metadata: {
-          changes_made: pricesChanged || discountChanged,
+          changes_made: pricingChanged,
           lab_quote_number: updates.lab_quote_number,
-          status: updates.status,
+          status: computedStatus,
           old_prices: oldPrices,
-          old_discount: discountChanged ? { type: updates.discount_type, amount: updates.discount_amount } : null
+          old_discount: { type: existingDiscountType, amount: existingDiscountAmount },
+          new_discount: { type: incomingDiscountType, amount: incomingDiscountAmount },
         }
       });
 

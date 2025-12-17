@@ -130,14 +130,7 @@ const QuoteConfirm = () => {
 
         setQuote(data);
         setQuoteItems(items || []);
-        
-        // Store original data for comparison
-        setOriginalQuoteData({
-          items: items?.map((item: any) => ({ id: item.id, price: item.price })),
-          discount_type: data.discount_type,
-          discount_amount: data.discount_amount,
-        });
-        
+
         // Initialize additional pricing defaults
         const samplePrices: Record<string, string> = {};
         const headerPrices: Record<string, string> = {};
@@ -147,51 +140,73 @@ const QuoteConfirm = () => {
         });
         setAdditionalSamplePrices(samplePrices);
         setAdditionalHeaderPrices(headerPrices);
-        
-        // Calculate automatic discount based on subtotal
+
+        // Determine baseline discount for change detection:
+        // - If quote already has a discount saved, use it.
+        // - Otherwise, use the automatic tiered discount (5% < $1200, 10% >= $1200)
+        let baselineDiscountAmount: number | null = typeof data.discount_amount === "number" ? data.discount_amount : null;
+        let baselineDiscountType: "percentage" | "fixed" | null =
+          baselineDiscountAmount === null
+            ? null
+            : data.discount_type === "fixed"
+              ? "fixed"
+              : "percentage";
+
         if (items && items.length > 0) {
           const subtotal = items.reduce((sum: number, item: any) => {
             const basePrice = parseFloat(String(item.price || "0"));
             const additionalSamples = item.additional_samples || 0;
             const additionalHeaders = item.additional_report_headers || 0;
-            
+
             let itemTotal = basePrice;
-            
+
             if (additionalSamples > 0) {
               const productName = item.products?.name || "";
               if (["Tirzepatide", "Semaglutide", "Retatrutide"].includes(productName)) {
                 itemTotal += additionalSamples * 60;
               }
             }
-            
+
             if (additionalHeaders > 0) {
               itemTotal += additionalHeaders * 30;
             }
-            
+
             return sum + itemTotal;
           }, 0);
 
-          // Apply automatic discount if not already set
-          if (!data.discount_amount) {
-            if (subtotal < 1200) {
-              setDiscountType("percentage");
-              setDiscountAmount("5");
-            } else {
-              setDiscountType("percentage");
-              setDiscountAmount("10");
-            }
-          } else {
-            const dbDiscountType = data.discount_type;
-            if (dbDiscountType === "percentage" || dbDiscountType === "fixed") {
-              setDiscountType(dbDiscountType);
-            }
-            const discountValue = data.discount_amount;
-            if (typeof discountValue === 'number') {
-              setDiscountAmount(String(discountValue));
-            } else {
-              setDiscountAmount("");
-            }
+          if (baselineDiscountAmount === null) {
+            baselineDiscountType = "percentage";
+            baselineDiscountAmount = subtotal < 1200 ? 5 : 10;
           }
+
+          const normalizedDiscountType =
+            baselineDiscountAmount === null
+              ? null
+              : baselineDiscountType === "fixed"
+                ? "fixed"
+                : "percentage";
+
+          if (normalizedDiscountType) {
+            setDiscountType(normalizedDiscountType);
+            setDiscountAmount(String(baselineDiscountAmount ?? ""));
+          } else {
+            setDiscountType("percentage");
+            setDiscountAmount("");
+          }
+
+          // Store original data for comparison
+          setOriginalQuoteData({
+            items: items?.map((item: any) => ({ id: item.id, price: item.price })),
+            discount_type: normalizedDiscountType,
+            discount_amount: baselineDiscountAmount,
+          });
+        } else {
+          // Store original data for comparison (no items to compute baseline)
+          setOriginalQuoteData({
+            items: items?.map((item: any) => ({ id: item.id, price: item.price })),
+            discount_type: data.discount_type ?? null,
+            discount_amount: typeof data.discount_amount === "number" ? data.discount_amount : null,
+          });
         }
         
         const lockedStatuses = ['approved_payment_pending', 'awaiting_customer_approval', 'rejected', 'paid_awaiting_shipping', 'in_transit', 'delivered', 'testing_in_progress', 'completed'];
@@ -268,13 +283,23 @@ const QuoteConfirm = () => {
     // Check if prices changed
     const pricesChanged = quoteItems.some(item => {
       const original = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
-      return original && parseFloat(item.price) !== parseFloat(original.price);
+      if (!original) return false;
+
+      const currentPrice = typeof item.price === "number" ? item.price : parseFloat(String(item.price || "0"));
+      const originalPrice = typeof original.price === "number" ? original.price : parseFloat(String(original.price || "0"));
+
+      if (Number.isNaN(currentPrice) || Number.isNaN(originalPrice)) return false;
+      return currentPrice !== originalPrice;
     });
 
     // Check if discount changed
-    const discountChanged = 
-      discountAmount !== String(originalQuoteData?.discount_amount || "") ||
-      (discountAmount && discountType !== originalQuoteData?.discount_type);
+    const currentDiscountAmount = discountAmount ? parseFloat(discountAmount) : null;
+    const currentDiscountType = discountAmount ? discountType : null;
+
+    const originalDiscountAmount = typeof originalQuoteData?.discount_amount === "number" ? originalQuoteData.discount_amount : null;
+    const originalDiscountType = originalQuoteData?.discount_type ?? null;
+
+    const discountChanged = currentDiscountAmount !== originalDiscountAmount || currentDiscountType !== originalDiscountType;
 
     return pricesChanged || discountChanged;
   };

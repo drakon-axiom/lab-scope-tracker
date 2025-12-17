@@ -1162,6 +1162,87 @@ const Quotes = () => {
     setDeleteDialogOpen(true);
   };
 
+  const handleDuplicateQuote = async (quote: Quote) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to duplicate quotes",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use impersonated user's ID when impersonating
+      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
+        ? impersonatedUser.id 
+        : user.id;
+
+      // First, fetch the quote items to duplicate
+      const { data: originalItems, error: itemsError } = await supabase
+        .from("quote_items")
+        .select("*")
+        .eq("quote_id", quote.id);
+
+      if (itemsError) throw itemsError;
+
+      // Create the new quote (as draft, without payment/shipping info)
+      const { data: newQuote, error: quoteError } = await supabase
+        .from("quotes")
+        .insert({
+          user_id: targetUserId,
+          lab_id: quote.lab_id,
+          status: "draft",
+          notes: quote.notes,
+        })
+        .select()
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      // Duplicate the quote items
+      if (originalItems && originalItems.length > 0) {
+        const newItems = originalItems.map(item => ({
+          quote_id: newQuote.id,
+          product_id: item.product_id,
+          client: item.client,
+          sample: item.sample,
+          manufacturer: item.manufacturer,
+          batch: item.batch,
+          price: item.price,
+          additional_samples: item.additional_samples,
+          additional_report_headers: item.additional_report_headers,
+          additional_headers_data: item.additional_headers_data,
+          status: "pending",
+        }));
+
+        const { error: insertItemsError } = await supabase
+          .from("quote_items")
+          .insert(newItems);
+
+        if (insertItemsError) throw insertItemsError;
+      }
+
+      toast({
+        title: "Quote duplicated",
+        description: "A new draft quote has been created",
+      });
+
+      fetchQuotes();
+      
+      // Navigate to edit the new quote
+      navigate(`/quotes/${newQuote.id}/edit`);
+    } catch (error: any) {
+      console.error("Error duplicating quote:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to duplicate quote",
+        variant: "destructive",
+      });
+    }
+  };
+
   const confirmDelete = async () => {
     // Handle bulk delete
     if (selectedDraftIds.size > 0 && !quoteToDelete) {
@@ -2871,6 +2952,7 @@ const Quotes = () => {
                     setSelectedQuoteForLabel(quote);
                     setShippingLabelDialogOpen(true);
                   }}
+                  onDuplicate={handleDuplicateQuote}
                   onRefreshTracking={handleRefreshTracking}
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}

@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Eye, Pencil, Trash2, FileText, Check, Mail, RefreshCw, Lock, CheckCircle2, Calendar } from "lucide-react";
+import { Eye, Pencil, Trash2, FileText, Check, Mail, RefreshCw, Lock, CheckCircle2, Calendar, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,7 @@ interface QuotesVirtualTableProps {
   onAddPayment: (quote: Quote) => void;
   onAddShipping: (quote: Quote) => void;
   onGenerateLabel: (quote: Quote) => void;
+  onDuplicate: (quote: Quote) => void;
   onRefreshTracking: (trackingNumber: string) => void;
   canRefreshTracking: () => boolean;
   timeUntilNextRefresh: string;
@@ -87,6 +88,7 @@ const QuoteRow = memo(({
   onAddPayment,
   onAddShipping,
   onGenerateLabel,
+  onDuplicate,
   onRefreshTracking,
   canRefreshTracking,
   timeUntilNextRefresh,
@@ -272,6 +274,15 @@ const QuoteRow = memo(({
               <TooltipContent>Delete quote</TooltipContent>
             </Tooltip>
           )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDuplicate(quote)}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Duplicate quote</TooltipContent>
+          </Tooltip>
         </TooltipProvider>
       </div>
     </div>
@@ -293,6 +304,7 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   onAddPayment,
   onAddShipping,
   onGenerateLabel,
+  onDuplicate,
   onRefreshTracking,
   canRefreshTracking,
   timeUntilNextRefresh,
@@ -402,6 +414,7 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
                   onAddPayment={onAddPayment}
                   onAddShipping={onAddShipping}
                   onGenerateLabel={onGenerateLabel}
+                  onDuplicate={onDuplicate}
                   onRefreshTracking={onRefreshTracking}
                   canRefreshTracking={canRefreshTracking}
                   timeUntilNextRefresh={timeUntilNextRefresh}

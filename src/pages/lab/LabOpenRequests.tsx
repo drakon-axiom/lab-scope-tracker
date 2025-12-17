@@ -1060,7 +1060,11 @@ export default function LabOpenRequests() {
                       </div>
                     )}
                     
-                    {/* Debug panel is shown next to the Approve button below */}
+                    {selectedQuote.status === "sent_to_vendor" && permissions.canApproveQuotes && (
+                      <div className="mt-4">
+                        <ChangeDetectionDebugPanel data={getChangeDetectionDebugData(selectedQuote)} />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1089,12 +1093,6 @@ export default function LabOpenRequests() {
               <DialogFooter className="flex flex-wrap gap-2">
                 {selectedQuote.status === "sent_to_vendor" && permissions.canApproveQuotes && (
                   <>
-                    <div className="w-full">
-                      <ChangeDetectionDebugPanel
-                        data={getChangeDetectionDebugData(selectedQuote)}
-                      />
-                    </div>
-
                     <Button
                       variant="destructive"
                       onClick={() => handleReject(selectedQuote)}

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText, Circle, CheckCircle, Clock, Package, Truck, FlaskConical, FileCheck } from "lucide-react";
 import { triggerSuccessConfetti } from "@/lib/confetti";
 import StatusBadge from "@/components/StatusBadge";
+import { ChangeDetectionDebugPanel, ChangeDetectionDebugData } from "@/components/lab/ChangeDetectionDebugPanel";
 import * as XLSX from "xlsx";
 
 const ORDER_TIMELINE_STAGES = [
@@ -279,29 +280,53 @@ const QuoteConfirm = () => {
     };
   };
 
-  const checkIfChangesWereMade = () => {
-    // Check if prices changed
-    const pricesChanged = quoteItems.some(item => {
+  const getChangeDetectionDebugData = (): ChangeDetectionDebugData => {
+    const originalDiscountAmount = typeof originalQuoteData?.discount_amount === "number" ? originalQuoteData.discount_amount : 0;
+    const parsedDiscount = discountAmount ? parseFloat(discountAmount) : 0;
+    const discountChanged = !Number.isNaN(parsedDiscount) && parsedDiscount !== originalDiscountAmount;
+
+    const base = quoteItems.map(item => {
       const original = originalQuoteData?.items?.find((orig: any) => orig.id === item.id);
-      if (!original) return false;
-
+      const originalPrice = original ? (typeof original.price === "number" ? original.price : parseFloat(String(original.price || "0"))) : 0;
       const currentPrice = typeof item.price === "number" ? item.price : parseFloat(String(item.price || "0"));
-      const originalPrice = typeof original.price === "number" ? original.price : parseFloat(String(original.price || "0"));
+      const changed = !Number.isNaN(currentPrice) && !Number.isNaN(originalPrice) && currentPrice !== originalPrice;
 
-      if (Number.isNaN(currentPrice) || Number.isNaN(originalPrice)) return false;
-      return currentPrice !== originalPrice;
+      return {
+        label: item.products?.name ? `Base · ${item.products.name}` : `Base · ${item.id}`,
+        original: originalPrice,
+        input: String(item.price || ""),
+        parsed: Number.isNaN(currentPrice) ? null : currentPrice,
+        changed,
+      };
     });
 
-    // Check if discount changed
-    const currentDiscountAmount = discountAmount ? parseFloat(discountAmount) : null;
-    const currentDiscountType = discountAmount ? discountType : null;
+    const priceChangesCount = base.filter(b => b.changed).length;
+    const hasPriceChanges = priceChangesCount > 0;
+    const hasDiscountChange = discountChanged;
+    const hasAny = hasPriceChanges || hasDiscountChange;
 
-    const originalDiscountAmount = typeof originalQuoteData?.discount_amount === "number" ? originalQuoteData.discount_amount : null;
-    const originalDiscountType = originalQuoteData?.discount_type ?? null;
+    return {
+      discount: {
+        original: originalDiscountAmount,
+        input: discountAmount,
+        parsed: Number.isNaN(parsedDiscount) ? 0 : parsedDiscount,
+        changed: discountChanged,
+      },
+      base,
+      samples: [],
+      headers: [],
+      summary: {
+        hasModifiedPrices: hasPriceChanges,
+        changesCount: priceChangesCount,
+        hasDiscountChange,
+        hasAnyChanges: hasAny,
+        resultingStatus: hasAny ? "awaiting_customer_approval" : "approved_payment_pending",
+      },
+    };
+  };
 
-    const discountChanged = currentDiscountAmount !== originalDiscountAmount || currentDiscountType !== originalDiscountType;
-
-    return pricesChanged || discountChanged;
+  const checkIfChangesWereMade = () => {
+    return getChangeDetectionDebugData().summary.hasAnyChanges;
   };
 
   const handleConfirm = async () => {
@@ -947,6 +972,9 @@ const QuoteConfirm = () => {
               rows={6}
             />
           </div>
+
+          {/* Change detection debug panel */}
+          <ChangeDetectionDebugPanel data={getChangeDetectionDebugData()} className="mb-4" />
 
           <div className="flex gap-2">
             <Button

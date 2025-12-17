@@ -254,43 +254,86 @@ export default function LabOpenRequests() {
     return getItemPrice(item) + getEffectiveSamplePrice(item) + getEffectiveHeaderPrice(item);
   };
 
-  const hasModifiedPrices = () => {
-    // Check if base prices were modified
-    const hasBasePriceChange = Object.keys(modifiedPrices).some(itemId => {
+  // Get detailed list of all modified changes
+  const getModifiedChanges = () => {
+    const changes: { type: string; item?: string; original: number; modified: number }[] = [];
+    
+    // Check base price changes
+    Object.keys(modifiedPrices).forEach(itemId => {
       const item = selectedQuoteItems.find(i => i.id === itemId);
-      if (!item) return false;
+      if (!item) return;
       const newPrice = parseFloat(modifiedPrices[itemId]);
-      return !isNaN(newPrice) && newPrice !== item.price;
+      const originalPrice = item.price || 0;
+      if (!isNaN(newPrice) && newPrice !== originalPrice) {
+        changes.push({
+          type: 'Base Price',
+          item: item.products?.name || 'Unknown',
+          original: originalPrice,
+          modified: newPrice
+        });
+      }
     });
     
-    // Check if sample prices were modified (compare to calculated original)
-    const hasSamplePriceChange = Object.keys(modifiedSamplePrices).some(itemId => {
+    // Check sample price changes
+    Object.keys(modifiedSamplePrices).forEach(itemId => {
       const item = selectedQuoteItems.find(i => i.id === itemId);
-      if (!item) return false;
+      if (!item) return;
       const newPrice = parseFloat(modifiedSamplePrices[itemId]);
       const originalPrice = getAdditionalSamplesPrice(item);
-      return !isNaN(newPrice) && newPrice !== originalPrice;
+      if (!isNaN(newPrice) && newPrice !== originalPrice) {
+        changes.push({
+          type: 'Variance Samples',
+          item: item.products?.name || 'Unknown',
+          original: originalPrice,
+          modified: newPrice
+        });
+      }
     });
     
-    // Check if header prices were modified (compare to calculated original)
-    const hasHeaderPriceChange = Object.keys(modifiedHeaderPrices).some(itemId => {
+    // Check header price changes
+    Object.keys(modifiedHeaderPrices).forEach(itemId => {
       const item = selectedQuoteItems.find(i => i.id === itemId);
-      if (!item) return false;
+      if (!item) return;
       const newPrice = parseFloat(modifiedHeaderPrices[itemId]);
       const originalPrice = getAdditionalHeadersPrice(item);
-      return !isNaN(newPrice) && newPrice !== originalPrice;
+      if (!isNaN(newPrice) && newPrice !== originalPrice) {
+        changes.push({
+          type: 'Report Headers',
+          item: item.products?.name || 'Unknown',
+          original: originalPrice,
+          modified: newPrice
+        });
+      }
     });
     
-    return hasBasePriceChange || hasSamplePriceChange || hasHeaderPriceChange;
+    return changes;
+  };
+
+  const hasModifiedPrices = () => {
+    return getModifiedChanges().length > 0;
+  };
+  
+  // Check if discount was changed
+  const getDiscountChange = (quote: Quote | null) => {
+    if (!quote) return null;
+    const originalDiscount = quote.discount_amount || 0;
+    const newDiscount = modifiedDiscount ? parseFloat(modifiedDiscount) : 0;
+    if (!isNaN(newDiscount) && newDiscount !== originalDiscount) {
+      return { original: originalDiscount, modified: newDiscount };
+    }
+    return null;
+  };
+  
+  const hasAnyChanges = (quote: Quote | null) => {
+    return hasModifiedPrices() || getDiscountChange(quote) !== null;
   };
 
   const handleApprove = async (quote: Quote) => {
     setSavingApproval(true);
     try {
-      // Auto-detect if actual changes were made by comparing to original values
-      const originalDiscount = quote.discount_amount || 0;
-      const newDiscount = modifiedDiscount ? parseFloat(modifiedDiscount) : 0;
-      const hasDiscountChange = !isNaN(newDiscount) && newDiscount !== originalDiscount;
+      // Auto-detect if actual changes were made
+      const discountChange = getDiscountChange(quote);
+      const hasDiscountChange = discountChange !== null;
       const hasPriceChanges = hasModifiedPrices();
       const hasActualChanges = hasDiscountChange || hasPriceChanges;
 
@@ -891,6 +934,55 @@ export default function LabOpenRequests() {
                         onChange={(e) => setModifiedDiscount(e.target.value)}
                       />
                     </div>
+                    
+                    {/* Changes Preview */}
+                    {hasAnyChanges(selectedQuote) && (
+                      <div className="mt-4 p-4 border rounded-lg bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+                        <h5 className="font-medium text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Changes Detected - Customer Approval Required
+                        </h5>
+                        <div className="space-y-2 text-sm">
+                          {getModifiedChanges().map((change, idx) => (
+                            <div key={idx} className="flex items-center justify-between py-1 border-b border-orange-200 dark:border-orange-800 last:border-0">
+                              <div>
+                                <span className="font-medium text-orange-900 dark:text-orange-100">{change.type}</span>
+                                <span className="text-orange-700 dark:text-orange-300 ml-1">({change.item})</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground line-through">${change.original.toFixed(2)}</span>
+                                <span className="text-orange-600 dark:text-orange-400">→</span>
+                                <span className="font-medium text-orange-900 dark:text-orange-100">${change.modified.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {getDiscountChange(selectedQuote) && (
+                            <div className="flex items-center justify-between py-1 border-b border-orange-200 dark:border-orange-800 last:border-0">
+                              <div>
+                                <span className="font-medium text-orange-900 dark:text-orange-100">Discount</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground line-through">{getDiscountChange(selectedQuote)!.original}%</span>
+                                <span className="text-orange-600 dark:text-orange-400">→</span>
+                                <span className="font-medium text-orange-900 dark:text-orange-100">{getDiscountChange(selectedQuote)!.modified}%</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-3">
+                          These changes will require customer approval before the quote proceeds.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {!hasAnyChanges(selectedQuote) && (
+                      <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                        <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
+                          <Check className="h-4 w-4" />
+                          No pricing changes. Quote will be approved directly.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

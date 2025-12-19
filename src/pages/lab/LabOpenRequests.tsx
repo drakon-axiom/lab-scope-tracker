@@ -12,8 +12,10 @@ import { useLabPermissions } from "@/hooks/useLabPermissions";
 import { format } from "date-fns";
 import { 
   Eye, Check, X, Lock, Package, CreditCard, 
-  FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2 
+  FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2,
+  Download, FileJson, FileSpreadsheet
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import {
   Table,
@@ -402,6 +404,173 @@ export default function LabOpenRequests() {
         resultingStatus: hasAny ? "awaiting_customer_approval" : "approved_payment_pending",
       },
     };
+  };
+
+  // Download helper functions
+  const getOrderData = (quote: Quote, items: QuoteItem[]) => {
+    const subtotal = items.reduce((sum, item) => sum + getItemTotalPrice(item), 0);
+    const discountPercent = quote.discount_amount || 0;
+    const discountAmount = discountPercent > 0 ? subtotal * (discountPercent / 100) : 0;
+    const total = subtotal - discountAmount;
+
+    return {
+      quote_number: quote.quote_number || quote.lab_quote_number || `Quote ${quote.id.slice(0, 8)}`,
+      status: quote.status?.replace(/_/g, ' '),
+      created_at: quote.created_at,
+      notes: quote.notes || '',
+      items: items.map(item => {
+        const productName = item.products?.name || '';
+        const additionalSamples = item.additional_samples || 0;
+        const additionalHeaders = item.additional_report_headers || 0;
+        const samplePrice = getEffectiveSamplePrice(item);
+        const headerPrice = getEffectiveHeaderPrice(item);
+        const basePrice = getItemPrice(item);
+        
+        return {
+          product: productName,
+          client: item.client || '',
+          sample: item.sample || '',
+          manufacturer: item.manufacturer || '',
+          batch: item.batch || '',
+          base_price: basePrice,
+          additional_samples: additionalSamples,
+          additional_samples_total: samplePrice,
+          additional_report_headers: additionalHeaders,
+          additional_headers_total: headerPrice,
+          item_total: basePrice + samplePrice + headerPrice,
+        };
+      }),
+      subtotal,
+      discount: discountAmount,
+      discount_type: 'percentage',
+      discount_amount: discountPercent,
+      total,
+    };
+  };
+
+  const downloadJSON = (quote: Quote, items: QuoteItem[]) => {
+    const data = getOrderData(quote, items);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote.quote_number || quote.lab_quote_number || quote.id.slice(0, 8)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = (quote: Quote, items: QuoteItem[]) => {
+    const data = getOrderData(quote, items);
+    const rows: string[][] = [];
+    
+    rows.push(['Quote Number:', data.quote_number]);
+    rows.push(['Status:', data.status || '']);
+    rows.push(['Notes:', data.notes]);
+    rows.push([]);
+    
+    rows.push(['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Add. Samples Cost', 'Add. Headers Cost', 'Item Total']);
+    
+    data.items.forEach(item => {
+      rows.push([
+        item.product,
+        item.client,
+        item.sample,
+        item.manufacturer,
+        item.batch,
+        `$${item.base_price.toFixed(2)}`,
+        `$${item.additional_samples_total.toFixed(2)}`,
+        `$${item.additional_headers_total.toFixed(2)}`,
+        `$${item.item_total.toFixed(2)}`,
+      ]);
+    });
+    
+    rows.push([]);
+    rows.push(['', '', '', '', '', '', '', 'Subtotal:', `$${data.subtotal.toFixed(2)}`]);
+    rows.push(['', '', '', '', '', '', '', `Discount (${data.discount_amount}%):`, `-$${data.discount.toFixed(2)}`]);
+    rows.push(['', '', '', '', '', '', '', 'TOTAL:', `$${data.total.toFixed(2)}`]);
+    
+    const csvContent = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote.quote_number || quote.lab_quote_number || quote.id.slice(0, 8)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadExcel = (quote: Quote, items: QuoteItem[]) => {
+    const data = getOrderData(quote, items);
+    const wsData: (string | number)[][] = [
+      ['ORDER DETAILS'],
+      ['Quote Number:', data.quote_number],
+      ['Status:', data.status || ''],
+      ['Notes:', data.notes],
+      [],
+      ['Product', 'Client', 'Sample', 'Manufacturer', 'Batch', 'Base Price', 'Add. Samples Cost', 'Add. Headers Cost', 'Item Total'],
+    ];
+    
+    data.items.forEach(item => {
+      wsData.push([
+        item.product,
+        item.client,
+        item.sample,
+        item.manufacturer,
+        item.batch,
+        item.base_price,
+        item.additional_samples_total,
+        item.additional_headers_total,
+        item.item_total,
+      ]);
+    });
+    
+    wsData.push([]);
+    wsData.push(['', '', '', '', '', '', '', 'Subtotal:', data.subtotal]);
+    wsData.push(['', '', '', '', '', '', '', `Discount (${data.discount_amount}%):`, -data.discount]);
+    wsData.push(['', '', '', '', '', '', '', 'TOTAL:', data.total]);
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Order');
+    XLSX.writeFile(wb, `order-${quote.quote_number || quote.lab_quote_number || quote.id.slice(0, 8)}.xlsx`);
+  };
+
+  const downloadText = (quote: Quote, items: QuoteItem[]) => {
+    const data = getOrderData(quote, items);
+    let text = `ORDER DETAILS\n${'='.repeat(60)}\n\n`;
+    text += `Quote Number: ${data.quote_number}\n`;
+    text += `Status: ${data.status}\n`;
+    if (data.notes) text += `Notes: ${data.notes}\n`;
+    text += `\nITEMS\n${'-'.repeat(60)}\n\n`;
+    
+    data.items.forEach((item, index) => {
+      text += `${index + 1}. ${item.product}\n`;
+      text += `   Client: ${item.client}\n`;
+      text += `   Sample: ${item.sample}\n`;
+      text += `   Manufacturer: ${item.manufacturer}\n`;
+      text += `   Batch: ${item.batch}\n`;
+      text += `   Base Price: $${item.base_price.toFixed(2)}\n`;
+      if (item.additional_samples > 0) {
+        text += `   Additional Samples Cost: $${item.additional_samples_total.toFixed(2)}\n`;
+      }
+      if (item.additional_report_headers > 0) {
+        text += `   Additional Headers Cost: $${item.additional_headers_total.toFixed(2)}\n`;
+      }
+      text += `   Item Total: $${item.item_total.toFixed(2)}\n\n`;
+    });
+    
+    text += `${'-'.repeat(60)}\n`;
+    text += `Subtotal: $${data.subtotal.toFixed(2)}\n`;
+    text += `Discount (${data.discount_amount}%): -$${data.discount.toFixed(2)}\n`;
+    text += `TOTAL: $${data.total.toFixed(2)}\n`;
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-${quote.quote_number || quote.lab_quote_number || quote.id.slice(0, 8)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleApprove = async (quote: Quote) => {
@@ -987,6 +1156,32 @@ export default function LabOpenRequests() {
                     </p>
                   </div>
                 )}
+
+                {/* Download Options */}
+                <div className="border-t pt-4">
+                  <Label className="text-sm font-medium flex items-center gap-2 mb-3">
+                    <Download className="h-4 w-4" />
+                    Download Order Details
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => downloadJSON(selectedQuote, selectedQuoteItems)} className="justify-start">
+                      <FileJson className="h-4 w-4 mr-2" />
+                      JSON
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => downloadCSV(selectedQuote, selectedQuoteItems)} className="justify-start">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => downloadExcel(selectedQuote, selectedQuoteItems)} className="justify-start">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => downloadText(selectedQuote, selectedQuoteItems)} className="justify-start">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Text
+                    </Button>
+                  </div>
+                </div>
 
                 {/* Action Forms based on status */}
                 {selectedQuote.status === "sent_to_vendor" && permissions.canApproveQuotes && (

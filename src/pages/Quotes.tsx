@@ -284,6 +284,7 @@ const Quotes = () => {
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<any>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
   const [shippingLabelDialogOpen, setShippingLabelDialogOpen] = useState(false);
   const [selectedQuoteForPayment, setSelectedQuoteForPayment] = useState<Quote | null>(null);
@@ -2093,10 +2094,8 @@ const Quotes = () => {
   const handlePaymentSubmit = async (paymentData: PaymentFormData) => {
     if (!selectedQuoteForPayment) return;
 
-    // Close dialog immediately for better UX
-    setPaymentDialogOpen(false);
+    setPaymentSubmitting(true);
     const quoteId = selectedQuoteForPayment.id;
-    setSelectedQuoteForPayment(null);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -2147,6 +2146,9 @@ const Quotes = () => {
         duration: 3000,
       });
 
+      // Close dialog and reset state after success
+      setPaymentDialogOpen(false);
+      setSelectedQuoteForPayment(null);
       fetchQuotes();
     } catch (error: any) {
       toast({
@@ -2155,6 +2157,8 @@ const Quotes = () => {
         variant: "destructive",
         duration: 4000,
       });
+    } finally {
+      setPaymentSubmitting(false);
     }
   };
 
@@ -4119,8 +4123,14 @@ const Quotes = () => {
         {selectedQuoteForPayment && (
           <PaymentDetailsDialog
             open={paymentDialogOpen}
-            onOpenChange={setPaymentDialogOpen}
+            onOpenChange={(open) => {
+              if (!paymentSubmitting) {
+                setPaymentDialogOpen(open);
+                if (!open) setSelectedQuoteForPayment(null);
+              }
+            }}
             onSubmit={handlePaymentSubmit}
+            isSubmitting={paymentSubmitting}
             initialData={{
               payment_status: selectedQuoteForPayment.payment_status || "pending",
               payment_amount_usd: selectedQuoteForPayment.payment_amount_usd?.toString() || "",

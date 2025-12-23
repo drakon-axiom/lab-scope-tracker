@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { 
   getAdditionalSamplesPrice, 
   getAdditionalHeadersPrice,
@@ -179,7 +179,7 @@ OpenRequestRow.displayName = "OpenRequestRow";
 
 export default function LabOpenRequests() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
@@ -189,18 +189,8 @@ export default function LabOpenRequests() {
   const { quotes, loading, refetch } = useLabQuotes(effectiveLabId);
 
   const handleQuoteHover = useCallback((quoteId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: ["quote-items", quoteId],
-      queryFn: async () => {
-        const { data } = await supabase
-          .from("quote_items")
-          .select("*, products(name, category)")
-          .eq("quote_id", quoteId);
-        return data;
-      },
-      staleTime: 60 * 1000,
-    });
-  }, [queryClient]);
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
   
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);

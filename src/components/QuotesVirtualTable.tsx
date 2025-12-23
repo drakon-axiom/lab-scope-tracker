@@ -1,5 +1,7 @@
 import { useRef, memo, useMemo, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -74,6 +76,7 @@ const MAX_HEIGHT = 600;
 
 interface QuoteRowProps extends Omit<QuotesVirtualTableProps, 'quotes' | 'allQuotesCount' | 'onSelectAllDrafts'> {
   quote: Quote;
+  onHover: (quoteId: string) => void;
 }
 
 const QuoteRow = memo(({
@@ -95,6 +98,7 @@ const QuoteRow = memo(({
   hasValidatedCreditCard,
   selectedDraftIds,
   onToggleDraftSelection,
+  onHover,
 }: QuoteRowProps) => {
   const locked = isQuoteLocked(quote.status);
   const actions = getAvailableActions(quote);
@@ -109,6 +113,7 @@ const QuoteRow = memo(({
         quote.status === 'awaiting_customer_approval' && "bg-amber-50 dark:bg-amber-950/20",
         isSelected && "bg-primary/5"
       )}
+      onMouseEnter={() => onHover(quote.id)}
     >
       {/* Checkbox for drafts */}
       <div className="flex items-center justify-center w-6">
@@ -314,6 +319,21 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   onSelectAllDrafts,
 }: QuotesVirtualTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["quote-items", quoteId],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("quote_items")
+          .select("*, products(name, category)")
+          .eq("quote_id", quoteId);
+        return data;
+      },
+      staleTime: 60 * 1000,
+    });
+  }, [queryClient]);
 
   const rowVirtualizer = useVirtualizer({
     count: quotes.length,
@@ -421,6 +441,7 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
                   hasValidatedCreditCard={hasValidatedCreditCard}
                   selectedDraftIds={selectedDraftIds}
                   onToggleDraftSelection={onToggleDraftSelection}
+                  onHover={handleQuoteHover}
                 />
               </div>
             );

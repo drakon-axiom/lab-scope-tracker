@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, memo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   getAdditionalSamplesPrice, 
   getAdditionalHeadersPrice,
@@ -117,13 +118,15 @@ interface OpenRequestRowProps {
   getNextActionIcon: (status: string) => React.ComponentType<{ className?: string }>;
   getNextAction: (quote: Quote) => string;
   onOpen: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }
 
 const OpenRequestRow = memo(({ 
   quote, 
   getNextActionIcon, 
   getNextAction, 
-  onOpen 
+  onOpen,
+  onHover
 }: OpenRequestRowProps) => {
   const ActionIcon = getNextActionIcon(quote.status);
   return (
@@ -131,6 +134,7 @@ const OpenRequestRow = memo(({
       key={quote.id} 
       className="cursor-pointer hover:bg-muted/50"
       onClick={() => onOpen(quote)}
+      onMouseEnter={() => onHover(quote.id)}
     >
       <TableCell>
         <div>
@@ -175,6 +179,7 @@ OpenRequestRow.displayName = "OpenRequestRow";
 
 export default function LabOpenRequests() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
@@ -182,6 +187,20 @@ export default function LabOpenRequests() {
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
   
   const { quotes, loading, refetch } = useLabQuotes(effectiveLabId);
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["quote-items", quoteId],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("quote_items")
+          .select("*, products(name, category)")
+          .eq("quote_id", quoteId);
+        return data;
+      },
+      staleTime: 60 * 1000,
+    });
+  }, [queryClient]);
   
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);
@@ -872,6 +891,7 @@ export default function LabOpenRequests() {
                           getNextActionIcon={getNextActionIcon}
                           getNextAction={getNextAction}
                           onOpen={openQuoteDialog}
+                          onHover={handleQuoteHover}
                         />
                       ))}
                     </TableBody>

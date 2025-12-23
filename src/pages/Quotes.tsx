@@ -285,6 +285,44 @@ const Quotes = () => {
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterLockStatus, setFilterLockStatus] = useState("all");
+  
+  // Memoized filtered quotes for performance
+  const filteredQuotes = useMemo(() => {
+    let result = quotes;
+
+    // Search filter
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase();
+      result = result.filter(
+        (quote) =>
+          quote.quote_number?.toLowerCase().includes(query) ||
+          quote.notes?.toLowerCase().includes(query) ||
+          quote.tracking_number?.toLowerCase().includes(query) ||
+          quote.labs.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Status filter
+    if (filterStatus !== "all") {
+      result = result.filter((quote) => quote.status === filterStatus);
+    }
+
+    // Lab filter
+    if (filterLab !== "all") {
+      result = result.filter((quote) => quote.lab_id === filterLab);
+    }
+
+    // Lock status filter
+    if (filterLockStatus !== "all") {
+      result = result.filter((quote) => {
+        const locked = isQuoteLocked(quote.status);
+        return filterLockStatus === "locked" ? locked : !locked;
+      });
+    }
+
+    return result;
+  }, [quotes, debouncedSearchQuery, filterStatus, filterLab, filterLockStatus]);
+
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [activeView, setActiveView] = useState<string>("all"); // "all" or saved view id
@@ -2728,93 +2766,50 @@ const Quotes = () => {
         </div>
 
             {/* Virtualized Quotes Table */}
-            {(() => {
-              // Apply filters (memoized for performance)
-              let filteredQuotes = quotes;
-
-              // Search filter
-              if (debouncedSearchQuery.trim()) {
-                const query = debouncedSearchQuery.toLowerCase();
-                filteredQuotes = filteredQuotes.filter(
-                  (quote) =>
-                    quote.quote_number?.toLowerCase().includes(query) ||
-                    quote.notes?.toLowerCase().includes(query) ||
-                    quote.tracking_number?.toLowerCase().includes(query) ||
-                    quote.labs.name.toLowerCase().includes(query)
-                );
-              }
-
-              // Status filter
-              if (filterStatus !== "all") {
-                filteredQuotes = filteredQuotes.filter(
-                  (quote) => quote.status === filterStatus
-                );
-              }
-
-              // Lab filter
-              if (filterLab !== "all") {
-                filteredQuotes = filteredQuotes.filter(
-                  (quote) => quote.lab_id === filterLab
-                );
-              }
-
-              // Lock status filter
-              if (filterLockStatus !== "all") {
-                filteredQuotes = filteredQuotes.filter(
-                  (quote) => {
-                    const locked = isQuoteLocked(quote.status);
-                    return filterLockStatus === "locked" ? locked : !locked;
-                  }
-                );
-              }
-
-              return (
-                <QuotesVirtualTable
-                  quotes={filteredQuotes}
-                  allQuotesCount={quotes.length}
-                  isQuoteLocked={isQuoteLocked}
-                  getAvailableActions={getAvailableActions}
-                  onView={handleView}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onManageItems={handleManageItems}
-                  onApproveReject={(quote) => {
-                    fetchQuoteItems(quote.id).then(() => {
-                      setSelectedQuoteForApproval(quote);
-                      setApprovalDialogOpen(true);
-                    });
-                  }}
-                  onAddPayment={(quote) => {
-                    if (isMobile) {
-                      navigate(`/quotes/${quote.id}/payment`);
-                    } else {
-                      setSelectedQuoteForPayment(quote);
-                      setPaymentDialogOpen(true);
-                    }
-                  }}
-                  onAddShipping={(quote) => {
-                    if (isMobile) {
-                      navigate(`/quotes/${quote.id}/shipping`);
-                    } else {
-                      setSelectedQuoteForShipping(quote);
-                      setShippingDialogOpen(true);
-                    }
-                  }}
-                  onGenerateLabel={(quote) => {
-                    setSelectedQuoteForLabel(quote);
-                    setShippingLabelDialogOpen(true);
-                  }}
-                  onDuplicate={handleDuplicateQuote}
-                  onRefreshTracking={handleRefreshTracking}
-                  canRefreshTracking={canRefreshTracking}
-                  timeUntilNextRefresh={timeUntilNextRefresh}
-                  hasValidatedCreditCard={hasValidatedCreditCard}
-                  selectedDraftIds={selectedDraftIds}
-                  onToggleDraftSelection={handleToggleDraftSelection}
-                  onSelectAllDrafts={handleSelectAllDrafts}
-                />
-              );
-            })()}
+            <QuotesVirtualTable
+              quotes={filteredQuotes}
+              allQuotesCount={quotes.length}
+              isQuoteLocked={isQuoteLocked}
+              getAvailableActions={getAvailableActions}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onManageItems={handleManageItems}
+              onApproveReject={(quote) => {
+                fetchQuoteItems(quote.id).then(() => {
+                  setSelectedQuoteForApproval(quote);
+                  setApprovalDialogOpen(true);
+                });
+              }}
+              onAddPayment={(quote) => {
+                if (isMobile) {
+                  navigate(`/quotes/${quote.id}/payment`);
+                } else {
+                  setSelectedQuoteForPayment(quote);
+                  setPaymentDialogOpen(true);
+                }
+              }}
+              onAddShipping={(quote) => {
+                if (isMobile) {
+                  navigate(`/quotes/${quote.id}/shipping`);
+                } else {
+                  setSelectedQuoteForShipping(quote);
+                  setShippingDialogOpen(true);
+                }
+              }}
+              onGenerateLabel={(quote) => {
+                setSelectedQuoteForLabel(quote);
+                setShippingLabelDialogOpen(true);
+              }}
+              onDuplicate={handleDuplicateQuote}
+              onRefreshTracking={handleRefreshTracking}
+              canRefreshTracking={canRefreshTracking}
+              timeUntilNextRefresh={timeUntilNextRefresh}
+              hasValidatedCreditCard={hasValidatedCreditCard}
+              selectedDraftIds={selectedDraftIds}
+              onToggleDraftSelection={handleToggleDraftSelection}
+              onSelectAllDrafts={handleSelectAllDrafts}
+            />
 
         {/* View Quote Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>

@@ -2132,6 +2132,15 @@ const Quotes = () => {
         }
       });
 
+      // Notify lab about payment
+      try {
+        await supabase.functions.invoke('notify-lab-payment', {
+          body: { quoteId }
+        });
+      } catch (labEmailError) {
+        console.error('Failed to notify lab about payment:', labEmailError);
+      }
+
       toast({ 
         title: "Payment Recorded",
         description: "Payment details saved successfully",

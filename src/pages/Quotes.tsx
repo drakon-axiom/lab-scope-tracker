@@ -286,6 +286,7 @@ const Quotes = () => {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
+  const [shippingSubmitting, setShippingSubmitting] = useState(false);
   const [shippingLabelDialogOpen, setShippingLabelDialogOpen] = useState(false);
   const [selectedQuoteForPayment, setSelectedQuoteForPayment] = useState<Quote | null>(null);
   const [selectedQuoteForShipping, setSelectedQuoteForShipping] = useState<Quote | null>(null);
@@ -2165,6 +2166,8 @@ const Quotes = () => {
   const handleShippingSubmit = async (shippingData: ShippingFormData) => {
     if (!selectedQuoteForShipping) return;
 
+    setShippingSubmitting(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -2210,6 +2213,8 @@ const Quotes = () => {
         variant: "destructive",
         duration: 4000,
       });
+    } finally {
+      setShippingSubmitting(false);
     }
   };
 
@@ -4145,9 +4150,15 @@ const Quotes = () => {
         {selectedQuoteForShipping && (
           <ShippingDetailsDialog
             open={shippingDialogOpen}
-            onOpenChange={setShippingDialogOpen}
+            onOpenChange={(open) => {
+              if (!shippingSubmitting) {
+                setShippingDialogOpen(open);
+                if (!open) setSelectedQuoteForShipping(null);
+              }
+            }}
             onSubmit={handleShippingSubmit}
             onRefreshTracking={handleRefreshTracking}
+            isSubmitting={shippingSubmitting}
             initialData={{
               tracking_number: selectedQuoteForShipping.tracking_number || "",
               shipped_date: selectedQuoteForShipping.shipped_date || "",

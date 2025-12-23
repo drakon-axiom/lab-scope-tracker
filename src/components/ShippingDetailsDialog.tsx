@@ -3,7 +3,7 @@ import { ResponsiveDialog } from "@/components/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 
 interface ShippingDetailsDialogProps {
   open: boolean;
@@ -11,6 +11,7 @@ interface ShippingDetailsDialogProps {
   onSubmit: (data: ShippingFormData) => void;
   onRefreshTracking?: (trackingNumber: string) => void;
   initialData?: ShippingFormData;
+  isSubmitting?: boolean;
 }
 
 export interface ShippingFormData {
@@ -24,6 +25,7 @@ export function ShippingDetailsDialog({
   onSubmit,
   onRefreshTracking,
   initialData,
+  isSubmitting = false,
 }: ShippingDetailsDialogProps) {
   const [formData, setFormData] = useState<ShippingFormData>(
     initialData || {
@@ -85,10 +87,19 @@ export function ShippingDetailsDialog({
         </div>
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">Save Shipping</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Shipping"
+            )}
+          </Button>
         </div>
       </form>
     </ResponsiveDialog>

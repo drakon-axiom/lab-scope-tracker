@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuotesData } from "@/hooks/useQuotesData";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { ResponsiveDialog } from "@/components/ResponsiveDialog";
@@ -173,12 +174,16 @@ const Quotes = () => {
   const { role, isSubscriber, isAdmin, loading: roleLoading } = useUserRole();
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { canSendItems, getRemainingItems } = useSubscription();
+  const { 
+    labs, 
+    clients, 
+    manufacturers, 
+    invalidateClients, 
+    invalidateManufacturers 
+  } = useQuotesData();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
-  const [labs, setLabs] = useState<Lab[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -470,9 +475,6 @@ const Quotes = () => {
     
     fetchQuotes();
     fetchProducts();
-    fetchLabs();
-    fetchClients();
-    fetchManufacturers();
     fetchTestingTypes();
     fetchTemplates();
     fetchEmailTemplates();
@@ -656,22 +658,6 @@ const Quotes = () => {
     }
   };
 
-  const fetchLabs = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("labs")
-        .select("id, name");
-
-      if (error) throw error;
-      setLabs(data || []);
-    } catch (error: any) {
-      console.error("Error fetching labs:", error);
-    }
-  };
-
   const fetchTestingTypes = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -709,64 +695,6 @@ const Quotes = () => {
       }
     } catch (error: any) {
       console.error("Error fetching vendor price:", error);
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Use impersonated user's ID for filtering when impersonating
-      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
-        ? impersonatedUser.id 
-        : user.id;
-
-      let query = supabase
-        .from("clients")
-        .select("id, name")
-        .order("name");
-
-      // Clients are scoped to ownership - filter by user_id unless admin viewing all
-      if (!isAdmin || isImpersonatingCustomer) {
-        query = query.eq("user_id", targetUserId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error: any) {
-      console.error("Error fetching clients:", error);
-    }
-  };
-
-  const fetchManufacturers = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Use impersonated user's ID for filtering when impersonating
-      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id 
-        ? impersonatedUser.id 
-        : user.id;
-
-      let query = supabase
-        .from("manufacturers")
-        .select("id, name")
-        .order("name");
-
-      // Manufacturers are scoped to ownership - filter by user_id unless admin viewing all
-      if (!isAdmin || isImpersonatingCustomer) {
-        query = query.eq("user_id", targetUserId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setManufacturers(data || []);
-    } catch (error: any) {
-      console.error("Error fetching manufacturers:", error);
     }
   };
 
@@ -1495,7 +1423,7 @@ const Quotes = () => {
           .from("clients")
           .insert([{ name: clientName, user_id: effectiveUserId }]);
         if (!error) {
-          await fetchClients(); // Refresh clients list
+          invalidateClients(); // Refresh clients list
         }
       }
 
@@ -1507,7 +1435,7 @@ const Quotes = () => {
           .from("manufacturers")
           .insert([{ name: manufacturerName, user_id: effectiveUserId }]);
         if (!error) {
-          await fetchManufacturers(); // Refresh manufacturers list
+          invalidateManufacturers(); // Refresh manufacturers list
         }
       }
 
@@ -2329,7 +2257,6 @@ const Quotes = () => {
   const handleRefresh = async () => {
     await fetchQuotes();
     await fetchProducts();
-    await fetchLabs();
   };
 
   return (

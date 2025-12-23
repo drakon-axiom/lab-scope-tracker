@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQuotesData } from "@/hooks/useQuotesData";
 import { Plus, Trash2, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -37,7 +38,7 @@ interface BulkVendorPricingWizardProps {
 
 export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: BulkVendorPricingWizardProps) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [labs, setLabs] = useState<Lab[]>([]);
+  const { labs } = useQuotesData();
   const [selectedLab, setSelectedLab] = useState("");
   const [bulkPrice, setBulkPrice] = useState("");
   const [entries, setEntries] = useState<BulkPricingEntry[]>([]);
@@ -47,7 +48,6 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
   useEffect(() => {
     if (open) {
       fetchProducts();
-      fetchLabs();
     }
   }, [open]);
 
@@ -67,29 +67,6 @@ export function BulkVendorPricingWizard({ open, onOpenChange, onComplete }: Bulk
     } catch (error: any) {
       toast({
         title: "Error fetching compounds",
-        description: error.message,
-        variant: "destructive",
-        duration: 4000,
-      });
-    }
-  };
-
-  const fetchLabs = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("labs")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .order("name");
-
-      if (error) throw error;
-      setLabs(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching labs",
         description: error.message,
         variant: "destructive",
         duration: 4000,

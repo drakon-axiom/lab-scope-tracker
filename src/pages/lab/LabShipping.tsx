@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,50 @@ interface Quote {
   status: string;
   shipped_date: string | null;
 }
+
+// Memoized shipping row component
+const ShippingRow = memo(({ 
+  quote, 
+  showMarkReceived,
+  getStatusBadge,
+  onMarkReceived 
+}: { 
+  quote: Quote; 
+  showMarkReceived: boolean;
+  getStatusBadge: (status: string) => React.ReactNode;
+  onMarkReceived: (quoteId: string) => void;
+}) => (
+  <TableRow key={quote.id}>
+    <TableCell className="font-medium">
+      {quote.quote_number || "N/A"}
+    </TableCell>
+    <TableCell className="font-mono text-sm">
+      {quote.tracking_number || "-"}
+    </TableCell>
+    <TableCell>
+      {quote.shipped_date
+        ? format(new Date(quote.shipped_date), "MMM d, yyyy")
+        : "-"}
+    </TableCell>
+    <TableCell>
+      {getStatusBadge(quote.status)}
+    </TableCell>
+    {showMarkReceived && (
+      <TableCell className="text-right">
+        {quote.status === "delivered" && (
+          <Button
+            size="sm"
+            onClick={() => onMarkReceived(quote.id)}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            Mark Received
+          </Button>
+        )}
+      </TableCell>
+    )}
+  </TableRow>
+));
+ShippingRow.displayName = "ShippingRow";
 
 export default function LabShipping() {
   const { labUser } = useLabUser();
@@ -126,35 +170,13 @@ export default function LabShipping() {
           </TableRow>
         ) : (
           quoteList.map((quote) => (
-            <TableRow key={quote.id}>
-              <TableCell className="font-medium">
-                {quote.quote_number || "N/A"}
-              </TableCell>
-              <TableCell className="font-mono text-sm">
-                {quote.tracking_number || "-"}
-              </TableCell>
-              <TableCell>
-                {quote.shipped_date
-                  ? format(new Date(quote.shipped_date), "MMM d, yyyy")
-                  : "-"}
-              </TableCell>
-              <TableCell>
-                {getStatusBadge(quote.status)}
-              </TableCell>
-              {showMarkReceived && (
-                <TableCell className="text-right">
-                  {quote.status === "delivered" && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleMarkReceived(quote.id)}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Mark Received
-                    </Button>
-                  )}
-                </TableCell>
-              )}
-            </TableRow>
+            <ShippingRow
+              key={quote.id}
+              quote={quote}
+              showMarkReceived={showMarkReceived}
+              getStatusBadge={getStatusBadge}
+              onMarkReceived={handleMarkReceived}
+            />
           ))
         )}
       </TableBody>

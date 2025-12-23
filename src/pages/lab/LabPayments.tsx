@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,46 @@ interface Quote {
   payment_date: string | null;
   transaction_id: string | null;
 }
+
+// Memoized payment row component
+const PaymentRow = memo(({ 
+  quote, 
+  onReview 
+}: { 
+  quote: Quote; 
+  onReview: (quote: Quote) => void;
+}) => (
+  <TableRow key={quote.id}>
+    <TableCell className="font-medium">
+      {quote.quote_number || "N/A"}
+    </TableCell>
+    <TableCell>
+      ${quote.payment_amount_usd?.toFixed(2) || "0.00"}
+    </TableCell>
+    <TableCell>{quote.payment_amount_crypto || "-"}</TableCell>
+    <TableCell>
+      {quote.payment_date
+        ? format(new Date(quote.payment_date), "MMM d, yyyy")
+        : "-"}
+    </TableCell>
+    <TableCell className="font-mono text-xs">
+      {quote.transaction_id || "-"}
+    </TableCell>
+    <TableCell>
+      <Badge variant="outline">{quote.payment_status || "pending"}</Badge>
+    </TableCell>
+    <TableCell className="text-right">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onReview(quote)}
+      >
+        Review
+      </Button>
+    </TableCell>
+  </TableRow>
+));
+PaymentRow.displayName = "PaymentRow";
 
 export default function LabPayments() {
   const { labUser } = useLabUser();
@@ -165,38 +205,14 @@ export default function LabPayments() {
                   </TableRow>
                 ) : (
                   quotes.map((quote) => (
-                    <TableRow key={quote.id}>
-                      <TableCell className="font-medium">
-                        {quote.quote_number || "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        ${quote.payment_amount_usd?.toFixed(2) || "0.00"}
-                      </TableCell>
-                      <TableCell>{quote.payment_amount_crypto || "-"}</TableCell>
-                      <TableCell>
-                        {quote.payment_date
-                          ? format(new Date(quote.payment_date), "MMM d, yyyy")
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {quote.transaction_id || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{quote.payment_status || "pending"}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedQuote(quote);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          Review
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <PaymentRow
+                      key={quote.id}
+                      quote={quote}
+                      onReview={(q) => {
+                        setSelectedQuote(q);
+                        setDialogOpen(true);
+                      }}
+                    />
                   ))
                 )}
               </TableBody>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,61 @@ interface SubmissionHistory {
   metadata: any;
   user_id: string | null;
 }
+
+// Helper function to get progress color
+const getProgressColor = (completed: number, total: number) => {
+  if (total === 0) return "bg-muted";
+  const percentage = (completed / total) * 100;
+  if (percentage === 100) return "bg-green-500";
+  if (percentage >= 50) return "bg-amber-500";
+  return "bg-red-500";
+};
+
+// Memoized results row component
+interface ResultsRowProps {
+  quote: Quote;
+  permissions: { canSubmitResults: boolean };
+  onOpen: (quote: Quote) => void;
+}
+
+const ResultsRow = memo(({ quote, permissions, onOpen }: ResultsRowProps) => (
+  <TableRow key={quote.id}>
+    <TableCell className="font-medium">
+      {quote.quote_number || "N/A"}
+    </TableCell>
+    <TableCell>
+      <Badge>{quote.status}</Badge>
+    </TableCell>
+    <TableCell>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">
+          {quote.completedResults} / {quote.totalResults}
+        </span>
+        <div className="flex-1 max-w-[100px]">
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all ${getProgressColor(quote.completedResults || 0, quote.totalResults || 0)}`}
+              style={{ 
+                width: `${quote.totalResults ? (quote.completedResults! / quote.totalResults * 100) : 0}%` 
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </TableCell>
+    <TableCell className="text-right">
+      <Button
+        size="sm"
+        variant={permissions.canSubmitResults ? "default" : "outline"}
+        onClick={() => onOpen(quote)}
+      >
+        <FileText className="h-4 w-4 mr-1" />
+        {permissions.canSubmitResults ? "Submit Results" : "View Details"}
+      </Button>
+    </TableCell>
+  </TableRow>
+));
+ResultsRow.displayName = "ResultsRow";
 
 export default function LabResults() {
   const { labUser } = useLabUser();
@@ -628,46 +683,17 @@ export default function LabResults() {
                   </TableRow>
                 ) : (
                   sortedQuotes.map((quote) => (
-                    <TableRow key={quote.id}>
-                      <TableCell className="font-medium">
-                        {quote.quote_number || "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge>{quote.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {quote.completedResults} / {quote.totalResults}
-                          </span>
-                          <div className="flex-1 max-w-[100px]">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all ${getProgressColor(quote.completedResults || 0, quote.totalResults || 0)}`}
-                                style={{ 
-                                  width: `${quote.totalResults ? (quote.completedResults! / quote.totalResults * 100) : 0}%` 
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant={permissions.canSubmitResults ? "default" : "outline"}
-                          onClick={() => {
-                            setSelectedQuote(quote);
-                            fetchQuoteItems(quote.id);
-                            fetchSubmissionHistory(quote.id);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          {permissions.canSubmitResults ? "Submit Results" : "View Details"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <ResultsRow
+                      key={quote.id}
+                      quote={quote}
+                      permissions={permissions}
+                      onOpen={(q) => {
+                        setSelectedQuote(q);
+                        fetchQuoteItems(q.id);
+                        fetchSubmissionHistory(q.id);
+                        setDialogOpen(true);
+                      }}
+                    />
                   ))
                 )}
               </TableBody>

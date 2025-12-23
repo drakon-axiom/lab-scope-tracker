@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
+import { useLabQuotes } from "@/hooks/useLabQuotes";
 import { format } from "date-fns";
 import { 
   Eye, Check, X, Lock, Package, CreditCard, 
@@ -109,8 +110,11 @@ export default function LabOpenRequests() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
+  
+  const { quotes, loading, refetch } = useLabQuotes(effectiveLabId);
+  
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -120,29 +124,6 @@ export default function LabOpenRequests() {
   const [activeTab, setActiveTab] = useState("all");
   const [modifiedPrices, setModifiedPrices] = useState<Record<string, string>>({});
   const [savingApproval, setSavingApproval] = useState(false);
-
-  const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
-
-  const fetchQuotes = useCallback(async () => {
-    if (!effectiveLabId) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*")
-        .eq("lab_id", effectiveLabId)
-        .not("status", "in", '("completed","rejected","draft")')
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setQuotes(data || []);
-    } catch (error) {
-      console.error("Error fetching quotes:", error);
-      toast.error("Failed to load requests");
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveLabId]);
 
   const fetchQuoteItems = async (quoteId: string) => {
     setItemsLoading(true);
@@ -161,30 +142,6 @@ export default function LabOpenRequests() {
       setItemsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!effectiveLabId) return;
-
-    fetchQuotes();
-
-    const channel = supabase
-      .channel("lab-open-requests")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "quotes",
-          filter: `lab_id=eq.${effectiveLabId}`,
-        },
-        () => fetchQuotes()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [effectiveLabId, fetchQuotes]);
 
   const openQuoteDialog = (quote: Quote) => {
     setSelectedQuote(quote);
@@ -747,7 +704,7 @@ export default function LabOpenRequests() {
       });
 
       toast.success("Testing started");
-      fetchQuotes();
+      refetch();
     } catch (error) {
       console.error("Error starting testing:", error);
       toast.error("Failed to start testing");
@@ -803,7 +760,7 @@ export default function LabOpenRequests() {
               Manage active testing requests through their lifecycle
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchQuotes}>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>

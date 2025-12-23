@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { 
   getAdditionalSamplesPrice, 
   getAdditionalHeadersPrice,
@@ -110,6 +110,68 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: "bg-cyan-500",
   testing_in_progress: "bg-pink-500",
 };
+
+// Memoized quote row component
+interface OpenRequestRowProps {
+  quote: Quote;
+  getNextActionIcon: (status: string) => React.ComponentType<{ className?: string }>;
+  getNextAction: (quote: Quote) => string;
+  onOpen: (quote: Quote) => void;
+}
+
+const OpenRequestRow = memo(({ 
+  quote, 
+  getNextActionIcon, 
+  getNextAction, 
+  onOpen 
+}: OpenRequestRowProps) => {
+  const ActionIcon = getNextActionIcon(quote.status);
+  return (
+    <TableRow 
+      key={quote.id} 
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => onOpen(quote)}
+    >
+      <TableCell>
+        <div>
+          <p className="font-medium">
+            {quote.quote_number || quote.lab_quote_number || "Pending"}
+          </p>
+          {quote.notes && (
+            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {quote.notes}
+            </p>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge 
+          variant="outline"
+          className="gap-1.5"
+        >
+          <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[quote.status] || "bg-gray-500"}`} />
+          {STATUS_LABELS[quote.status] || quote.status}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {format(new Date(quote.created_at), "MMM d, yyyy")}
+      </TableCell>
+      <TableCell>
+        {quote.payment_amount_usd 
+          ? `$${quote.payment_amount_usd.toFixed(2)}` 
+          : "-"}
+      </TableCell>
+      <TableCell className="text-right">
+        <Button size="sm" variant="ghost" className="gap-1">
+          <ActionIcon className="h-4 w-4" />
+          {getNextAction(quote)}
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+OpenRequestRow.displayName = "OpenRequestRow";
 
 export default function LabOpenRequests() {
   const navigate = useNavigate();
@@ -803,53 +865,15 @@ export default function LabOpenRequests() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredQuotes.map((quote) => {
-                        const ActionIcon = getNextActionIcon(quote.status);
-                        return (
-                          <TableRow 
-                            key={quote.id} 
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => openQuoteDialog(quote)}
-                          >
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">
-                                  {quote.quote_number || quote.lab_quote_number || "Pending"}
-                                </p>
-                                {quote.notes && (
-                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {quote.notes}
-                                  </p>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant="outline"
-                                className="gap-1.5"
-                              >
-                                <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[quote.status] || "bg-gray-500"}`} />
-                                {STATUS_LABELS[quote.status] || quote.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {format(new Date(quote.created_at), "MMM d, yyyy")}
-                            </TableCell>
-                            <TableCell>
-                              {quote.payment_amount_usd 
-                                ? `$${quote.payment_amount_usd.toFixed(2)}` 
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button size="sm" variant="ghost" className="gap-1">
-                                <ActionIcon className="h-4 w-4" />
-                                {getNextAction(quote)}
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {filteredQuotes.map((quote) => (
+                        <OpenRequestRow
+                          key={quote.id}
+                          quote={quote}
+                          getNextActionIcon={getNextActionIcon}
+                          getNextAction={getNextAction}
+                          onOpen={openQuoteDialog}
+                        />
+                      ))}
                     </TableBody>
                   </Table>
                 )}

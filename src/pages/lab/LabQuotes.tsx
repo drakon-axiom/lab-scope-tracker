@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,84 @@ interface Quote {
   payment_amount_usd: number | null;
   payment_date: string | null;
 }
+
+// Memoized pending quote row component
+const PendingQuoteRow = memo(({ 
+  quote, 
+  permissions, 
+  onOpen 
+}: { 
+  quote: Quote; 
+  permissions: { canApproveQuotes: boolean }; 
+  onOpen: (quote: Quote) => void;
+}) => (
+  <TableRow key={quote.id}>
+    <TableCell className="font-medium">
+      {quote.quote_number || "Pending"}
+    </TableCell>
+    <TableCell>
+      {format(new Date(quote.created_at), "MMM d, yyyy")}
+    </TableCell>
+    <TableCell>
+      <Badge variant="outline">{quote.status}</Badge>
+    </TableCell>
+    <TableCell className="max-w-xs truncate">
+      {quote.notes || "-"}
+    </TableCell>
+    <TableCell className="text-right">
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onOpen(quote)}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          {permissions.canApproveQuotes ? "Review" : "View"}
+        </Button>
+      </div>
+    </TableCell>
+  </TableRow>
+));
+PendingQuoteRow.displayName = "PendingQuoteRow";
+
+// Memoized historical quote row component
+const HistoricalQuoteRow = memo(({ 
+  quote, 
+  onOpen 
+}: { 
+  quote: Quote; 
+  onOpen: (quote: Quote) => void;
+}) => (
+  <TableRow key={quote.id}>
+    <TableCell className="font-medium">
+      {quote.quote_number || "N/A"}
+    </TableCell>
+    <TableCell>
+      {format(new Date(quote.created_at), "MMM d, yyyy")}
+    </TableCell>
+    <TableCell>
+      <Badge 
+        variant={quote.status === "completed" ? "default" : "destructive"}
+      >
+        {quote.status}
+      </Badge>
+    </TableCell>
+    <TableCell className="max-w-xs truncate">
+      {quote.notes || "-"}
+    </TableCell>
+    <TableCell className="text-right">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onOpen(quote)}
+      >
+        <Eye className="h-4 w-4 mr-1" />
+        View
+      </Button>
+    </TableCell>
+  </TableRow>
+));
+HistoricalQuoteRow.displayName = "HistoricalQuoteRow";
 
 export default function LabQuotes() {
   const { labUser } = useLabUser();
@@ -325,32 +403,12 @@ export default function LabQuotes() {
                   </TableRow>
                 ) : (
                   quotes.map((quote) => (
-                    <TableRow key={quote.id}>
-                      <TableCell className="font-medium">
-                        {quote.quote_number || "Pending"}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(quote.created_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{quote.status}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {quote.notes || "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openQuoteDialog(quote)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            {permissions.canApproveQuotes ? "Review" : "View"}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <PendingQuoteRow
+                      key={quote.id}
+                      quote={quote}
+                      permissions={permissions}
+                      onOpen={openQuoteDialog}
+                    />
                   ))
                 )}
               </TableBody>
@@ -389,34 +447,11 @@ export default function LabQuotes() {
                   </TableRow>
                 ) : (
                   historicalQuotes.map((quote) => (
-                    <TableRow key={quote.id}>
-                      <TableCell className="font-medium">
-                        {quote.quote_number || "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(quote.created_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={quote.status === "completed" ? "default" : "destructive"}
-                        >
-                          {quote.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {quote.notes || "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openQuoteDialog(quote)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <HistoricalQuoteRow
+                      key={quote.id}
+                      quote={quote}
+                      onOpen={openQuoteDialog}
+                    />
                   ))
                 )}
               </TableBody>

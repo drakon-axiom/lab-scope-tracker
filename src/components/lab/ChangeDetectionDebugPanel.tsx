@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, memo } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +43,7 @@ function BoolBadge({ value }: { value: boolean }) {
   );
 }
 
-function PriceRows({ title, rows }: { title: string; rows: ChangeDetectionPriceRow[] }) {
+const PriceRows = memo(function PriceRows({ title, rows }: { title: string; rows: ChangeDetectionPriceRow[] }) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium">{title}</div>
@@ -69,9 +69,9 @@ function PriceRows({ title, rows }: { title: string; rows: ChangeDetectionPriceR
       )}
     </div>
   );
-}
+});
 
-export function ChangeDetectionDebugPanel({
+export const ChangeDetectionDebugPanel = memo(function ChangeDetectionDebugPanel({
   data,
   className,
   defaultOpen = true,
@@ -152,4 +152,4 @@ export function ChangeDetectionDebugPanel({
       </Card>
     </Collapsible>
   );
-}
+});

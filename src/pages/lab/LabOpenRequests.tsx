@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
+import { PriceInputRow } from "@/components/lab/PriceInputRow";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1033,74 +1034,43 @@ export default function LabOpenRequests() {
                             {/* Pricing breakdown section */}
                             <div className="mt-3 pt-3 border-t space-y-2">
                               {/* Base price row */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">Base test price</span>
-                                {canEditPrice ? (
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-muted-foreground text-sm">$</span>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      className={`w-24 h-8 text-right text-sm ${isPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
-                                      value={modifiedPrices[item.id] ?? (item.price?.toString() || "")}
-                                      onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                                      placeholder="0.00"
-                                    />
-                                  </div>
-                                ) : (
-                                  <span className="text-sm font-medium">${currentBasePrice.toFixed(2)}</span>
-                                )}
-                              </div>
+                              <PriceInputRow
+                                label="Base test price"
+                                itemId={item.id}
+                                value={modifiedPrices[item.id]}
+                                defaultValue={item.price?.toString() || ""}
+                                isModified={isPriceModified}
+                                canEdit={canEditPrice}
+                                displayValue={currentBasePrice}
+                                onChange={handlePriceChange}
+                              />
                               
                               {/* Additional samples row */}
                               {hasSamples && (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm text-muted-foreground">
-                                    +{item.additional_samples} variance sample{item.additional_samples > 1 ? 's' : ''} @ $60 each
-                                  </span>
-                                  {canEditPrice ? (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-muted-foreground text-sm">$</span>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        className={`w-24 h-8 text-right text-sm ${isSamplePriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
-                                        value={modifiedSamplePrices[item.id] ?? defaultSamplePrice.toString()}
-                                        onChange={(e) => handleSamplePriceChange(item.id, e.target.value)}
-                                        placeholder="0.00"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span className="text-sm font-medium">${effectiveSamplePrice.toFixed(2)}</span>
-                                  )}
-                                </div>
+                                <PriceInputRow
+                                  label={`+${item.additional_samples} variance sample${item.additional_samples > 1 ? 's' : ''} @ $60 each`}
+                                  itemId={item.id}
+                                  value={modifiedSamplePrices[item.id]}
+                                  defaultValue={defaultSamplePrice.toString()}
+                                  isModified={isSamplePriceModified}
+                                  canEdit={canEditPrice}
+                                  displayValue={effectiveSamplePrice}
+                                  onChange={handleSamplePriceChange}
+                                />
                               )}
                               
                               {/* Additional headers row */}
                               {hasHeaders && (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm text-muted-foreground">
-                                    +{item.additional_report_headers} report header{item.additional_report_headers > 1 ? 's' : ''} @ $30 each
-                                  </span>
-                                  {canEditPrice ? (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-muted-foreground text-sm">$</span>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        className={`w-24 h-8 text-right text-sm ${isHeaderPriceModified ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20' : ''}`}
-                                        value={modifiedHeaderPrices[item.id] ?? defaultHeaderPrice.toString()}
-                                        onChange={(e) => handleHeaderPriceChange(item.id, e.target.value)}
-                                        placeholder="0.00"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span className="text-sm font-medium">${effectiveHeaderPrice.toFixed(2)}</span>
-                                  )}
-                                </div>
+                                <PriceInputRow
+                                  label={`+${item.additional_report_headers} report header${item.additional_report_headers > 1 ? 's' : ''} @ $30 each`}
+                                  itemId={item.id}
+                                  value={modifiedHeaderPrices[item.id]}
+                                  defaultValue={defaultHeaderPrice.toString()}
+                                  isModified={isHeaderPriceModified}
+                                  canEdit={canEditPrice}
+                                  displayValue={effectiveHeaderPrice}
+                                  onChange={handleHeaderPriceChange}
+                                />
                               )}
                             </div>
                           </div>

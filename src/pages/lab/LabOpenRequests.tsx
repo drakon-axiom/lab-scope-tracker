@@ -201,17 +201,17 @@ export default function LabOpenRequests() {
   const [modifiedSamplePrices, setModifiedSamplePrices] = useState<Record<string, string>>({});
   const [modifiedHeaderPrices, setModifiedHeaderPrices] = useState<Record<string, string>>({});
 
-  const handlePriceChange = (itemId: string, value: string) => {
+  const handlePriceChange = useCallback((itemId: string, value: string) => {
     setModifiedPrices(prev => ({ ...prev, [itemId]: value }));
-  };
+  }, []);
 
-  const handleSamplePriceChange = (itemId: string, value: string) => {
+  const handleSamplePriceChange = useCallback((itemId: string, value: string) => {
     setModifiedSamplePrices(prev => ({ ...prev, [itemId]: value }));
-  };
+  }, []);
 
-  const handleHeaderPriceChange = (itemId: string, value: string) => {
+  const handleHeaderPriceChange = useCallback((itemId: string, value: string) => {
     setModifiedHeaderPrices(prev => ({ ...prev, [itemId]: value }));
-  };
+  }, []);
 
   // Calculate additional samples price ($60 each for Tirzepatide, Semaglutide, Retatrutide)
   const getAdditionalSamplesPrice = (item: QuoteItem): number => {

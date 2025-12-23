@@ -5,6 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuotesData } from "@/hooks/useQuotesData";
+import { useDebounce } from "@/hooks/useDebounce";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { ResponsiveDialog } from "@/components/ResponsiveDialog";
@@ -279,6 +280,7 @@ const Quotes = () => {
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterLab, setFilterLab] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
@@ -2731,8 +2733,8 @@ const Quotes = () => {
               let filteredQuotes = quotes;
 
               // Search filter
-              if (searchQuery.trim()) {
-                const query = searchQuery.toLowerCase();
+              if (debouncedSearchQuery.trim()) {
+                const query = debouncedSearchQuery.toLowerCase();
                 filteredQuotes = filteredQuotes.filter(
                   (quote) =>
                     quote.quote_number?.toLowerCase().includes(query) ||

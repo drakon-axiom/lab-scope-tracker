@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
@@ -753,21 +753,18 @@ export default function LabOpenRequests() {
     }
   };
 
-  const getFilteredQuotes = () => {
+  const filteredQuotes = useMemo(() => {
     if (activeTab === "all") return quotes;
     return quotes.filter(q => q.status === activeTab);
-  };
+  }, [quotes, activeTab]);
 
-  const getStatusCounts = () => {
+  const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: quotes.length };
     quotes.forEach(q => {
       counts[q.status] = (counts[q.status] || 0) + 1;
     });
     return counts;
-  };
-
-  const statusCounts = getStatusCounts();
-  const filteredQuotes = getFilteredQuotes();
+  }, [quotes]);
 
   const getNextAction = (quote: Quote) => {
     switch (quote.status) {

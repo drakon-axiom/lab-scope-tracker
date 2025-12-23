@@ -1,4 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
+import { 
+  getAdditionalSamplesPrice, 
+  getAdditionalHeadersPrice,
+  getEffectiveSamplePrice as getEffectiveSamplePriceUtil,
+  getEffectiveHeaderPrice as getEffectiveHeaderPriceUtil
+} from "@/lib/priceUtils";
 import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
@@ -171,36 +177,14 @@ export default function LabOpenRequests() {
     setModifiedHeaderPrices(prev => ({ ...prev, [itemId]: value }));
   }, []);
 
-  // Calculate additional samples price ($60 each for Tirzepatide, Semaglutide, Retatrutide)
-  const getAdditionalSamplesPrice = (item: QuoteItem): number => {
-    if (!item.additional_samples || item.additional_samples === 0) return 0;
-    const compoundName = item.products?.name || "";
-    const isPremiumCompound = ["Tirzepatide", "Semaglutide", "Retatrutide"].some(
-      name => compoundName.toLowerCase().includes(name.toLowerCase())
-    );
-    return isPremiumCompound ? item.additional_samples * 60 : item.additional_samples * 60;
-  };
-
-  // Calculate additional headers price ($30 each)
-  const getAdditionalHeadersPrice = (item: QuoteItem): number => {
-    if (!item.additional_report_headers || item.additional_report_headers === 0) return 0;
-    return item.additional_report_headers * 30;
-  };
-
   // Get modified or default additional samples price
   const getEffectiveSamplePrice = (item: QuoteItem): number => {
-    if (modifiedSamplePrices[item.id] !== undefined && modifiedSamplePrices[item.id] !== "") {
-      return parseFloat(modifiedSamplePrices[item.id]) || 0;
-    }
-    return getAdditionalSamplesPrice(item);
+    return getEffectiveSamplePriceUtil(item, modifiedSamplePrices);
   };
 
   // Get modified or default additional headers price  
   const getEffectiveHeaderPrice = (item: QuoteItem): number => {
-    if (modifiedHeaderPrices[item.id] !== undefined && modifiedHeaderPrices[item.id] !== "") {
-      return parseFloat(modifiedHeaderPrices[item.id]) || 0;
-    }
-    return getAdditionalHeadersPrice(item);
+    return getEffectiveHeaderPriceUtil(item, modifiedHeaderPrices);
   };
 
   const getItemPrice = (item: QuoteItem): number => {

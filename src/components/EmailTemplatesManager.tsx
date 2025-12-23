@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useQuotesData } from "@/hooks/useQuotesData";
 import { Mail, Plus, Pencil, Trash2, Eye, History, Download, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,7 @@ interface Lab {
 
 export function EmailTemplatesManager() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [labs, setLabs] = useState<Lab[]>([]);
+  const { labs } = useQuotesData();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -59,7 +60,6 @@ export function EmailTemplatesManager() {
 
   useEffect(() => {
     fetchTemplates();
-    fetchLabs();
   }, []);
 
   const fetchTemplates = async () => {
@@ -72,19 +72,6 @@ export function EmailTemplatesManager() {
       toast({ title: "Error fetching templates", description: error.message, variant: "destructive", duration: 4000 });
     } else {
       setTemplates(data || []);
-    }
-  };
-
-  const fetchLabs = async () => {
-    const { data, error } = await supabase
-      .from("labs")
-      .select("id, name")
-      .order("name");
-
-    if (error) {
-      toast({ title: "Error fetching labs", description: error.message, variant: "destructive", duration: 4000 });
-    } else {
-      setLabs(data || []);
     }
   };
 

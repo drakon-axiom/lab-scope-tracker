@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQuotesData } from "@/hooks/useQuotesData";
 import { Trash2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -35,7 +36,7 @@ interface VendorPricingDialogProps {
 
 export function VendorPricingDialog({ open, onOpenChange, productId, productName }: VendorPricingDialogProps) {
   const [pricings, setPricings] = useState<VendorPricing[]>([]);
-  const [labs, setLabs] = useState<Lab[]>([]);
+  const { labs } = useQuotesData();
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPricing, setNewPricing] = useState({
@@ -49,7 +50,6 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
   useEffect(() => {
     if (open) {
       fetchPricings();
-      fetchLabs();
     }
   }, [open, productId]);
 
@@ -73,25 +73,6 @@ export function VendorPricingDialog({ open, onOpenChange, productId, productName
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchLabs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("labs")
-        .select("id, name")
-        .order("name");
-
-      if (error) throw error;
-      setLabs(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching labs",
-        description: error.message,
-        variant: "destructive",
-        duration: 4000,
-      });
     }
   };
 

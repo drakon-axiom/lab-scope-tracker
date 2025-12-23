@@ -149,6 +149,14 @@ export const useQuotesData = () => {
     queryClient.invalidateQueries({ queryKey: ["quotes"] });
   };
 
+  const invalidateClients = () => {
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+  };
+
+  const invalidateManufacturers = () => {
+    queryClient.invalidateQueries({ queryKey: ["manufacturers"] });
+  };
+
   return {
     quotes,
     products,
@@ -156,8 +164,13 @@ export const useQuotesData = () => {
     clients,
     manufacturers,
     loading,
+    clientsLoading,
+    manufacturersLoading,
+    labsLoading,
     refetchQuotes,
     invalidateQuotes,
+    invalidateClients,
+    invalidateManufacturers,
     isAdmin,
     role,
     targetUserId,

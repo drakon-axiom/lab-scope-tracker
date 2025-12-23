@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 interface PaymentDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: PaymentFormData) => void;
   initialData?: PaymentFormData;
+  isSubmitting?: boolean;
 }
 
 export interface PaymentFormData {
@@ -25,6 +27,7 @@ export function PaymentDetailsDialog({
   onOpenChange,
   onSubmit,
   initialData,
+  isSubmitting = false,
 }: PaymentDetailsDialogProps) {
   const [formData, setFormData] = useState<PaymentFormData>(
     initialData || {
@@ -124,10 +127,19 @@ export function PaymentDetailsDialog({
         )}
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">Save Payment</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Payment"
+            )}
+          </Button>
         </div>
       </form>
     </ResponsiveDialog>

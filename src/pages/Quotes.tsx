@@ -5,6 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuotesData } from "@/hooks/useQuotesData";
+import { useQuoteMutations } from "@/hooks/useQuoteMutations";
 import { useDebounce } from "@/hooks/useDebounce";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
@@ -185,6 +186,7 @@ const Quotes = () => {
     invalidateManufacturers,
     refetchQuotes,
   } = useQuotesData();
+  const { deleteQuote } = useQuoteMutations();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
@@ -1168,6 +1170,13 @@ const Quotes = () => {
       setIsBulkDeleting(true);
       try {
         const idsToDelete = Array.from(selectedDraftIds);
+        // Delete items first for all quotes
+        const { error: itemsError } = await supabase
+          .from("quote_items")
+          .delete()
+          .in("quote_id", idsToDelete);
+        if (itemsError) throw itemsError;
+
         const { error } = await supabase
           .from("quotes")
           .delete()
@@ -1193,25 +1202,26 @@ const Quotes = () => {
       return;
     }
 
-    // Handle single delete
+    // Handle single delete using mutation
     if (!quoteToDelete) return;
 
-    try {
-      const { error } = await supabase.from("quotes").delete().eq("id", quoteToDelete);
-      if (error) throw error;
-      toast({ title: "Quote deleted successfully", duration: 3000 });
-      refetchQuotes();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-        duration: 4000,
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setQuoteToDelete(null);
-    }
+    deleteQuote.mutate(quoteToDelete, {
+      onSuccess: () => {
+        toast({ title: "Quote deleted successfully", duration: 3000 });
+        setDeleteDialogOpen(false);
+        setQuoteToDelete(null);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+          duration: 4000,
+        });
+        setDeleteDialogOpen(false);
+        setQuoteToDelete(null);
+      },
+    });
   };
 
   const handleToggleDraftSelection = (quoteId: string) => {

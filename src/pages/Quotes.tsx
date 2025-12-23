@@ -2093,6 +2093,11 @@ const Quotes = () => {
   const handlePaymentSubmit = async (paymentData: PaymentFormData) => {
     if (!selectedQuoteForPayment) return;
 
+    // Close dialog immediately for better UX
+    setPaymentDialogOpen(false);
+    const quoteId = selectedQuoteForPayment.id;
+    setSelectedQuoteForPayment(null);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -2103,19 +2108,19 @@ const Quotes = () => {
         payment_amount_crypto: paymentData.payment_amount_crypto || null,
         payment_date: paymentData.payment_date || null,
         transaction_id: paymentData.transaction_id || null,
-        status: "paid_awaiting_shipping", // Auto-transition to paid_awaiting_shipping
+        status: "paid_awaiting_shipping",
       };
 
       const { error } = await supabase
         .from("quotes")
         .update(payload)
-        .eq("id", selectedQuoteForPayment.id);
+        .eq("id", quoteId);
 
       if (error) throw error;
 
       // Log payment activity
       await supabase.from('quote_activity_log').insert({
-        quote_id: selectedQuoteForPayment.id,
+        quote_id: quoteId,
         user_id: user.id,
         activity_type: 'payment_recorded',
         description: 'Payment recorded - awaiting shipping',
@@ -2127,61 +2132,12 @@ const Quotes = () => {
         }
       });
 
-      // Fetch quote with items for receipt and email
-      const { data: fullQuote } = await supabase
-        .from('quotes')
-        .select('*, labs(name, contact_email), quote_items:quote_items(*, products(name))')
-        .eq('id', selectedQuoteForPayment.id)
-        .single();
-
-      if (fullQuote) {
-        // Send payment confirmation email
-        try {
-          if (user?.email) {
-            await supabase.functions.invoke('send-payment-confirmation', {
-              body: {
-                quoteId: selectedQuoteForPayment.id,
-                customerEmail: user.email,
-                quoteNumber: fullQuote.quote_number,
-                labName: fullQuote.labs.name,
-                paymentAmountUsd: fullQuote.payment_amount_usd,
-                paymentDate: fullQuote.payment_date,
-                transactionId: fullQuote.transaction_id,
-                items: fullQuote.quote_items.map((item: any) => ({
-                  productName: item.products.name,
-                  client: item.client,
-                  sample: item.sample,
-                  manufacturer: item.manufacturer,
-                  batch: item.batch,
-                  price: item.price,
-                  additional_samples: item.additional_samples,
-                  additional_report_headers: item.additional_report_headers,
-                }))
-              }
-            });
-          }
-        } catch (emailError) {
-          console.error('Failed to send payment confirmation email:', emailError);
-        }
-
-        // Notify lab about payment
-        try {
-          await supabase.functions.invoke('notify-lab-payment', {
-            body: { quoteId: selectedQuoteForPayment.id }
-          });
-        } catch (labEmailError) {
-          console.error('Failed to notify lab about payment:', labEmailError);
-        }
-      }
-
       toast({ 
-        title: "Payment Confirmed",
-        description: "Receipt generated and confirmation email sent",
+        title: "Payment Recorded",
+        description: "Payment details saved successfully",
         duration: 3000,
       });
 
-      setPaymentDialogOpen(false);
-      setSelectedQuoteForPayment(null);
       fetchQuotes();
     } catch (error: any) {
       toast({

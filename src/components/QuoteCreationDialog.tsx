@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useToast } from "@/hooks/use-toast";
+import { useQuotesData } from "@/hooks/useQuotesData";
 import {
   Dialog,
   DialogContent,
@@ -100,9 +100,9 @@ export function QuoteCreationDialog({
   labs,
   onSuccess,
 }: QuoteCreationDialogProps) {
-  const { isSubscriber, isAdmin } = useUserRole();
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { toast } = useToast();
+  const { clients, manufacturers, isAdmin } = useQuotesData();
 
   // Quote form data
   const [formData, setFormData] = useState({
@@ -115,8 +115,6 @@ export function QuoteCreationDialog({
   // Items state
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Item form state
@@ -148,13 +146,6 @@ export function QuoteCreationDialog({
     }
   }, [formData.lab_id]);
 
-  // Fetch clients and manufacturers
-  useEffect(() => {
-    if (open) {
-      fetchClients();
-      fetchManufacturers();
-    }
-  }, [open]);
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -193,50 +184,6 @@ export function QuoteCreationDialog({
       setProducts(productsWithPricing as any);
     } catch (error) {
       console.error("Error fetching products:", error);
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id
-        ? impersonatedUser.id
-        : user.id;
-
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, name")
-        .eq("user_id", targetUserId)
-        .order("name");
-
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-    }
-  };
-
-  const fetchManufacturers = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const targetUserId = isImpersonatingCustomer && impersonatedUser?.id
-        ? impersonatedUser.id
-        : user.id;
-
-      const { data, error } = await supabase
-        .from("manufacturers")
-        .select("id, name")
-        .eq("user_id", targetUserId)
-        .order("name");
-
-      if (error) throw error;
-      setManufacturers(data || []);
-    } catch (error) {
-      console.error("Error fetching manufacturers:", error);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,64 @@ interface Quote {
 }
 
 const PAGE_SIZE = 15;
+
+// Memoized completed quote row component
+const CompletedQuoteRow = memo(({ 
+  quote, 
+  onOpen 
+}: { 
+  quote: Quote; 
+  onOpen: (quote: Quote) => void;
+}) => (
+  <TableRow key={quote.id}>
+    <TableCell>
+      <div>
+        <p className="font-medium">
+          {quote.quote_number || quote.lab_quote_number || "N/A"}
+        </p>
+        {quote.notes && (
+          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+            {quote.notes}
+          </p>
+        )}
+      </div>
+    </TableCell>
+    <TableCell>
+      <Badge 
+        variant={quote.status === "completed" ? "default" : "destructive"}
+        className="gap-1"
+      >
+        {quote.status === "completed" ? (
+          <CheckCircle className="h-3 w-3" />
+        ) : (
+          <XCircle className="h-3 w-3" />
+        )}
+        {quote.status === "completed" ? "Completed" : "Rejected"}
+      </Badge>
+    </TableCell>
+    <TableCell className="text-muted-foreground">
+      {quote.updated_at 
+        ? format(new Date(quote.updated_at), "MMM d, yyyy")
+        : format(new Date(quote.created_at), "MMM d, yyyy")}
+    </TableCell>
+    <TableCell>
+      {quote.payment_amount_usd 
+        ? `$${quote.payment_amount_usd.toFixed(2)}` 
+        : "-"}
+    </TableCell>
+    <TableCell className="text-right">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onOpen(quote)}
+      >
+        <Eye className="h-4 w-4 mr-1" />
+        View
+      </Button>
+    </TableCell>
+  </TableRow>
+));
+CompletedQuoteRow.displayName = "CompletedQuoteRow";
 
 export default function LabCompletedRequests() {
   const { labUser } = useLabUser();
@@ -197,53 +255,11 @@ export default function LabCompletedRequests() {
                   </TableHeader>
                   <TableBody>
                     {quotes.map((quote) => (
-                      <TableRow key={quote.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {quote.quote_number || quote.lab_quote_number || "N/A"}
-                            </p>
-                            {quote.notes && (
-                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                {quote.notes}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={quote.status === "completed" ? "default" : "destructive"}
-                            className="gap-1"
-                          >
-                            {quote.status === "completed" ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : (
-                              <XCircle className="h-3 w-3" />
-                            )}
-                            {quote.status === "completed" ? "Completed" : "Rejected"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {quote.updated_at 
-                            ? format(new Date(quote.updated_at), "MMM d, yyyy")
-                            : format(new Date(quote.created_at), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          {quote.payment_amount_usd 
-                            ? `$${quote.payment_amount_usd.toFixed(2)}` 
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openQuoteDialog(quote)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <CompletedQuoteRow
+                        key={quote.id}
+                        quote={quote}
+                        onOpen={openQuoteDialog}
+                      />
                     ))}
                   </TableBody>
                 </Table>

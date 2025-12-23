@@ -175,17 +175,18 @@ const Quotes = () => {
   const { impersonatedUser, isImpersonatingCustomer } = useImpersonation();
   const { canSendItems, getRemainingItems } = useSubscription();
   const { 
+    quotes,
+    loading,
     labs, 
     clients, 
     manufacturers, 
     invalidateClients, 
-    invalidateManufacturers 
+    invalidateManufacturers,
+    refetchQuotes,
   } = useQuotesData();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMissingPricing, setProductsMissingPricing] = useState<Product[]>([]);
   const [testingTypes, setTestingTypes] = useState<TestingType[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Helper function to check if quote is locked (paid or later status)
@@ -473,33 +474,12 @@ const Quotes = () => {
     // Don't fetch until role is loaded to ensure proper filtering
     if (roleLoading) return;
     
-    fetchQuotes();
     fetchProducts();
     fetchTestingTypes();
     fetchTemplates();
     fetchEmailTemplates();
     checkValidatedCreditCard();
-
-    // Set up realtime subscriptions for quotes
-    const quotesChannel = supabase
-      .channel('quotes-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'quotes'
-        },
-        () => {
-          fetchQuotes();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(quotesChannel);
-    };
-  }, [roleLoading, role, isImpersonatingCustomer, impersonatedUser?.id]);
+  }, [roleLoading]);
 
   // Load last tracking refresh timestamp from localStorage
   useEffect(() => {
@@ -557,20 +537,20 @@ const Quotes = () => {
       });
 
       if (staleQuotes.length > 0) {
-        console.log(`Auto-refreshing ${staleQuotes.length} stale tracking records`);
-        hasRefreshedStaleTracking.current = true;
-        
-        try {
-          // Make a single call to refresh all tracking (not per-quote)
-          await supabase.functions.invoke("update-ups-tracking", {
-            body: {}
-          });
+          console.log(`Auto-refreshing ${staleQuotes.length} stale tracking records`);
+          hasRefreshedStaleTracking.current = true;
           
-          // Refresh quotes after updates
-          setTimeout(() => fetchQuotes(), 2000);
-        } catch (error) {
-          console.error('Failed to auto-refresh tracking:', error);
-        }
+          try {
+            // Make a single call to refresh all tracking (not per-quote)
+            await supabase.functions.invoke("update-ups-tracking", {
+              body: {}
+            });
+            
+            // Refresh quotes after updates
+            setTimeout(() => refetchQuotes(), 2000);
+          } catch (error) {
+            console.error('Failed to auto-refresh tracking:', error);
+          }
       }
     };
 
@@ -582,37 +562,6 @@ const Quotes = () => {
     return () => {};
   }, [quotes]);
 
-  const fetchQuotes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let query = supabase
-        .from("quotes")
-        .select("*, labs(name)");
-
-      // When impersonating a customer, filter by impersonated user's ID
-      // Otherwise, only admins can see all quotes
-      if (isImpersonatingCustomer && impersonatedUser?.id) {
-        query = query.eq("user_id", impersonatedUser.id);
-      } else if (!isAdmin) {
-        query = query.eq("user_id", user.id);
-      }
-
-      const { data, error } = await query.order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setQuotes(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchProducts = async (labId?: string) => {
     try {
@@ -1031,7 +980,7 @@ const Quotes = () => {
 
       setDialogOpen(false);
       resetForm();
-      fetchQuotes();
+      refetchQuotes();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1159,7 +1108,7 @@ const Quotes = () => {
         description: "A new draft quote has been created",
       });
 
-      fetchQuotes();
+      refetchQuotes();
       
       // Navigate to edit the new quote
       navigate(`/quotes/${newQuote.id}/edit`);
@@ -1189,7 +1138,7 @@ const Quotes = () => {
           duration: 3000 
         });
         setSelectedDraftIds(new Set());
-        fetchQuotes();
+        refetchQuotes();
       } catch (error: any) {
         toast({
           title: "Error",
@@ -1211,7 +1160,7 @@ const Quotes = () => {
       const { error } = await supabase.from("quotes").delete().eq("id", quoteToDelete);
       if (error) throw error;
       toast({ title: "Quote deleted successfully", duration: 3000 });
-      fetchQuotes();
+      refetchQuotes();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1903,7 +1852,7 @@ const Quotes = () => {
       setEmailPreviewOpen(false);
 
       // Refresh quotes list and update selectedQuote
-      await fetchQuotes();
+      await refetchQuotes();
       
       // Update selectedQuote state with new status
       setSelectedQuote({
@@ -1974,7 +1923,7 @@ const Quotes = () => {
             duration: 3000,
           });
         }
-        fetchQuotes();
+        refetchQuotes();
         if (selectedQuote) {
           const { data: updatedQuote } = await supabase
             .from("quotes")
@@ -2078,7 +2027,7 @@ const Quotes = () => {
       // Close dialog and reset state after success
       setPaymentDialogOpen(false);
       setSelectedQuoteForPayment(null);
-      fetchQuotes();
+      refetchQuotes();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -2133,7 +2082,7 @@ const Quotes = () => {
 
       setShippingDialogOpen(false);
       setSelectedQuoteForShipping(null);
-      fetchQuotes();
+      refetchQuotes();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -2201,7 +2150,7 @@ const Quotes = () => {
 
         setShippingLabelDialogOpen(false);
         setSelectedQuoteForLabel(null);
-        fetchQuotes();
+        refetchQuotes();
       }
     } catch (error: any) {
       toast({
@@ -2255,7 +2204,7 @@ const Quotes = () => {
   );
 
   const handleRefresh = async () => {
-    await fetchQuotes();
+    await refetchQuotes();
     await fetchProducts();
   };
 
@@ -4046,8 +3995,8 @@ const Quotes = () => {
             onOpenChange={setApprovalDialogOpen}
             quote={selectedQuoteForApproval}
             quoteItems={quoteItems}
-            onApprove={() => fetchQuotes()}
-            onReject={() => fetchQuotes()}
+            onApprove={() => refetchQuotes()}
+            onReject={() => refetchQuotes()}
           />
         )}
 

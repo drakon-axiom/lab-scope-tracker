@@ -1,7 +1,6 @@
 import { useRef, memo, useMemo, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { supabase } from "@/integrations/supabase/client";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -319,21 +318,11 @@ export const QuotesVirtualTable = memo(function QuotesVirtualTable({
   onSelectAllDrafts,
 }: QuotesVirtualTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
 
   const handleQuoteHover = useCallback((quoteId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: ["quote-items", quoteId],
-      queryFn: async () => {
-        const { data } = await supabase
-          .from("quote_items")
-          .select("*, products(name, category)")
-          .eq("quote_id", quoteId);
-        return data;
-      },
-      staleTime: 60 * 1000,
-    });
-  }, [queryClient]);
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   const rowVirtualizer = useVirtualizer({
     count: quotes.length,

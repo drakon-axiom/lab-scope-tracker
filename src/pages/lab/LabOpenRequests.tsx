@@ -780,7 +780,7 @@ export default function LabOpenRequests() {
     return counts;
   }, [quotes]);
 
-  const getNextAction = (quote: Quote) => {
+  const getNextAction = useCallback((quote: Quote) => {
     switch (quote.status) {
       case "sent_to_vendor":
         return permissions.canApproveQuotes ? "Review & Approve" : "View";
@@ -791,9 +791,9 @@ export default function LabOpenRequests() {
       default:
         return "View Details";
     }
-  };
+  }, [permissions.canApproveQuotes, permissions.canSubmitResults]);
 
-  const getNextActionIcon = (status: string) => {
+  const getNextActionIcon = useCallback((status: string) => {
     switch (status) {
       case "sent_to_vendor":
         return FileText;
@@ -804,7 +804,7 @@ export default function LabOpenRequests() {
       default:
         return Eye;
     }
-  };
+  }, []);
 
   return (
     <LabLayout>

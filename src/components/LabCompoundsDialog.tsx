@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Save, FlaskConical } from "lucide-react";
@@ -38,6 +38,8 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [defaultPrice, setDefaultPrice] = useState("");
   
   // Track changes: { productId: { selected: boolean, price: string } }
   const [changes, setChanges] = useState<Record<string, { selected: boolean; price: string }>>({});
@@ -53,7 +55,6 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch all products
       const { data: productsData, error: productsError } = await supabase
         .from("products")
         .select("id, name, category, standard")
@@ -61,7 +62,6 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
 
       if (productsError) throw productsError;
 
-      // Fetch existing pricing for this lab
       const { data: pricingData, error: pricingError } = await supabase
         .from("product_vendor_pricing")
         .select("id, product_id, price, is_active")
@@ -72,7 +72,6 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
       setProducts(productsData || []);
       setExistingPricing(pricingData || []);
       
-      // Initialize changes with existing data
       const initialChanges: Record<string, { selected: boolean; price: string }> = {};
       (pricingData || []).forEach((p) => {
         initialChanges[p.product_id] = {
@@ -93,23 +92,42 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
     }
   };
 
+  const categories = useMemo(() => {
+    const cats = new Set(products.map((p) => p.category).filter(Boolean) as string[]);
+    return Array.from(cats).sort();
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products;
-    const query = searchQuery.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.category?.toLowerCase().includes(query) ||
-        p.standard?.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+    return products.filter((p) => {
+      const matchesSearch = !searchQuery || 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.standard?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = categoryFilter === "all" || p.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchQuery, categoryFilter]);
+
+  // Check if all filtered items are selected
+  const allFilteredSelected = useMemo(() => {
+    if (filteredProducts.length === 0) return false;
+    return filteredProducts.every((p) => changes[p.id]?.selected);
+  }, [filteredProducts, changes]);
+
+  const someFilteredSelected = useMemo(() => {
+    if (filteredProducts.length === 0) return false;
+    const selectedCount = filteredProducts.filter((p) => changes[p.id]?.selected).length;
+    return selectedCount > 0 && selectedCount < filteredProducts.length;
+  }, [filteredProducts, changes]);
 
   const handleToggle = (productId: string, checked: boolean) => {
     setChanges((prev) => ({
       ...prev,
       [productId]: {
         selected: checked,
-        price: prev[productId]?.price || "",
+        price: prev[productId]?.price || defaultPrice || "",
       },
     }));
   };
@@ -124,6 +142,41 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
     }));
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    const priceToUse = defaultPrice || "";
+    setChanges((prev) => {
+      const newChanges = { ...prev };
+      filteredProducts.forEach((p) => {
+        newChanges[p.id] = {
+          selected: checked,
+          price: prev[p.id]?.price || priceToUse,
+        };
+      });
+      return newChanges;
+    });
+  };
+
+  const handleApplyDefaultPrice = () => {
+    if (!defaultPrice) return;
+    setChanges((prev) => {
+      const newChanges = { ...prev };
+      filteredProducts.forEach((p) => {
+        if (newChanges[p.id]?.selected) {
+          newChanges[p.id] = {
+            ...newChanges[p.id],
+            price: defaultPrice,
+          };
+        }
+      });
+      return newChanges;
+    });
+    toast({
+      title: "Price applied",
+      description: `Default price applied to selected compounds`,
+      duration: 2000,
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -134,7 +187,6 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
       
       const toInsert: any[] = [];
       const toUpdate: { id: string; price: number; is_active: boolean }[] = [];
-      const toDelete: string[] = [];
 
       Object.entries(changes).forEach(([productId, { selected, price }]) => {
         const existing = existingMap.get(productId);
@@ -142,12 +194,10 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
 
         if (selected && priceNum > 0) {
           if (existing) {
-            // Update if price or active status changed
             if (existing.price !== priceNum || existing.is_active !== selected) {
               toUpdate.push({ id: existing.id, price: priceNum, is_active: true });
             }
           } else {
-            // Insert new
             toInsert.push({
               product_id: productId,
               lab_id: labId,
@@ -157,12 +207,10 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
             });
           }
         } else if (!selected && existing) {
-          // Deactivate or delete
           toUpdate.push({ id: existing.id, price: existing.price, is_active: false });
         }
       });
 
-      // Perform operations
       if (toInsert.length > 0) {
         const { error } = await supabase.from("product_vendor_pricing").insert(toInsert);
         if (error) throw error;
@@ -196,6 +244,7 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
   };
 
   const selectedCount = Object.values(changes).filter((c) => c.selected && parseFloat(c.price) > 0).length;
+  const filteredSelectedCount = filteredProducts.filter((p) => changes[p.id]?.selected).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -207,17 +256,57 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-4 py-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search compounds..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="space-y-3 py-2">
+          {/* Search and Filter Row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search compounds..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Badge variant="secondary">{selectedCount} compounds with pricing</Badge>
+
+          {/* Default Price and Select All Row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Default price"
+                value={defaultPrice}
+                onChange={(e) => setDefaultPrice(e.target.value)}
+                className="w-32"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleApplyDefaultPrice}
+                disabled={!defaultPrice || filteredSelectedCount === 0}
+              >
+                Apply to selected
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <Badge variant="secondary">{filteredSelectedCount} of {filteredProducts.length} selected</Badge>
+              <Badge variant="outline">{selectedCount} total with pricing</Badge>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -229,7 +318,17 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">Active</TableHead>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allFilteredSelected}
+                      ref={(el) => {
+                        if (el) {
+                          (el as any).indeterminate = someFilteredSelected;
+                        }
+                      }}
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    />
+                  </TableHead>
                   <TableHead>Compound</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Standard</TableHead>
@@ -277,7 +376,6 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
                             value={price}
                             onChange={(e) => handlePriceChange(product.id, e.target.value)}
                             className="w-24"
-                            disabled={!isSelected}
                           />
                         </TableCell>
                       </TableRow>

@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Quote {
+  id: string;
+  status: string;
+  [key: string]: unknown;
+}
+
 export function useQuoteMutations() {
   const queryClient = useQueryClient();
 
@@ -17,7 +23,25 @@ export function useQuoteMutations() {
       const { error } = await supabase.from("quotes").delete().eq("id", quoteId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async (quoteId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["quotes"] });
+
+      // Snapshot previous value
+      const previousQuotes = queryClient.getQueryData<Quote[]>(["quotes"]);
+
+      // Optimistically remove the quote
+      queryClient.setQueryData<Quote[]>(["quotes"], (old) =>
+        old?.filter((q) => q.id !== quoteId) ?? []
+      );
+
+      return { previousQuotes };
+    },
+    onError: (_err, _quoteId, context) => {
+      // Rollback on error
+      queryClient.setQueryData(["quotes"], context?.previousQuotes);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
     },
   });
@@ -27,7 +51,21 @@ export function useQuoteMutations() {
       const { error } = await supabase.from("quotes").update({ status }).eq("id", quoteId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async ({ quoteId, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["quotes"] });
+
+      const previousQuotes = queryClient.getQueryData<Quote[]>(["quotes"]);
+
+      queryClient.setQueryData<Quote[]>(["quotes"], (old) =>
+        old?.map((q) => (q.id === quoteId ? { ...q, status } : q)) ?? []
+      );
+
+      return { previousQuotes };
+    },
+    onError: (_err, _variables, context) => {
+      queryClient.setQueryData(["quotes"], context?.previousQuotes);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
     },
   });

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, memo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
@@ -96,6 +96,118 @@ interface ImportCompound {
   category: string;
   usd: number;
 }
+
+// Memoized compound table row component
+interface CompoundRowProps {
+  compound: Compound;
+  isSelected: boolean;
+  onToggleSelection: (id: string) => void;
+  onEdit: (compound: Compound) => void;
+  onDelete: (id: string) => void;
+  onViewDetails: (id: string) => void;
+  onManagePricing: (compound: { id: string; name: string }) => void;
+}
+
+const CompoundRow = memo(({ 
+  compound, 
+  isSelected, 
+  onToggleSelection, 
+  onEdit, 
+  onDelete, 
+  onViewDetails,
+  onManagePricing 
+}: CompoundRowProps) => {
+  const CategoryIcon = getCategoryIcon(compound.category);
+  
+  return (
+    <TableRow>
+      <TableCell>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggleSelection(compound.id)}
+        />
+      </TableCell>
+      <TableCell className="font-medium">
+        {compound.aliases && compound.aliases.length > 0 ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help border-b border-dotted border-muted-foreground w-fit">
+                  <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />
+                  <span>{compound.name}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="font-semibold mb-1">Aliases:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {compound.aliases.map((alias, idx) => (
+                    <li key={idx} className="text-sm">{alias}</li>
+                  ))}
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />
+            <span>{compound.name}</span>
+          </div>
+        )}
+      </TableCell>
+      <TableCell>
+        {compound.category ? (
+          <Badge className={cn("flex items-center gap-1.5 w-fit", getCategoryColors(compound.category).bg, getCategoryColors(compound.category).text)}>
+            <CategoryIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>{compound.category}</span>
+          </Badge>
+        ) : "—"}
+      </TableCell>
+      <TableCell>{compound.standard || "—"}</TableCell>
+      <TableCell>
+        {compound.duration_days ? `${compound.duration_days} days` : "—"}
+      </TableCell>
+      <TableCell className="max-w-xs truncate">
+        {compound.description || "—"}
+      </TableCell>
+      <TableCell>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onManagePricing({ id: compound.id, name: compound.name })}
+        >
+          <DollarSign className="h-4 w-4 mr-1" />
+          Manage
+        </Button>
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onViewDetails(compound.id)}
+          title="View Details"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(compound)}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(compound.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+CompoundRow.displayName = "CompoundRow";
 
 const Compounds = () => {
   const { toast } = useToast();
@@ -276,7 +388,7 @@ const Compounds = () => {
     }
   };
 
-  const handleEdit = (compound: Compound) => {
+  const handleEdit = useCallback((compound: Compound) => {
     setEditingCompound(compound);
     setFormData({
       name: compound.name,
@@ -286,7 +398,16 @@ const Compounds = () => {
       category: compound.category || "",
     });
     setOpen(true);
-  };
+  }, []);
+
+  const handleViewDetails = useCallback((id: string) => {
+    navigate(`/compounds/${id}`);
+  }, [navigate]);
+
+  const handleManagePricing = useCallback((compound: { id: string; name: string }) => {
+    setSelectedCompound(compound);
+    setPricingDialogOpen(true);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this compound?")) return;
@@ -1234,102 +1355,16 @@ const Compounds = () => {
                 </TableRow>
               ) : (
                 paginatedCompounds.map((compound) => (
-                  <TableRow key={compound.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.has(compound.id)}
-                        onCheckedChange={() => toggleSelection(compound.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {compound.aliases && compound.aliases.length > 0 ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 cursor-help border-b border-dotted border-muted-foreground w-fit">
-                                {(() => {
-                                  const CategoryIcon = getCategoryIcon(compound.category);
-                                  return <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />;
-                                })()}
-                                <span>{compound.name}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="font-semibold mb-1">Aliases:</p>
-                              <ul className="list-disc list-inside space-y-0.5">
-                                {compound.aliases.map((alias, idx) => (
-                                  <li key={idx} className="text-sm">{alias}</li>
-                                ))}
-                              </ul>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const CategoryIcon = getCategoryIcon(compound.category);
-                            return <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", compound.category && `text-category-${compound.category.toLowerCase().replace(/\s+/g, '-')}`)} />;
-                          })()}
-                          <span>{compound.name}</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {compound.category ? (
-                        <Badge className={cn("flex items-center gap-1.5 w-fit", getCategoryColors(compound.category).bg, getCategoryColors(compound.category).text)}>
-                          {(() => {
-                            const CategoryIcon = getCategoryIcon(compound.category);
-                            return <CategoryIcon className="h-3.5 w-3.5 flex-shrink-0" />;
-                          })()}
-                          <span>{compound.category}</span>
-                        </Badge>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell>{compound.standard || "—"}</TableCell>
-                    <TableCell>
-                      {compound.duration_days ? `${compound.duration_days} days` : "—"}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {compound.description || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCompound({ id: compound.id, name: compound.name });
-                          setPricingDialogOpen(true);
-                        }}
-                      >
-                        <DollarSign className="h-4 w-4 mr-1" />
-                        Manage
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/compounds/${compound.id}`)}
-                        title="View Details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(compound)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(compound.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <CompoundRow
+                    key={compound.id}
+                    compound={compound}
+                    isSelected={selectedIds.has(compound.id)}
+                    onToggleSelection={toggleSelection}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onViewDetails={handleViewDetails}
+                    onManagePricing={handleManagePricing}
+                  />
                 ))
               )}
             </TableBody>

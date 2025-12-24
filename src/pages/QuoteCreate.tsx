@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +83,108 @@ interface QuoteItem {
     batch: string;
   }>;
 }
+
+// Memoized quote item row component
+interface QuoteItemRowProps {
+  item: QuoteItem;
+  index: number;
+  onEdit: (index: number) => void;
+  onRemove: (index: number) => void;
+  calculateItemTotal: (item: QuoteItem) => number;
+}
+
+const QuoteItemRow = memo(({ item, index, onEdit, onRemove, calculateItemTotal }: QuoteItemRowProps) => (
+  <div className="flex items-start justify-between p-4 border rounded-lg bg-background">
+    <div className="flex-1 min-w-0 space-y-1">
+      <p className="font-medium">{item.product_name}</p>
+      <p className="text-sm text-muted-foreground">
+        {item.client} • {item.manufacturer} • Batch: {item.batch}
+      </p>
+      {(item.additional_samples > 0 || item.additional_report_headers > 0) && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {item.additional_samples > 0 && (
+            <span className="text-xs px-2 py-1 bg-muted rounded-full">
+              +{item.additional_samples} samples
+            </span>
+          )}
+          {item.additional_report_headers > 0 && (
+            <span className="text-xs px-2 py-1 bg-muted rounded-full">
+              +{item.additional_report_headers} headers
+            </span>
+          )}
+        </div>
+      )}
+      <p className="text-sm font-semibold text-primary mt-2">
+        ${calculateItemTotal(item).toFixed(2)}
+      </p>
+    </div>
+    <div className="flex flex-col gap-1">
+      <Button variant="ghost" size="icon" onClick={() => onEdit(index)}>
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={() => onRemove(index)}>
+        <Trash2 className="h-4 w-4 text-destructive" />
+      </Button>
+    </div>
+  </div>
+));
+
+QuoteItemRow.displayName = "QuoteItemRow";
+
+// Memoized review item row component
+interface ReviewItemRowProps {
+  item: QuoteItem;
+  calculateItemTotal: (item: QuoteItem) => number;
+}
+
+const ReviewItemRow = memo(({ item, calculateItemTotal }: ReviewItemRowProps) => (
+  <div className="p-4 border rounded-lg space-y-2">
+    <div className="flex justify-between items-start">
+      <div className="flex-1">
+        <p className="font-medium">{item.product_name}</p>
+        <p className="text-sm text-muted-foreground">
+          {item.client} • {item.manufacturer} • Batch: {item.batch}
+        </p>
+      </div>
+      <span className="font-medium">${item.price.toFixed(2)}</span>
+    </div>
+    
+    {item.additional_samples > 0 && (
+      <div className="flex justify-between text-sm pl-4">
+        <span className="text-muted-foreground">
+          + Additional Samples ({item.additional_samples} × $60)
+        </span>
+        <span>${(item.additional_samples * 60).toFixed(2)}</span>
+      </div>
+    )}
+    
+    {item.additional_report_headers > 0 && (
+      <div className="flex justify-between text-sm pl-4">
+        <span className="text-muted-foreground">
+          + Additional Headers ({item.additional_report_headers} × $30)
+        </span>
+        <span>${(item.additional_report_headers * 30).toFixed(2)}</span>
+      </div>
+    )}
+
+    {item.additional_headers_data.length > 0 && (
+      <div className="mt-2 pl-4 space-y-1">
+        {item.additional_headers_data.map((header, hIdx) => (
+          <p key={hIdx} className="text-xs text-muted-foreground">
+            Header {hIdx + 1}: {header.client} • {header.sample} • {header.manufacturer} • {header.batch}
+          </p>
+        ))}
+      </div>
+    )}
+
+    <div className="flex justify-between pt-2 border-t font-medium">
+      <span>Item Total</span>
+      <span className="text-primary">${calculateItemTotal(item).toFixed(2)}</span>
+    </div>
+  </div>
+));
+
+ReviewItemRow.displayName = "ReviewItemRow";
 
 const QuoteCreate = () => {
   const navigate = useNavigate();
@@ -1038,50 +1140,14 @@ const QuoteCreate = () => {
                 ) : (
                   <div className="space-y-3">
                     {items.map((item, index) => (
-                      <div
+                      <QuoteItemRow
                         key={item.id}
-                        className="flex items-start justify-between p-4 border rounded-lg bg-background"
-                      >
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <p className="font-medium">{item.product_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.client} • {item.manufacturer} • Batch: {item.batch}
-                          </p>
-                          {(item.additional_samples > 0 || item.additional_report_headers > 0) && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {item.additional_samples > 0 && (
-                                <span className="text-xs px-2 py-1 bg-muted rounded-full">
-                                  +{item.additional_samples} samples
-                                </span>
-                              )}
-                              {item.additional_report_headers > 0 && (
-                                <span className="text-xs px-2 py-1 bg-muted rounded-full">
-                                  +{item.additional_report_headers} headers
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <p className="text-sm font-semibold text-primary mt-2">
-                            ${calculateItemTotal(item).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditItem(index)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveItem(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
+                        item={item}
+                        index={index}
+                        onEdit={handleEditItem}
+                        onRemove={handleRemoveItem}
+                        calculateItemTotal={calculateItemTotal}
+                      />
                     ))}
                   </div>
                 )}
@@ -1146,51 +1212,12 @@ const QuoteCreate = () => {
                 {/* Items */}
                 <div className="space-y-3">
                   <h3 className="font-medium">Items ({items.length})</h3>
-                  {items.map((item, index) => (
-                    <div key={item.id} className="p-4 border rounded-lg space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.product_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.client} • {item.manufacturer} • Batch: {item.batch}
-                          </p>
-                        </div>
-                        <span className="font-medium">${item.price.toFixed(2)}</span>
-                      </div>
-                      
-                      {item.additional_samples > 0 && (
-                        <div className="flex justify-between text-sm pl-4">
-                          <span className="text-muted-foreground">
-                            + Additional Samples ({item.additional_samples} × $60)
-                          </span>
-                          <span>${(item.additional_samples * 60).toFixed(2)}</span>
-                        </div>
-                      )}
-                      
-                      {item.additional_report_headers > 0 && (
-                        <div className="flex justify-between text-sm pl-4">
-                          <span className="text-muted-foreground">
-                            + Additional Headers ({item.additional_report_headers} × $30)
-                          </span>
-                          <span>${(item.additional_report_headers * 30).toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      {item.additional_headers_data.length > 0 && (
-                        <div className="mt-2 pl-4 space-y-1">
-                          {item.additional_headers_data.map((header, hIdx) => (
-                            <p key={hIdx} className="text-xs text-muted-foreground">
-                              Header {hIdx + 1}: {header.client} • {header.sample} • {header.manufacturer} • {header.batch}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex justify-between pt-2 border-t font-medium">
-                        <span>Item Total</span>
-                        <span className="text-primary">${calculateItemTotal(item).toFixed(2)}</span>
-                      </div>
-                    </div>
+                  {items.map((item) => (
+                    <ReviewItemRow
+                      key={item.id}
+                      item={item}
+                      calculateItemTotal={calculateItemTotal}
+                    />
                   ))}
                 </div>
 

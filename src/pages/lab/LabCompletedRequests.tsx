@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { format } from "date-fns";
 import { Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -60,12 +61,14 @@ const PAGE_SIZE = 15;
 // Memoized completed quote row component
 const CompletedQuoteRow = memo(({ 
   quote, 
-  onOpen 
+  onOpen,
+  onHover
 }: { 
   quote: Quote; 
   onOpen: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }) => (
-  <TableRow key={quote.id}>
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell>
       <div>
         <p className="font-medium">
@@ -118,6 +121,7 @@ CompletedQuoteRow.displayName = "CompletedQuoteRow";
 export default function LabCompletedRequests() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
@@ -126,6 +130,10 @@ export default function LabCompletedRequests() {
   const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
 
@@ -259,6 +267,7 @@ export default function LabCompletedRequests() {
                         key={quote.id}
                         quote={quote}
                         onOpen={openQuoteDialog}
+                        onHover={handleQuoteHover}
                       />
                     ))}
                   </TableBody>

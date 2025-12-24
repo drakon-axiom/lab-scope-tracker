@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { Upload, Link as LinkIcon, FileText, ArrowUpDown, TrendingUp, Sparkles, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -83,10 +84,11 @@ interface ResultsRowProps {
   quote: Quote;
   permissions: { canSubmitResults: boolean };
   onOpen: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }
 
-const ResultsRow = memo(({ quote, permissions, onOpen }: ResultsRowProps) => (
-  <TableRow key={quote.id}>
+const ResultsRow = memo(({ quote, permissions, onOpen, onHover }: ResultsRowProps) => (
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell className="font-medium">
       {quote.quote_number || "N/A"}
     </TableCell>
@@ -127,6 +129,7 @@ ResultsRow.displayName = "ResultsRow";
 export default function LabResults() {
   const { labUser } = useLabUser();
   const permissions = useLabPermissions();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -139,6 +142,10 @@ export default function LabResults() {
   const [sortBy, setSortBy] = useState<"progress" | "quote" | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [extractingIndex, setExtractingIndex] = useState<number | null>(null);
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   useEffect(() => {
     if (!labUser?.lab_id) return;
@@ -693,6 +700,7 @@ export default function LabResults() {
                         fetchSubmissionHistory(q.id);
                         setDialogOpen(true);
                       }}
+                      onHover={handleQuoteHover}
                     />
                   ))
                 )}

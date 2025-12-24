@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { format } from "date-fns";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -41,12 +42,14 @@ interface Quote {
 // Memoized payment row component
 const PaymentRow = memo(({ 
   quote, 
-  onReview 
+  onReview,
+  onHover
 }: { 
   quote: Quote; 
   onReview: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }) => (
-  <TableRow key={quote.id}>
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell className="font-medium">
       {quote.quote_number || "N/A"}
     </TableCell>
@@ -81,11 +84,16 @@ PaymentRow.displayName = "PaymentRow";
 export default function LabPayments() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notes, setNotes] = useState("");
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   // Use impersonated lab ID if available, otherwise use the lab user's lab ID
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
@@ -212,6 +220,7 @@ export default function LabPayments() {
                         setSelectedQuote(q);
                         setDialogOpen(true);
                       }}
+                      onHover={handleQuoteHover}
                     />
                   ))
                 )}

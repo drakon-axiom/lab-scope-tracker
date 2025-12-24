@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { format } from "date-fns";
 import { Package, CheckCircle2, Clock, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -31,14 +32,16 @@ const ShippingRow = memo(({
   quote, 
   showMarkReceived,
   getStatusBadge,
-  onMarkReceived 
+  onMarkReceived,
+  onHover
 }: { 
   quote: Quote; 
   showMarkReceived: boolean;
   getStatusBadge: (status: string) => React.ReactNode;
   onMarkReceived: (quoteId: string) => void;
+  onHover: (quoteId: string) => void;
 }) => (
-  <TableRow key={quote.id}>
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell className="font-medium">
       {quote.quote_number || "N/A"}
     </TableCell>
@@ -73,8 +76,13 @@ ShippingRow.displayName = "ShippingRow";
 export default function LabShipping() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   // Use impersonated lab ID if available, otherwise use the lab user's lab ID
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
@@ -176,6 +184,7 @@ export default function LabShipping() {
               showMarkReceived={showMarkReceived}
               getStatusBadge={getStatusBadge}
               onMarkReceived={handleMarkReceived}
+              onHover={handleQuoteHover}
             />
           ))
         )}

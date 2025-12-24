@@ -28,7 +28,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send, Pencil, Trash2, Search, X } from "lucide-react";
+import { Plus, FlaskConical, Clock, CheckCircle, XCircle, Send, Pencil, Trash2, Search, X, TestTubes } from "lucide-react";
+import { LabCompoundsDialog } from "@/components/LabCompoundsDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface Lab {
@@ -92,6 +93,8 @@ const Labs = () => {
   const [editingLab, setEditingLab] = useState<Lab | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [labToDelete, setLabToDelete] = useState<Lab | null>(null);
+  const [compoundsDialogOpen, setCompoundsDialogOpen] = useState(false);
+  const [selectedLabForCompounds, setSelectedLabForCompounds] = useState<Lab | null>(null);
   const [adminFormData, setAdminFormData] = useState({
     name: "",
     location: "",
@@ -592,6 +595,18 @@ const Labs = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  title="Manage Compounds"
+                                  onClick={() => {
+                                    setSelectedLabForCompounds(lab);
+                                    setCompoundsDialogOpen(true);
+                                  }}
+                                >
+                                  <TestTubes className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Edit Lab"
                                   onClick={() => handleEditLab(lab)}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -599,6 +614,7 @@ const Labs = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  title="Delete Lab"
                                   onClick={() => {
                                     setLabToDelete(lab);
                                     setDeleteDialogOpen(true);
@@ -674,6 +690,19 @@ const Labs = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lab Compounds Dialog */}
+      {selectedLabForCompounds && (
+        <LabCompoundsDialog
+          open={compoundsDialogOpen}
+          onOpenChange={(open) => {
+            setCompoundsDialogOpen(open);
+            if (!open) setSelectedLabForCompounds(null);
+          }}
+          labId={selectedLabForCompounds.id}
+          labName={selectedLabForCompounds.name}
+        />
+      )}
     </Layout>
   );
 };

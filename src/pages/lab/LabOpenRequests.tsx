@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from "react";
+import { useState, useCallback, useMemo, memo, useEffect } from "react";
 import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { useLabOpenRequestsDialog, Quote, QuoteItem } from "@/hooks/useLabOpenRequestsDialog";
 import { 
@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import LabLayout from "@/components/lab/LabLayout";
 import { ChangeDetectionDebugPanel } from "@/components/lab/ChangeDetectionDebugPanel";
 import { PriceInputRow } from "@/components/lab/PriceInputRow";
+import { PricingWizard } from "@/components/lab/PricingWizard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,7 @@ import { format } from "date-fns";
 import { 
   Eye, Check, X, Lock, Package, CreditCard, 
   FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2,
-  Download, FileJson, FileSpreadsheet
+  Download, FileJson, FileSpreadsheet, Wand2
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -174,6 +175,27 @@ export default function LabOpenRequests() {
   } = dialogState;
 
   const [activeTab, setActiveTab] = useState("all");
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [vendorPricing, setVendorPricing] = useState<{ product_id: string; price: number }[]>([]);
+
+  // Fetch vendor pricing for suggestions in wizard
+  useEffect(() => {
+    const fetchVendorPricing = async () => {
+      if (!effectiveLabId) return;
+      
+      const { data, error } = await supabase
+        .from("product_vendor_pricing")
+        .select("product_id, price")
+        .eq("lab_id", effectiveLabId)
+        .eq("is_active", true);
+      
+      if (!error && data) {
+        setVendorPricing(data);
+      }
+    };
+    
+    fetchVendorPricing();
+  }, [effectiveLabId]);
 
   const handleQuoteHover = useCallback((quoteId: string) => {
     prefetchQuoteItems(quoteId);
@@ -735,6 +757,16 @@ export default function LabOpenRequests() {
     }
   };
 
+  // Handle wizard completion - apply prices from wizard
+  const handleWizardComplete = (wizardPrices: Record<string, string>, wizardDiscount: string) => {
+    // Apply the prices from the wizard to our state
+    Object.entries(wizardPrices).forEach(([itemId, price]) => {
+      handlePriceChange(itemId, price);
+    });
+    setModifiedDiscount(wizardDiscount);
+    toast.success("Pricing applied from wizard");
+  };
+
   const filteredQuotes = useMemo(() => {
     if (activeTab === "all") return quotes;
     return quotes.filter(q => q.status === activeTab);
@@ -1097,7 +1129,18 @@ export default function LabOpenRequests() {
                 {/* Action Forms based on status */}
                 {selectedQuote.status === "sent_to_vendor" && permissions.canApproveQuotes && (
                   <div className="space-y-4 border-t pt-4">
-                    <h4 className="font-medium">Review Quote</h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Review Quote</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setWizardOpen(true)}
+                        className="gap-2"
+                      >
+                        <Wand2 className="h-4 w-4" />
+                        Pricing Wizard
+                      </Button>
+                    </div>
                     <div>
                       <Label>Response Notes</Label>
                       <Textarea
@@ -1241,6 +1284,18 @@ export default function LabOpenRequests() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Pricing Wizard */}
+        {selectedQuote && (
+          <PricingWizard
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            quote={selectedQuote}
+            items={selectedQuoteItems}
+            vendorPricing={vendorPricing}
+            onComplete={handleWizardComplete}
+          />
+        )}
       </div>
     </LabLayout>
   );

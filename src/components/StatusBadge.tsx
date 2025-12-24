@@ -7,40 +7,79 @@ interface StatusBadgeProps {
 }
 
 const StatusBadge = memo(({ status }: StatusBadgeProps) => {
-  const statusColor = useMemo(() => {
-    switch (status.toLowerCase()) {
+  const { color, label } = useMemo(() => {
+    const statusLower = status.toLowerCase();
+    
+    // User-friendly labels mapping
+    const friendlyLabels: Record<string, string> = {
+      sent_to_vendor: "Waiting for Lab Pricing",
+      awaiting_customer_approval: "Ready for Your Review",
+      pricing_received: "Ready for Your Review",
+      approved_payment_pending: "Payment Required",
+      paid_awaiting_shipping: "Ship Your Samples",
+      in_transit: "Samples on the Way",
+      shipped: "Samples on the Way",
+      testing_in_progress: "Testing in Progress",
+      completed: "Complete",
+      draft: "Draft",
+      pending: "Pending",
+      rejected: "Rejected",
+      delivered: "Delivered",
+      failed: "Failed",
+    };
+
+    // Color mapping
+    let color: string;
+    switch (statusLower) {
       case "completed":
-        return "bg-success text-white";
+        color = "bg-success text-white";
+        break;
       case "testing_in_progress":
       case "in-progress":
-        return "bg-info text-white";
+        color = "bg-info text-white";
+        break;
       case "draft":
       case "pending":
-        return "bg-warning text-white";
+        color = "bg-warning text-white";
+        break;
       case "sent_to_vendor":
-        return "bg-purple-500 text-white";
+        color = "bg-purple-500 text-white";
+        break;
       case "awaiting_customer_approval":
-        return "bg-amber-500 text-white";
+      case "pricing_received":
+        color = "bg-amber-500 text-white";
+        break;
       case "approved_payment_pending":
-        return "bg-green-500 text-white";
+        color = "bg-green-500 text-white";
+        break;
       case "rejected":
-        return "bg-red-500 text-white";
+        color = "bg-red-500 text-white";
+        break;
       case "paid_awaiting_shipping":
-        return "bg-emerald-500 text-white";
+        color = "bg-emerald-500 text-white";
+        break;
       case "in_transit":
-        return "bg-blue-500 text-white";
+      case "shipped":
+        color = "bg-blue-500 text-white";
+        break;
       case "delivered":
-        return "bg-cyan-500 text-white";
+        color = "bg-cyan-500 text-white";
+        break;
       case "failed":
-        return "bg-destructive text-destructive-foreground";
+        color = "bg-destructive text-destructive-foreground";
+        break;
       default:
-        return "bg-muted text-muted-foreground";
+        color = "bg-muted text-muted-foreground";
     }
+
+    const label = friendlyLabels[statusLower] || status.replace(/_/g, ' ');
+
+    return { color, label };
   }, [status]);
 
   return (
-    <Badge className={cn("capitalize", statusColor)}>
-      {status.replace(/_/g, ' ')}
+    <Badge className={cn("capitalize whitespace-nowrap", color)}>
+      {label}
     </Badge>
   );
 });

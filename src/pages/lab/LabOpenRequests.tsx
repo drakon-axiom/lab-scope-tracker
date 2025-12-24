@@ -24,7 +24,7 @@ import {
   FlaskConical, FileText, Upload, ChevronRight, RefreshCw, Loader2,
   Download, FileJson, FileSpreadsheet
 } from "lucide-react";
-import * as XLSX from "xlsx";
+
 import { toast } from "sonner";
 import {
   Table,
@@ -512,7 +512,8 @@ export default function LabOpenRequests() {
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = (quote: Quote, items: QuoteItem[]) => {
+  const downloadExcel = async (quote: Quote, items: QuoteItem[]) => {
+    const XLSX = await import("xlsx");
     const data = getOrderData(quote, items);
     const wsData: (string | number)[][] = [
       ['ORDER DETAILS'],

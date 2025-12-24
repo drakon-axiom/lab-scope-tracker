@@ -98,7 +98,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
-          <ErrorBoundary>
+          <ErrorBoundary fullPage>
             <Suspense fallback={<LoadingScreen />}>
             <Routes>
             <Route path="/" element={<Landing />} />

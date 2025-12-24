@@ -21,11 +21,20 @@ interface ShipmentInProgress {
   labs: { name: string };
 }
 
+interface ActionRequiredQuote {
+  id: string;
+  quote_number: string | null;
+  tracking_number?: string | null;
+}
+
 interface DashboardData {
   activeQuotes: Quote[];
   shipmentsInProgress: ShipmentInProgress[];
   avgCompletionDays: number | null;
   statusCounts: Record<string, number>;
+  quotesAwaitingApproval: ActionRequiredQuote[];
+  quotesReadyForPayment: ActionRequiredQuote[];
+  shipmentsToTrack: ActionRequiredQuote[];
 }
 
 export const useDashboardData = () => {
@@ -41,11 +50,26 @@ export const useDashboardData = () => {
     queryKey: ["dashboard", targetUserId],
     queryFn: async (): Promise<DashboardData> => {
       if (!targetUserId) {
-        return { activeQuotes: [], shipmentsInProgress: [], avgCompletionDays: null, statusCounts: {} };
+        return { 
+          activeQuotes: [], 
+          shipmentsInProgress: [], 
+          avgCompletionDays: null, 
+          statusCounts: {},
+          quotesAwaitingApproval: [],
+          quotesReadyForPayment: [],
+          shipmentsToTrack: [],
+        };
       }
 
       // Fetch all data in parallel
-      const [quotesResult, shipmentsResult, completedResult] = await Promise.all([
+      const [
+        quotesResult, 
+        shipmentsResult, 
+        completedResult,
+        awaitingApprovalResult,
+        readyForPaymentResult,
+        shipmentsToTrackResult,
+      ] = await Promise.all([
         // Active quotes
         supabase
           .from("quotes")
@@ -74,10 +98,38 @@ export const useDashboardData = () => {
             .eq("status", "completed")
             .gte("updated_at", ninetyDaysAgo.toISOString());
         })(),
+
+        // Quotes awaiting approval (pricing_received status)
+        supabase
+          .from("quotes")
+          .select("id, quote_number")
+          .eq("user_id", targetUserId)
+          .eq("status", "pricing_received")
+          .order("created_at", { ascending: false }),
+
+        // Quotes ready for payment (approved_payment_pending status)
+        supabase
+          .from("quotes")
+          .select("id, quote_number")
+          .eq("user_id", targetUserId)
+          .eq("status", "approved_payment_pending")
+          .order("created_at", { ascending: false }),
+
+        // Shipments to track (shipped, in_transit statuses with tracking)
+        supabase
+          .from("quotes")
+          .select("id, quote_number, tracking_number")
+          .eq("user_id", targetUserId)
+          .in("status", ["shipped", "in_transit"])
+          .not("tracking_number", "is", null)
+          .order("shipped_date", { ascending: false }),
       ]);
 
       const activeQuotes = (quotesResult.data || []) as Quote[];
       const shipmentsInProgress = (shipmentsResult.data || []) as ShipmentInProgress[];
+      const quotesAwaitingApproval = (awaitingApprovalResult.data || []) as ActionRequiredQuote[];
+      const quotesReadyForPayment = (readyForPaymentResult.data || []) as ActionRequiredQuote[];
+      const shipmentsToTrack = (shipmentsToTrackResult.data || []) as ActionRequiredQuote[];
 
       // Calculate status counts
       const statusCounts: Record<string, number> = {};
@@ -110,7 +162,15 @@ export const useDashboardData = () => {
         }
       }
 
-      return { activeQuotes, shipmentsInProgress, avgCompletionDays, statusCounts };
+      return { 
+        activeQuotes, 
+        shipmentsInProgress, 
+        avgCompletionDays, 
+        statusCounts,
+        quotesAwaitingApproval,
+        quotesReadyForPayment,
+        shipmentsToTrack,
+      };
     },
     enabled: !!targetUserId && !authLoading,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -122,6 +182,9 @@ export const useDashboardData = () => {
     shipmentsInProgress: data?.shipmentsInProgress || [],
     avgCompletionDays: data?.avgCompletionDays || null,
     statusCounts: data?.statusCounts || {},
+    quotesAwaitingApproval: data?.quotesAwaitingApproval || [],
+    quotesReadyForPayment: data?.quotesReadyForPayment || [],
+    shipmentsToTrack: data?.shipmentsToTrack || [],
     loading: authLoading || isLoading,
     error,
     refetch,

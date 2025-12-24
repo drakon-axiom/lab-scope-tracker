@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, memo } from "react";
 import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
+import { useLabOpenRequestsDialog, Quote, QuoteItem } from "@/hooks/useLabOpenRequestsDialog";
 import { 
   getAdditionalSamplesPrice, 
   getAdditionalHeadersPrice,
@@ -49,38 +50,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface QuoteItem {
-  id: string;
-  product_id: string;
-  price: number | null;
-  client: string | null;
-  sample: string | null;
-  manufacturer: string | null;
-  batch: string | null;
-  additional_samples: number | null;
-  additional_report_headers: number | null;
-  status: string | null;
-  test_results: string | null;
-  report_url: string | null;
-  products?: { name: string; category: string | null };
-}
-
-interface Quote {
-  id: string;
-  quote_number: string | null;
-  lab_quote_number: string | null;
-  status: string;
-  created_at: string;
-  notes: string | null;
-  discount_amount: number | null;
-  discount_type: string | null;
-  lab_response: string | null;
-  payment_status: string | null;
-  payment_amount_usd: number | null;
-  payment_date: string | null;
-  tracking_number: string | null;
-  shipped_date: string | null;
-}
+// QuoteItem and Quote types are imported from useLabOpenRequestsDialog
 
 const STATUS_ORDER = [
   "sent_to_vendor",
@@ -187,23 +157,30 @@ export default function LabOpenRequests() {
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
   
   const { quotes, loading, refetch } = useLabQuotes(effectiveLabId);
+  
+  // Use reducer-based dialog state management
+  const { state: dialogState, actions: dialogActions } = useLabOpenRequestsDialog();
+  const {
+    isOpen: dialogOpen,
+    selectedQuote,
+    selectedQuoteItems,
+    itemsLoading,
+    responseNotes,
+    modifiedDiscount,
+    modifiedPrices,
+    modifiedSamplePrices,
+    modifiedHeaderPrices,
+    savingApproval,
+  } = dialogState;
+
+  const [activeTab, setActiveTab] = useState("all");
 
   const handleQuoteHover = useCallback((quoteId: string) => {
     prefetchQuoteItems(quoteId);
   }, [prefetchQuoteItems]);
-  
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [selectedQuoteItems, setSelectedQuoteItems] = useState<QuoteItem[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [responseNotes, setResponseNotes] = useState("");
-  const [modifiedDiscount, setModifiedDiscount] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [modifiedPrices, setModifiedPrices] = useState<Record<string, string>>({});
-  const [savingApproval, setSavingApproval] = useState(false);
 
-  const fetchQuoteItems = async (quoteId: string) => {
-    setItemsLoading(true);
+  const fetchQuoteItems = useCallback(async (quoteId: string) => {
+    dialogActions.setItemsLoading(true);
     try {
       const { data, error } = await supabase
         .from("quote_items")
@@ -211,42 +188,33 @@ export default function LabOpenRequests() {
         .eq("quote_id", quoteId);
 
       if (error) throw error;
-      setSelectedQuoteItems(data || []);
+      dialogActions.setQuoteItems(data || []);
     } catch (error) {
       console.error("Error fetching quote items:", error);
-      setSelectedQuoteItems([]);
-    } finally {
-      setItemsLoading(false);
+      dialogActions.setQuoteItems([]);
     }
-  };
+  }, [dialogActions]);
 
-  const openQuoteDialog = (quote: Quote) => {
-    setSelectedQuote(quote);
-    setDialogOpen(true);
+  const openQuoteDialog = useCallback((quote: Quote) => {
+    dialogActions.openDialog(quote);
     fetchQuoteItems(quote.id);
-    setResponseNotes(quote.lab_response || "");
-    // Pre-populate with existing discount percentage if set
-    setModifiedDiscount(quote.discount_amount?.toString() || "");
-    setModifiedPrices({});
-    setModifiedSamplePrices({});
-    setModifiedHeaderPrices({});
-  };
+  }, [dialogActions, fetchQuoteItems]);
 
-  // Track separate modified prices for base, additional samples, and headers
-  const [modifiedSamplePrices, setModifiedSamplePrices] = useState<Record<string, string>>({});
-  const [modifiedHeaderPrices, setModifiedHeaderPrices] = useState<Record<string, string>>({});
+  const setDialogOpen = useCallback((open: boolean) => {
+    if (!open) {
+      dialogActions.closeDialog();
+    }
+  }, [dialogActions]);
 
-  const handlePriceChange = useCallback((itemId: string, value: string) => {
-    setModifiedPrices(prev => ({ ...prev, [itemId]: value }));
-  }, []);
-
-  const handleSamplePriceChange = useCallback((itemId: string, value: string) => {
-    setModifiedSamplePrices(prev => ({ ...prev, [itemId]: value }));
-  }, []);
-
-  const handleHeaderPriceChange = useCallback((itemId: string, value: string) => {
-    setModifiedHeaderPrices(prev => ({ ...prev, [itemId]: value }));
-  }, []);
+  // Expose price change handlers and setters from the reducer
+  const { 
+    handlePriceChange, 
+    handleSamplePriceChange, 
+    handleHeaderPriceChange,
+    setResponseNotes,
+    setModifiedDiscount,
+    setSavingApproval,
+  } = dialogActions;
 
   // Get modified or default additional samples price
   const getEffectiveSamplePrice = (item: QuoteItem): number => {

@@ -139,6 +139,20 @@ export function ErrorPage({
 }
 
 // Pre-configured variants
+export function Error404() {
+  const location = typeof window !== 'undefined' ? window.location : { pathname: '/' };
+  
+  return (
+    <ErrorPage
+      code={404}
+      title="Page Not Found"
+      message={`The page "${location.pathname}" doesn't exist or has been moved. Let's get you back on track.`}
+      showBackButton={true}
+      showContactButton={true}
+    />
+  );
+}
+
 export function Error500() {
   return (
     <ErrorPage

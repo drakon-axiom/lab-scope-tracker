@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import LoadingScreen from "./components/LoadingScreen";
 import SplashScreen from "./components/SplashScreen";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Eagerly load auth and landing pages (common entry points)
 import Landing from "./pages/Landing";
@@ -97,8 +98,9 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
-          <Suspense fallback={<LoadingScreen />}>
-          <Routes>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingScreen />}>
+            <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
@@ -147,8 +149,9 @@ const App = () => {
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Suspense>
-      </BrowserRouter>
+          </Suspense>
+          </ErrorBoundary>
+        </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
   );

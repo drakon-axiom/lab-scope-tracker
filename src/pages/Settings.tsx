@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -618,6 +617,9 @@ const Settings = () => {
           });
         });
       });
+
+      // Dynamically import xlsx for code splitting
+      const XLSX = await import("xlsx");
 
       // Create workbook with multiple sheets
       const wb = XLSX.utils.book_new();

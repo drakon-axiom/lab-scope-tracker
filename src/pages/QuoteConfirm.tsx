@@ -10,7 +10,7 @@ import { CheckCircle2, Loader2, Download, FileJson, FileSpreadsheet, FileText, C
 import { triggerSuccessConfetti } from "@/lib/confetti";
 import StatusBadge from "@/components/StatusBadge";
 
-import * as XLSX from "xlsx";
+
 
 const ORDER_TIMELINE_STAGES = [
   { status: 'draft', label: 'Draft', icon: Circle },
@@ -604,7 +604,8 @@ const QuoteConfirm = () => {
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
+    const XLSX = await import("xlsx");
     const data = getOrderData();
     const wsData: (string | number)[][] = [
       ['ORDER DETAILS'],

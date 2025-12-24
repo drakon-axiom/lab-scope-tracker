@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { PullToRefreshWrapper } from "@/components/PullToRefresh";
 import { UsageWidget } from "@/components/UsageWidget";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import { ActionRequiredSection } from "@/components/ActionRequiredSection";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,7 +88,10 @@ const Dashboard = () => {
     activeQuotes, 
     shipmentsInProgress, 
     avgCompletionDays, 
-    statusCounts, 
+    statusCounts,
+    quotesAwaitingApproval,
+    quotesReadyForPayment,
+    shipmentsToTrack,
     loading, 
     refetch 
   } = useDashboardData();
@@ -112,6 +116,12 @@ const Dashboard = () => {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
             <p className="text-sm text-muted-foreground">Quick overview of your lab operations</p>
           </div>
+          {/* Action Required Section */}
+          <ActionRequiredSection
+            quotesAwaitingApproval={quotesAwaitingApproval}
+            quotesReadyForPayment={quotesReadyForPayment}
+            shipmentsToTrack={shipmentsToTrack}
+          />
 
           {/* Usage Widget */}
           <UsageWidget />

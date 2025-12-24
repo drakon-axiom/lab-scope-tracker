@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import LabLayout from "@/components/lab/LabLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLabUser } from "@/hooks/useLabUser";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useLabPermissions } from "@/hooks/useLabPermissions";
+import { usePrefetchQuoteItems } from "@/hooks/useQuoteItems";
 import { format } from "date-fns";
 import { Eye, Check, X, Lock, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -64,13 +65,15 @@ interface Quote {
 const PendingQuoteRow = memo(({ 
   quote, 
   permissions, 
-  onOpen 
+  onOpen,
+  onHover
 }: { 
   quote: Quote; 
   permissions: { canApproveQuotes: boolean }; 
   onOpen: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }) => (
-  <TableRow key={quote.id}>
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell className="font-medium">
       {quote.quote_number || "Pending"}
     </TableCell>
@@ -102,12 +105,14 @@ PendingQuoteRow.displayName = "PendingQuoteRow";
 // Memoized historical quote row component
 const HistoricalQuoteRow = memo(({ 
   quote, 
-  onOpen 
+  onOpen,
+  onHover
 }: { 
   quote: Quote; 
   onOpen: (quote: Quote) => void;
+  onHover: (quoteId: string) => void;
 }) => (
-  <TableRow key={quote.id}>
+  <TableRow key={quote.id} onMouseEnter={() => onHover(quote.id)}>
     <TableCell className="font-medium">
       {quote.quote_number || "N/A"}
     </TableCell>
@@ -142,6 +147,7 @@ export default function LabQuotes() {
   const { labUser } = useLabUser();
   const { impersonatedUser, isImpersonatingLab } = useImpersonation();
   const permissions = useLabPermissions();
+  const prefetchQuoteItems = usePrefetchQuoteItems();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [historicalQuotes, setHistoricalQuotes] = useState<Quote[]>([]);
   const [historicalTotalCount, setHistoricalTotalCount] = useState(0);
@@ -155,6 +161,10 @@ export default function LabQuotes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [responseNotes, setResponseNotes] = useState("");
   const [modifiedDiscount, setModifiedDiscount] = useState("");
+
+  const handleQuoteHover = useCallback((quoteId: string) => {
+    prefetchQuoteItems(quoteId);
+  }, [prefetchQuoteItems]);
 
   // Use impersonated lab ID if available, otherwise use the lab user's lab ID
   const effectiveLabId = (isImpersonatingLab ? impersonatedUser?.labId : null) || labUser?.lab_id;
@@ -408,6 +418,7 @@ export default function LabQuotes() {
                       quote={quote}
                       permissions={permissions}
                       onOpen={openQuoteDialog}
+                      onHover={handleQuoteHover}
                     />
                   ))
                 )}
@@ -451,6 +462,7 @@ export default function LabQuotes() {
                       key={quote.id}
                       quote={quote}
                       onOpen={openQuoteDialog}
+                      onHover={handleQuoteHover}
                     />
                   ))
                 )}

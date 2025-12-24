@@ -7,13 +7,15 @@ import { FileText, CreditCard, Package, FlaskConical, Clock, CheckCircle2 } from
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LabActionCards } from "@/components/lab/LabActionCards";
 
 interface DashboardStats {
   new_requests: number;
   awaiting_action: number;
   payments_reported: number;
-  shipped_samples: number;
+  ready_to_ship: number;
   results_pending: number;
+  shipped_samples: number;
 }
 
 interface RecentActivity {
@@ -50,7 +52,10 @@ export default function LabDashboard() {
             ["sent_to_vendor", "awaiting_customer_approval"].includes(q.status)
           ).length || 0,
           payments_reported: quotes?.filter(q => 
-            q.payment_status === "pending" && q.status === "approved_payment_pending"
+            q.status === "approved_payment_pending" && q.payment_status === "paid"
+          ).length || 0,
+          ready_to_ship: quotes?.filter(q => 
+            q.status === "paid_awaiting_shipping"
           ).length || 0,
           shipped_samples: quotes?.filter(q => 
             ["in_transit", "delivered"].includes(q.status)
@@ -132,6 +137,14 @@ export default function LabDashboard() {
             Welcome back to {labUser?.lab_name || "your lab"} portal
           </p>
         </div>
+
+        {/* Action Cards */}
+        <LabActionCards
+          newRequests={stats?.new_requests || 0}
+          paymentsReported={stats?.payments_reported || 0}
+          readyToShip={stats?.ready_to_ship || 0}
+          testsInProgress={stats?.results_pending || 0}
+        />
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

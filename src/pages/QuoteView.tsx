@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StatusBadge from "@/components/StatusBadge";
+import QuoteStatusTimeline from "@/components/QuoteStatusTimeline";
 import { ArrowLeft, Copy, CreditCard, Truck, ChevronRight } from "lucide-react";
 
 interface Quote {
@@ -254,6 +255,20 @@ const QuoteView = () => {
               )}
             </div>
           )}
+
+          {/* Status Timeline */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Order Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QuoteStatusTimeline
+                status={quote.status}
+                estimatedDelivery={quote.estimated_delivery}
+                shippedDate={quote.shipped_date}
+              />
+            </CardContent>
+          </Card>
 
           {/* Quote Info */}
           <Card>

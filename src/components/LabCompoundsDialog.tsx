@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Save, FlaskConical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
+import { Skeleton } from "@/components/ui/skeleton";
 interface Product {
   id: string;
   name: string;
@@ -310,9 +310,30 @@ export function LabCompoundsDialog({ open, onOpenChange, labId, labName }: LabCo
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-muted-foreground">Loading compounds...</p>
-          </div>
+          <ScrollArea className="flex-1 border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12"><Skeleton className="h-4 w-4" /></TableHead>
+                  <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+                  <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                  <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                  <TableHead className="w-32"><Skeleton className="h-4 w-16" /></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         ) : (
           <ScrollArea className="flex-1 border rounded-md">
             <Table>
